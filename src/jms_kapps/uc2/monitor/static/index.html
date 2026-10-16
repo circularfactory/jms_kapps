@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UC2 Monitor</title>
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Use case 2 — the monitor</h1>
+    <span class="muted">It reads the graph, and in "graph + streams" the participants' handover
+      event streams too, and writes nothing; its middleware registers it and sends its
+      heartbeat.</span>
+    <span class="spacer"></span>
+    <label class="muted"><input id="live" type="checkbox" checked> live</label>
+    <select id="rate" aria-label="Refresh the page every">
+      <option value="500">0.5 s</option>
+      <option value="1000" selected>1 s</option>
+      <option value="2000">2 s</option>
+      <option value="5000">5 s</option>
+    </select>
+    <button id="refresh" type="button">Refresh</button>
+    <span id="updated" class="muted"></span>
+  </header>
+
+  <main>
+    <p id="error" class="message error" hidden></p>
+    <section id="reading">
+      <h2>How the monitor reads</h2>
+      <div class="toolbar">
+        <span class="modes" role="radiogroup" aria-label="Mode">
+          <label class="switch"><input type="radio" name="mode" value="graph + streams" checked> graph + streams</label>
+          <label class="switch"><input type="radio" name="mode" value="graph only"> graph only</label>
+        </span>
+        <label class="switch">Read the graph every
+          <input id="graph-seconds" type="number" min="0.5" max="10" step="0.5" value="1"> s</label>
+      </div>
+      <p id="reading-message" class="message error" hidden></p>
+      <!-- Added on 2026-10-10, jms_kapps 24, decided by Etienne on 2026-10-05: "the monitor
+        should have an option to be graph read only ... like the simulation of a real dashboard
+        that only sees the knowledge graph", and on 2026-10-06: "all information at the monitor
+        must stem from graph polling", the refusal cards over the streams the one exception. -->
+      <p class="muted">Every view but Refusals comes from the monitor's reads of the graph, in
+        both modes. In <b>graph only</b> the monitor sees what a dashboard sees that sees only the
+        knowledge graph: it follows no participant's handover event stream, so it shows no
+        refusal. In <b>graph + streams</b> it follows them too, for the Refusals view. The
+        monitor reads the graph in the background at the interval set here, from 0.5 s to 10 s,
+        whether a page is open or not; the refresh above only says how often this page asks the
+        monitor what it read, which sends no query.</p>
+    </section>
+    <div class="layout">
+      <section>
+        <h2>Topology</h2>
+        <p class="muted">Drawn from the graph's connections. Each module is seen from above: a green frame, silver
+          motor rollers that carry a box north–south, and dark belt strips between them that carry
+          a box east–west. A dashed grey module is offline: it has no
+          service with an address and a fresh heartbeat. A live module that holds a box is tinted
+          blue, and an orange square is a box the module possesses.</p>
+        <!-- Changed on 2026-10-10, jms_kapps 24, decided by Etienne on 2026-10-06: "we can map
+          destinations but not routes". Until then the arrows' paragraph went on: "A strong
+          arrow is a hop that boxes from entry modules to exit modules make, found as every module
+          finds its next module; a thin one is a connection that none of them takes", and a
+          paragraph drew each running box's path ahead, "a forecast from the monitor's last read
+          of the connections". -->
+        <p class="muted">Each connection, as the graph holds it, has an arrowhead where it leads,
+          and a head at both ends where it leads both ways. A box that a module holds has a
+          coloured disc with its number on its <b>destination</b>, which its transport names. The
+          monitor draws no route to it: only the module that holds a box knows where it goes
+          next, and it decides that again at every hop.</p>
+        <svg id="topology" class="topology" role="img" aria-label="The modules, their boxes and each box's destination"></svg>
+      </section>
+      <div>
+        <section>
+          <h2>Boxes</h2>
+          <div class="metrics">
+            <div class="metric"><b id="box-count">0</b><span class="muted">boxes</span></div>
+            <div class="metric"><b id="on-modules">0</b><span class="muted">on a module</span></div>
+          </div>
+          <table id="boxes">
+            <thead><tr><th>Box</th><th>Status</th><th>Held by</th><th>From</th><th>To</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Handovers</h2>
+          <p class="muted">Each handover the monitor saw by its commit: the box's possessor
+            changed between two of its reads of the graph, a second apart, or a new box was on
+            its origin, which the WMS handed it to. Newest first: when it saw it, the box, and
+            from whom to whom. Only the newest are kept. A box handed over twice between two
+            reads, which a transit time under a second allows, shows as one handover.</p>
+          <div class="scroll">
+            <table id="handovers">
+              <thead><tr><th>Seen</th><th>Box</th><th>From → to</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+    <!-- Added on 2026-10-11, jms_kapps 77, decided by Etienne: "The monitor in "graph + streams"
+      shows one "possible deadlock" notice that names every module involved [...]. In "graph only"
+      it shows none and says why, as for refusals." -->
+    <section>
+      <h2>Possible deadlock</h2>
+      <p class="muted">A module raises the deadlock alarm for a box it holds that has waited for a
+        Reserve longer than the deadlock alarm time of its launch, 300 s unless the Launcher sets
+        another, and reports it on its handover event stream, so only in "graph + streams". The
+        notice names every module involved: each module with an alarm, and the modules it asks.
+        It shows the alarms whose box the graph still shows on that module. The boxes keep
+        waiting: an alarm fails nothing.</p>
+      <div id="deadlock" aria-live="polite"></div>
+    </section>
+    <section>
+      <h2>Refusals</h2>
+      <p class="muted">The newest commits the triple store refused, newest first, as the
+        participants' handover event streams report them, so only in "graph + streams": a
+        refused write leaves no trace in the graph. Each result of the store's validation
+        report is a row: what the store says, where, and which rule refused; a name shows its
+        whole IRI when you point at it. The report itself is behind "report". A refusal that
+        arrives while the page is open is highlighted for a few seconds.</p>
+      <div id="refusals" aria-live="polite"></div>
+    </section>
+    <section>
+      <h2>Modules</h2>
+      <table id="modules">
+        <thead>
+          <tr>
+            <th>Module</th><th>Type</th><th>Heartbeat</th><th>Boxes</th>
+            <th>North</th><th>East</th><th>South</th><th>West</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Queries sent</h2>
+      <p class="muted">Each SPARQL query the monitor sends, exactly as the store received it the
+        last time it went: how often it goes now, when it went last, how long the store took to
+        answer, and how many rows came back. The query for the live participants names the
+        oldest heartbeat that counts, so its text changes from read to read. A poll of this page
+        sends none. Its middleware's own writes, the registration and the heartbeat, are not
+        reads of the monitor and are not listed.</p>
+      <div id="queries"></div>
+    </section>
+  </main>
+
+  <script src="static/monitor.js"></script>
+</body>
+</html>

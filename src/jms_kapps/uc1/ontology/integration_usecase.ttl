@@ -1,0 +1,543 @@
+@prefix : <https://sfb1574.kit.edu/ontologies/JMS_Usecase_Demo#> .
+@prefix cfc: <https://w3id.org/circularfactory/Core#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+@base <https://sfb1574.kit.edu/ontologies/JMS_Usecase_Demo> .
+
+# Changed from the artifact (`turtle/integration_usecase_JMS.ttl` on `paper`, d3201180):
+#
+# - The values of the decision tree follow Figure 2 of the UC1 anomaly-detection paper: ten
+#   properties replace the five that the artifact declared. The five old names are gone:
+#   `hasLowerTighteningTorque`, `hasUpperDynamicLoseningTorque`, `hasLowerAxialForce`,
+#   `hasAxialForceApproach` and `hasPositionOnApproach`.
+# - A Screw type holds the default values, and a Screw can override them. There are two classes:
+#   `:ScrewType`, a kind of screw such as `:M4`, and `:Screw`, one physical screw in one product.
+#   `:hasScrewType` links them, and `:hasScrew` names one physical Screw.
+# - The placement values (the approach depth limit and the screw-head band) belong to a Screw
+#   only, because they depend on where the screw is, not on its type.
+# - Each of the ten is an `owl:FunctionalProperty`: a Screw type, a Screw or a decision snapshot
+#   holds at most one value of it.
+# - `:screw` is renamed `:Screw`, and `:unscrewingOperation` is renamed `:UnscrewingOperation`, so
+#   that each class name starts with a capital letter.
+# - `:M4_Screw` is now `:M4`, a Screw type with no values. The four placeholder values of the
+#   artifact (0.5, 1.5, 2.0 and 0.5) are gone, because their units were unknown.
+# - Each unscrewing operation links to a `:DecisionSnapshot`: a copy of the ten values that the
+#   detector used. A later change to the Screw or to its Screw type does not change it.
+# - The operation records the exit of the decision tree as a named `:UnscrewingOutcome`. It
+#   replaces the free-text `hasSuccessStatus`. Each outcome indicates one or more Screw
+#   conditions, and each condition requires exactly one disassembly category.
+# - One reference, `:hasTimeSeriesReference`, replaces `:TimeSeriesData`,
+#   `:hasJSONEncodedTimeSeriesData` and the three `:has…TimeSeriesData` links. The curves are in
+#   InfluxDB; the operation holds where.
+# - An operation whose outcome is a failure also records the measured end position of its
+#   approach, `:hasMeasuredApproachEndPosition`, as failure information.
+# - `:UnscrewingOperation` is a Core `cfc:Operation`, directly, in place of the artifact's
+#   `:Process`, which nothing declared. Core's `cfc:implementsCapability` has the domain
+#   `cfc:Operation`, and the object-graph mapper finds a property of a class only through its
+#   domain, so only this triple lets an unscrewing operation name the Capability it implements.
+#   The middleware loads Core, which declares `cfc:Operation`.
+# - `:Screw` is a Core `cfc:Workpiece`, in place of the artifact's `:Product`, which nothing
+#   declared. `cfc:Workpiece` is the common superclass of `cfc:Assembly` and `cfc:Component`, so
+#   this says what Figure 7 of the paper draws without deciding which of the two a Screw is. That
+#   decision is the second milestone of this use case, and it waits on a kapps_ogm question: a FULL
+#   load of a `cfc:Component` fails, because Core gives `cfc:hasOrigin` both a named and an
+#   anonymous range. `cfc:Workpiece` restricts only `cfc:hasPossessedWorkpiece` and `cfc:isActive`,
+#   each with one range, so it does not meet that question. `:ScrewType` has no superclass; its
+#   Core counterpart would be `cfc:ComponentType`, in the same milestone.
+# - `:AngleGrinder` is the product. It is a `cfc:Assembly` and a `cfc:Product`, by two direct
+#   triples, because it is both: `cfc:Assembly` carries `cfc:containsWorkpiece`, which names its
+#   Screws, and `cfc:Product` carries `cfc:hasProductType`, which names the model it is. The two
+#   are separate branches of Core: neither is above the other.
+# - Under `cfc:Assembly` the grinder does meet the kapps_ogm question above: Core gives
+#   `cfc:hasOrigin` the domain `cfc:Assembly, cfc:Component`, so a FULL specification of
+#   `:AngleGrinder` fails on its two ranges, as one of `cfc:Assembly` itself does. Nothing here
+#   reads at that level — every read of this use case goes through a class scope — so it costs
+#   nothing today. `:Screw` under `cfc:Workpiece` stays clear of it, because `cfc:Workpiece` is
+#   not in that domain.
+# - The design says which Screw type a model is built with, and the record says which Screw type
+#   one physical Screw is. They are two properties, not one. `:hasExpectedScrewType` carries the
+#   design, on the `cfc:ProductType`; `:hasScrewType` carries the record, on the `:Screw`. Reusing
+#   `:hasScrewType` for both would widen its domain, and RDFS reads a domain as an inference rule:
+#   `:AG1 :hasScrewType :M4` would make a reasoner conclude `:AG1 a :Screw`. A second reason holds
+#   whatever a store entails: the object-graph mapper finds a property of a class through its
+#   `rdfs:domain`, so `:hasScrewType` on a product type would simply not be found.
+#
+# The effective value of a property for a Screw is the value of the Screw, else the value of its
+# Screw type. The graph does not compute it; the reader of the values does.
+#
+# Each value has a fixed unit, which the comment of its property states: force in N, torque in
+# N·m, position in mm along the y axis of the robot frame, angle in degrees.
+
+#################################################################
+# The product
+#
+# The angle grinder is both a Core assembly and a Core product, by two direct rdfs:subClassOf
+# triples. As an assembly it names the Screws it contains, with Core's cfc:containsWorkpiece; as a
+# product it names the model it is, with Core's cfc:hasProductType. Core keeps the two on separate
+# branches, so neither triple follows from the other. This file declares no part-whole property of
+# its own.
+#################################################################
+
+:AngleGrinder a owl:Class ;
+    rdfs:subClassOf cfc:Assembly ;
+    rdfs:subClassOf cfc:Product ;
+    rdfs:label "Angle grinder"@en ;
+    rdfs:comment "The product that use case 1 takes apart: a recovered angle grinder lying in front of the robot. It contains its Screws with Core's cfc:containsWorkpiece, and names its model with Core's cfc:hasProductType."@en .
+
+#################################################################
+# Screws, Screw types and the unscrewing operation
+#################################################################
+
+:Screw a owl:Class ;
+    rdfs:subClassOf cfc:Workpiece ;
+    rdfs:label "Screw"@en ;
+    rdfs:comment "One physical screw in one product. It holds its placement values. A detection threshold or a preparation turning angle that it holds overrides the value of its Screw type."@en .
+
+:ScrewType a owl:Class ;
+    rdfs:label "Screw type"@en ;
+    rdfs:comment "A kind of screw, for example M4. It holds the default detection thresholds and the preparation turning angle for each Screw of this type. The learner refines these values on the Screw type, never on a Screw."@en .
+
+:hasScrewType a owl:ObjectProperty ;
+    rdfs:domain :Screw ;
+    rdfs:range :ScrewType ;
+    rdfs:label "has screw type"@en ;
+    rdfs:comment "Links a Screw to its Screw type."@en .
+
+:hasExpectedScrewType a owl:ObjectProperty ;
+    rdfs:domain cfc:ProductType ;
+    rdfs:range :ScrewType ;
+    rdfs:label "has expected screw type"@en ;
+    rdfs:comment "The design: a product of this type is built with this Screw type. It is what the detector compares an inspected Screw against when the Screw itself carries no record, as a recovered product may not. It is a property of its own and not :hasScrewType, whose domain is :Screw: RDFS reads a domain as an inference rule, so asserting :hasScrewType on a product type would make a reasoner conclude that the product type is a Screw."@en .
+
+:UnscrewingOperation a owl:Class ;
+    rdfs:subClassOf cfc:Operation ;
+    rdfs:label "Unscrewing operation"@en ;
+    rdfs:comment "One attempt to remove one Screw from a product."@en .
+
+
+:hasScrew a owl:ObjectProperty ;
+    rdfs:domain :UnscrewingOperation ;
+    rdfs:range :Screw ;
+    rdfs:label "has screw"@en ;
+    rdfs:comment "Links the unscrewing operation to the one physical Screw that it removes. The Screw names its Screw type."@en .
+
+:hasWorkpiece a owl:ObjectProperty ;
+    rdfs:domain :UnscrewingOperation ;
+    rdfs:range cfc:Workpiece ;
+    rdfs:label "has workpiece"@en ;
+    rdfs:comment "Links the unscrewing operation to the workpiece it works on: the product the Screw sits in. Figure 7 of the paper draws it. It is the step from the operation to the product, from which cfc:hasProductType reaches the model and :hasExpectedScrewType the Screw type the design calls for."@en .
+
+:hasOperation a owl:ObjectProperty ;
+    owl:inverseOf :hasScrew ;
+    rdfs:domain :Screw ;
+    rdfs:range :UnscrewingOperation ;
+    rdfs:label "has operation"@en ;
+    rdfs:comment "Links a Screw back to the unscrewing operation that worked on it, so that a Screw found later names what was done to it. It is the owl:inverseOf :hasScrew: every dataset runs rdfsplus-optimized, so the store infers the back-link inside the commit that writes the operation, and the pair is never one-sided. The planner also writes it explicitly; explicit and inferred give one value. To remove the link, delete both directions, because the reasoner infers each from the other. (Changed on 2026-10-15, MR jms_kapps!113, decided by Etienne; until then: written by hand beside :hasScrew and not declared its inverse, because a dataset with a weaker ruleset would hold no back-link. An issuing call that carries the back-link in its own commit is kapps_semantic_middleware 480.)"@en .
+
+:hasTimeSeriesReference a owl:DatatypeProperty ;
+    rdfs:domain :UnscrewingOperation ;
+    rdfs:range xsd:string ;
+    rdfs:label "has time series reference"@en ;
+    rdfs:comment "Where the raw curves of this unscrewing operation are: its frame in the time-series store (InfluxDB). The frame holds each signal that the screwing resource recorded, and the phase of each sample where it is known. The value is a URI relative to that store, influxdb:///<database>/<table>?frame=<id>&start=<time>&stop=<time>, with the times of the first and the last sample in RFC 3339. The graph holds this reference, not the curves."@en .
+
+#################################################################
+# Detection thresholds and the preparation turning angle
+#
+# A Screw type holds them, a Screw can override them, and a decision snapshot records them. Each
+# holder has at most one value of each. The node numbers are those of Figure 2 of the UC1
+# anomaly-detection paper.
+#################################################################
+
+:hasMinApproachAxialForce a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has minimum approach axial force"@en ;
+    rdfs:comment "Figure 2, node 1. The minimum axial force that shows contact with the screw head during the approach. While the force stays below it, the approach continues by one more step. Unit: N."@en .
+
+:hasMinCounterTorque a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has minimum counter-torque"@en ;
+    rdfs:comment "Figure 2, node 5. The minimum counter-torque G that shows the tool has engaged the screw head. Below it, the outcome is RoundedHeadOrWrongType. Unit: N·m."@en .
+
+:hasMinPreloadAxialForce a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has minimum preload axial force"@en ;
+    rdfs:comment "Figure 2, node 6. The minimum axial preload force before the preparation turn. While the force stays below it, the tool continues by one more step. Unit: N."@en .
+
+:hasPreparationTurningAngle a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has preparation turning angle"@en ;
+    rdfs:comment "The angle by which the tool turns the screw in the preparation turn. It is a process parameter, not a threshold. Unit: degrees."@en .
+
+:hasMaxLooseTorque a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has maximum loose torque"@en ;
+    rdfs:comment "Figure 2, node 7. The maximum loose torque K_L during the preparation turn. Above it, the outcome is StuckAtBreakaway. Unit: N·m."@en .
+
+:hasMinLooseningAxialForce a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has minimum loosening axial force"@en ;
+    rdfs:comment "Figure 2, node 8. The minimum axial force during loosening that shows the screw moves towards the tool. Below it, the outcome is LooseAnchor. Unit: N."@en .
+
+:hasMaxDynamicTorque a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has maximum dynamic torque"@en ;
+    rdfs:comment "Figure 2, node 9. The maximum dynamic torque M_dyn during extraction. Above it, the outcome is ThreadFault. Unit: N·m."@en .
+
+#################################################################
+# Placement values
+#
+# A Screw holds them, and a decision snapshot records them, at most one value of each. A Screw
+# type never holds them, because they depend on where the screw is, not on its type.
+#################################################################
+
+:hasMinApproachPosition a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has minimum approach position"@en ;
+    rdfs:comment "Figure 2, node 2. The depth limit of the approach. An approach that reaches it without contact ends with the outcome MissingScrew. Unit: mm along the y axis of the robot frame."@en .
+
+:hasMinScrewHeadPosition a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has minimum screw-head position"@en ;
+    rdfs:comment "Figure 2, nodes 3 and 4. The lower end of the screw-head band, in which the position at contact must be. Below it, the outcome is MissingHead. Unit: mm along the y axis of the robot frame."@en .
+
+:hasMaxScrewHeadPosition a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Screw :DecisionSnapshot ) ] ;
+    rdfs:range xsd:double ;
+    rdfs:label "has maximum screw-head position"@en ;
+    rdfs:comment "Figure 2, nodes 3 and 4. The upper end of the screw-head band, in which the position at contact must be. Above it, the outcome is HeadOccluded. Unit: mm along the y axis of the robot frame."@en .
+
+#################################################################
+# The decision snapshot
+#################################################################
+
+:DecisionSnapshot a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Decision snapshot"@en ;
+    rdfs:comment "The ten effective values that the detector used for one decision: the detection thresholds, the placement values and the preparation turning angle. The detector writes it when it decides, and nothing changes it after that. It is a PROV entity: it names the classification that generated it (prov:wasGeneratedBy), and the store refuses a snapshot without one."@en .
+
+:usedValues a owl:ObjectProperty ;
+    rdfs:domain :UnscrewingOperation ;
+    rdfs:range :DecisionSnapshot ;
+    rdfs:label "used values"@en ;
+    rdfs:comment "Links the unscrewing operation to the decision snapshot of the values that decided its outcome."@en .
+
+#################################################################
+# Outcomes, Screw conditions and disassembly categories
+#################################################################
+
+:UnscrewingOutcome a owl:Class ;
+    rdfs:label "Unscrewing outcome"@en ;
+    rdfs:comment "The exit of the decision tree that one unscrewing operation reached. It is what the detector observed, not a confirmed Screw condition."@en .
+
+:ScrewCondition a owl:Class ;
+    rdfs:label "Screw condition"@en ;
+    rdfs:comment "The condition of a Screw: intact, or one failure mode."@en .
+
+:DisassemblyCategory a owl:Class ;
+    rdfs:label "Disassembly category"@en ;
+    rdfs:comment "How the disassembly continues for a Screw in a given condition."@en .
+
+:hasOutcome a owl:ObjectProperty ;
+    rdfs:domain :UnscrewingOperation ;
+    rdfs:range :UnscrewingOutcome ;
+    rdfs:label "has outcome"@en ;
+    rdfs:comment "Links the unscrewing operation to the exit of the decision tree that it reached."@en .
+
+:hasMeasuredApproachEndPosition a owl:DatatypeProperty ;
+    rdfs:domain :UnscrewingOperation ;
+    rdfs:range xsd:double ;
+    rdfs:label "has measured approach end position"@en ;
+    rdfs:comment "The position at which the approach of this unscrewing operation ended, as measured. The detector writes it only when the outcome is a failure, that is, any outcome other than ScrewIntact, as failure information. An operation with the outcome ScrewIntact does not hold it. Unit: mm along the y axis of the robot frame."@en .
+
+:indicates a owl:ObjectProperty ;
+    rdfs:domain :UnscrewingOutcome ;
+    rdfs:range :ScrewCondition ;
+    rdfs:label "indicates"@en ;
+    rdfs:comment "Links an unscrewing outcome to each Screw condition that it can mean. Each outcome indicates one or more conditions."@en .
+
+:requiresDisassembly a owl:ObjectProperty ;
+    rdfs:domain :ScrewCondition ;
+    rdfs:range :DisassemblyCategory ;
+    rdfs:label "requires disassembly"@en ;
+    rdfs:comment "Links a Screw condition to the disassembly category that it requires. Each condition requires exactly one category."@en .
+
+# The unscrewing outcomes: one for each exit of the decision tree in Figure 2.
+
+:ScrewIntact a :UnscrewingOutcome, owl:NamedIndividual ;
+    rdfs:label "Screw intact"@en ;
+    rdfs:comment "Each check of the decision tree passed."@en ;
+    :indicates :Intact .
+
+:MissingScrew a :UnscrewingOutcome, owl:NamedIndividual ;
+    rdfs:label "Missing screw"@en ;
+    rdfs:comment "The approach reached hasMinApproachPosition without contact."@en ;
+    :indicates :MissingScrewMode .
+
+:MissingHead a :UnscrewingOutcome, owl:NamedIndividual ;
+    rdfs:label "Missing head"@en ;
+    rdfs:comment "The position at contact is below hasMinScrewHeadPosition."@en ;
+    :indicates :MissingHeadMode .
+
+:HeadOccluded a :UnscrewingOutcome, owl:NamedIndividual ;
+    rdfs:label "Head occluded"@en ;
+    rdfs:comment "The position at contact is above hasMaxScrewHeadPosition."@en ;
+    :indicates :HeadOccludedMode .
+
+:RoundedHeadOrWrongType a :UnscrewingOutcome, owl:NamedIndividual ;
+    rdfs:label "Rounded head or wrong type"@en ;
+    rdfs:comment "The counter-torque stayed below hasMinCounterTorque. This exit cannot tell a rounded head from a screw of the wrong type."@en ;
+    :indicates :RoundedHeadMode, :WrongTypeMode .
+
+:StuckAtBreakaway a :UnscrewingOutcome, owl:NamedIndividual ;
+    rdfs:label "Stuck at breakaway"@en ;
+    rdfs:comment "The loose torque went above hasMaxLooseTorque during the preparation turn."@en ;
+    :indicates :StuckScrewMode .
+
+:LooseAnchor a :UnscrewingOutcome, owl:NamedIndividual ;
+    rdfs:label "Loose anchor"@en ;
+    rdfs:comment "The axial force during loosening stayed below hasMinLooseningAxialForce."@en ;
+    :indicates :LooseAnchorMode .
+
+:ThreadFault a :UnscrewingOutcome, owl:NamedIndividual ;
+    rdfs:label "Thread fault"@en ;
+    rdfs:comment "The dynamic torque went above hasMaxDynamicTorque during extraction."@en ;
+    :indicates :StuckScrewMode .
+
+# The Screw conditions: intact, and each failure mode.
+
+:Intact a :ScrewCondition, owl:NamedIndividual ;
+    rdfs:label "Intact"@en ;
+    :requiresDisassembly :ProceedNormally .
+
+:MissingScrewMode a :ScrewCondition, owl:NamedIndividual ;
+    rdfs:label "Missing screw mode"@en ;
+    :requiresDisassembly :ProceedNormally .
+
+:MissingHeadMode a :ScrewCondition, owl:NamedIndividual ;
+    rdfs:label "Missing head mode"@en ;
+    :requiresDisassembly :AdditionalTools .
+
+:HeadOccludedMode a :ScrewCondition, owl:NamedIndividual ;
+    rdfs:label "Head occluded mode"@en ;
+    :requiresDisassembly :AdditionalTools .
+
+:RoundedHeadMode a :ScrewCondition, owl:NamedIndividual ;
+    rdfs:label "Rounded head mode"@en ;
+    :requiresDisassembly :AdditionalTools .
+
+:WrongTypeMode a :ScrewCondition, owl:NamedIndividual ;
+    rdfs:label "Wrong type mode"@en ;
+    :requiresDisassembly :AdditionalTools .
+
+:StuckScrewMode a :ScrewCondition, owl:NamedIndividual ;
+    rdfs:label "Stuck screw mode"@en ;
+    :requiresDisassembly :Destructive .
+
+:LooseAnchorMode a :ScrewCondition, owl:NamedIndividual ;
+    rdfs:label "Loose anchor mode"@en ;
+    :requiresDisassembly :Destructive .
+
+# The disassembly categories.
+
+:ProceedNormally a :DisassemblyCategory, owl:NamedIndividual ;
+    rdfs:label "Proceed normally"@en .
+
+:AdditionalTools a :DisassemblyCategory, owl:NamedIndividual ;
+    rdfs:label "Additional tools"@en .
+
+:Destructive a :DisassemblyCategory, owl:NamedIndividual ;
+    rdfs:label "Destructive"@en .
+
+#################################################################
+# Screw types
+#################################################################
+
+:M4 a :ScrewType, owl:NamedIndividual ;
+    rdfs:label "M4"@en ;
+    rdfs:comment "The screw type with a nominal diameter of 4 mm. This file declares it without values, because no measured value for it exists; a seed supplies the mock ones a run decides with."@en .
+
+#################################################################
+# The screwing resource, and the capability of the anomaly detector that it calls
+#
+# Added after the artifact, for the screwing resource. Each class is a direct subclass of its Core
+# or service class, because the middleware's check reads one rdfs:subClassOf triple and does not
+# follow a chain. The planner finds the screwing resource by its UnscrewingCapability, and the
+# screwing resource finds the anomaly detector by its ClassifyCapability.
+#################################################################
+
+@prefix svc: <https://w3id.org/circularfactory/Service#> .
+
+:ScrewingResourceService a owl:Class ;
+    rdfs:subClassOf svc:Service ;
+    rdfs:label "Screwing resource service"@en ;
+    rdfs:comment "The service of the screwing resource: the middleware instance that takes its unscrewing operations."@en .
+
+:UnscrewingWorkflow a owl:Class ;
+    rdfs:subClassOf svc:Workflow ;
+    rdfs:label "Unscrewing workflow"@en ;
+    rdfs:comment "The workflow of the screwing resource that makes one attempt for one unscrewing operation. The robot unscrews the operation's Screw, the frame of the attempt goes into the time-series store, and the operation holds the frame's reference and stays running. Then the workflow calls the anomaly detector's classify workflow, which ends the operation. If the detector is not reached, the workflow ends the operation failed, with why, and the frame's reference stays. It realizes the resource's UnscrewingCapability, and runs when an operation that implements that capability reaches the resource."@en .
+
+:UnscrewingCapability a owl:Class ;
+    rdfs:subClassOf cfc:Capability ;
+    rdfs:label "Unscrewing capability"@en ;
+    rdfs:comment "The capability of the screwing resource to unscrew one Screw. Its UnscrewingWorkflow realizes it, and each unscrewing operation implements it."@en .
+
+:ClassifyCapability a owl:Class ;
+    rdfs:subClassOf cfc:Capability ;
+    rdfs:label "Classify capability"@en ;
+    rdfs:comment "The capability of the anomaly detector to classify one recorded unscrewing attempt. The screwing resource finds the detector by it, and calls the workflow that realizes it with the IRI of the unscrewing operation."@en .
+
+#################################################################
+# The anomaly detector
+#
+# Added after the artifact, for the anomaly detector. As for the screwing resource, each class is
+# a direct subclass of its service class. The detector's workflow realizes the ClassifyCapability
+# above, by which the screwing resource finds it.
+#################################################################
+
+:AnomalyDetector a owl:Class ;
+    rdfs:subClassOf cfc:Resource, prov:Agent ;
+    rdfs:label "Anomaly detector"@en ;
+    rdfs:comment "The participant that classifies each recorded unscrewing attempt and decides its outcome. It is a PROV agent: the agent of each classification (jms_kapps 59). Its resource, AnomalyDetector1, is written by the seed."@en .
+
+:AnomalyDetectorService a owl:Class ;
+    rdfs:subClassOf svc:Service ;
+    rdfs:label "Anomaly detector service"@en ;
+    rdfs:comment "The service of the anomaly detector: the middleware instance that classifies the recorded unscrewing attempts."@en .
+
+:ClassifyWorkflow a owl:Class ;
+    rdfs:subClassOf svc:Workflow ;
+    rdfs:label "Classify workflow"@en ;
+    rdfs:comment "The workflow of the anomaly detector that classifies one recorded unscrewing attempt. It is called with the IRI of the unscrewing operation, while the operation is running. It reads the effective values of the operation's Screw and the frame that the operation's time-series reference names, and runs the decision tree. In one commit it writes the outcome, the classification as a PROV activity with the detector as its agent and its end time, a new decision snapshot of the ten values that names that activity, after a failure outcome the measured end position of the approach, and the operation's end, done. If it cannot classify the attempt, it ends the operation failed, with why. An operation that is no longer running is left as it is. It realizes the ClassifyCapability."@en .
+
+#################################################################
+# Provenance of a decision (jms_kapps 59)
+#
+# Added on 2026-10-16. One PROV witness, on the decision: the detector's commit also writes the
+# classification as a prov:Activity, associated with the detector's resource and with its end
+# time, and the decision snapshot names it (prov:wasGeneratedBy). The shape in
+# `shapes/integration_usecase_shapes.ttl` makes the store refuse a snapshot without it. The terms
+# are those of PROV-O; only the ones that use case 1 writes are declared. Each link goes both
+# ways: the ontology declares the inverse, and the store infers the back-link.
+#
+# The agent is the detector's resource, an :AnomalyDetector (section "The anomaly detector"), a
+# direct subclass of cfc:Resource and of prov:Agent, so that it has one most specific class and is
+# an agent.
+#################################################################
+
+prov:Activity a owl:Class ;
+    rdfs:label "Activity"@en ;
+    rdfs:comment "Something that occurs over a period of time and acts upon or with entities (PROV-O). In use case 1: one classification of an unscrewing attempt by the anomaly detector."@en .
+
+prov:Entity a owl:Class ;
+    rdfs:label "Entity"@en ;
+    rdfs:comment "A thing with some fixed aspects (PROV-O). In use case 1: a decision snapshot."@en .
+
+prov:Agent a owl:Class ;
+    rdfs:label "Agent"@en ;
+    rdfs:comment "Something that bears some form of responsibility for an activity (PROV-O). In use case 1: the anomaly detector's resource."@en .
+
+prov:wasGeneratedBy a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain prov:Entity ;
+    rdfs:range prov:Activity ;
+    rdfs:label "was generated by"@en ;
+    rdfs:comment "The activity that generated an entity. In use case 1: the classification that generated a decision snapshot."@en .
+
+prov:generated a owl:ObjectProperty ;
+    owl:inverseOf prov:wasGeneratedBy ;
+    rdfs:domain prov:Activity ;
+    rdfs:range prov:Entity ;
+    rdfs:label "generated"@en ;
+    rdfs:comment "The entity that an activity generated. The inverse of prov:wasGeneratedBy; the store infers it."@en .
+
+prov:wasAssociatedWith a owl:ObjectProperty ;
+    rdfs:domain prov:Activity ;
+    rdfs:range prov:Agent ;
+    rdfs:label "was associated with"@en ;
+    rdfs:comment "An agent that had a role in an activity. In use case 1: the anomaly detector's resource, for its classification."@en .
+
+prov:wasAssociateFor a owl:ObjectProperty ;
+    owl:inverseOf prov:wasAssociatedWith ;
+    rdfs:domain prov:Agent ;
+    rdfs:range prov:Activity ;
+    rdfs:label "was associate for"@en ;
+    rdfs:comment "An activity in which an agent had a role. The inverse of prov:wasAssociatedWith; the store infers it."@en .
+
+prov:endedAtTime a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain prov:Activity ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "ended at time"@en ;
+    rdfs:comment "When an activity ended. In use case 1: when the classification ended, in UTC."@en .
+
+#################################################################
+# The learner
+#
+# The participant that refines the detection thresholds of each Screw type. Its class is a Core
+# resource, and its service class is a service, each by one direct rdfs:subClassOf triple, because
+# the middleware checks that one triple when it registers the service. It has one individual.
+#################################################################
+
+:Learner a owl:Class ;
+    rdfs:subClassOf cfc:Resource ;
+    rdfs:label "Learner"@en ;
+    rdfs:comment "The participant that refines the detection thresholds of each Screw type from the completed unscrewing operations and their curves. It writes to a Screw type only, never to a Screw, and never a placement value. For now it derives one threshold, the maximum dynamic torque, with a placeholder rule, and learns from the outcomes of the decision tree, which are not confirmed Screw conditions."@en .
+
+:LearnerService a owl:Class ;
+    rdfs:subClassOf svc:Service ;
+    rdfs:label "Learner service"@en ;
+    rdfs:comment "The middleware instance that wraps the learner."@en .
+
+:Learner1 a :Learner, owl:NamedIndividual ;
+    rdfs:label "Learner"@en .
+
+#################################################################
+# The planner
+#
+# The planner opens the unscrewing work: one press, one Screw, one unscrewing operation. It is the
+# record-opening half of the paper's perception service; the screwing resource is the sensing half,
+# which makes the attempt and records the curves. The planner classifies nothing and decides no
+# outcome. Its class is a Core resource, its service class a service, and its workflow and
+# capability classes a service workflow and a Core capability, each by one direct rdfs:subClassOf
+# triple, because the middleware checks that one triple when it registers the service and does not
+# follow a chain.
+#
+# Its workflow and capability are named for what the planner does, Start, and not for the
+# unscrewing itself: `:UnscrewingWorkflow` and `:UnscrewingCapability` are the screwing resource's,
+# and the planner dispatches to them.
+#################################################################
+
+:Planner a owl:Class ;
+    rdfs:subClassOf cfc:Resource ;
+    rdfs:label "Planner"@en ;
+    rdfs:comment "The participant that opens the unscrewing work. For one Screw it issues one unscrewing operation naming that Screw, its back-link and the workpiece it sits in, which the middleware creates queued and delivers to the screwing resource; it then waits for that operation to end. It classifies nothing and decides no outcome, and it chooses no order: which Screw to take out is a press."@en .
+
+:PlannerService a owl:Class ;
+    rdfs:subClassOf svc:Service ;
+    rdfs:label "Planner service"@en ;
+    rdfs:comment "The middleware instance that wraps the planner."@en .
+
+:StartUnscrewingWorkflow a owl:Class ;
+    rdfs:subClassOf svc:Workflow ;
+    rdfs:label "Start unscrewing workflow"@en ;
+    rdfs:comment "The workflow of the planner that opens the unscrewing of one Screw. It takes one Screw, issues one unscrewing operation that names it, and waits for that operation to end. It takes no product and runs no loop: one call opens one operation. It realizes the planner's StartUnscrewingCapability."@en .
+
+:StartUnscrewingCapability a owl:Class ;
+    rdfs:subClassOf cfc:Capability ;
+    rdfs:label "Start unscrewing capability"@en ;
+    rdfs:comment "The capability of the planner to open the unscrewing of one Screw. Its StartUnscrewingWorkflow realizes it. It is not the screwing resource's UnscrewingCapability, which is the capability to make the attempt; the planner dispatches to that one."@en .
+
+:Planner1 a :Planner, owl:NamedIndividual ;
+    rdfs:label "Planner"@en .

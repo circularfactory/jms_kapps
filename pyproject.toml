@@ -1,0 +1,183 @@
+[build-system]
+# hatchling, as in every sibling of this family. Two properties decide it. It writes
+# `Author-email:` for each entry of `authors`, where poetry-core writes only the first -- and
+# this repository publishes as one commit with no ancestry, so the metadata, LICENSE and README
+# are the whole of the credit. It also puts every file below the package directory into the
+# wheel, which is how the ontology, the shapes and the time-series frames reach an installed
+# copy without a per-file include list.
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jms-kapps"
+version = "0.0.1"
+description = "The two KAPPS use cases of the JMS paper, built on kapps-semantic-middleware"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+# The floor of kapps-semantic-middleware, which is the package this one is built on. The paper's
+# artifact declared `>=3.12,<3.14`; the ceiling is dropped because this repository follows the
+# middleware it is built on, and that middleware declares `>=3.12`.
+requires-python = ">=3.12"
+authors = [
+    { name = "Etienne Hoffmann", email = "etienne.hoffmann@kit.edu" },
+    { name = "Sören Weindel", email = "soeren.weindel@kit.edu" },
+]
+maintainers = [
+    { name = "Etienne Hoffmann", email = "etienne.hoffmann@kit.edu" },
+    { name = "Sören Weindel", email = "soeren.weindel@kit.edu" },
+]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+]
+# All three siblings are declared directly, although the middleware already pulls the other two
+# in. The rule in this family is that a project declares what it imports, rather than leaning on
+# a transitive route which is not a promise. The pins are ranges of the form `~=X.Y.Z`, which
+# admits `>=X.Y.Z, ==X.Y.*`: a patch release of a sibling reaches a fresh install with no human
+# in the loop, while a minor release needs a deliberate bump of the pin here. The same rule
+# declares the five third-party packages use case 2 imports itself; their floors are the versions
+# the lock already resolved through the siblings.
+dependencies = [
+    "kapps-semantic-middleware~=0.2.1",
+    "kapps-triplestore-interface~=2.2.1",
+    "kapps-ogm~=0.3.1",
+    "fastapi>=0.111",
+    "httpx>=0.27",
+    "pydantic>=2.13",
+    "rdflib>=7.1",
+    "uvicorn>=0.41",
+]
+
+[project.scripts]
+# Declared from the start, because the console scripts are part of the layout a reader is asked
+# to judge. Both resolve and run.
+jms-uc1 = "jms_kapps.uc1.__main__:main"
+jms-uc2 = "jms_kapps.uc2.__main__:main"
+# One UC2 run of one configuration of the measurement harness, on its own repository, with its
+# record (`evaluation`).
+jms-eval-uc2 = "jms_kapps.evaluation.run_uc2:main"
+# One command from a spec to the report and the table: the store, the prefill files, the runs, the
+# report and the table (`evaluation`; an interim name).
+jms-eval = "jms_kapps.evaluation.harness:main"
+# The store chores of a live check on the KIT GraphDB: the token login, create and delete of an
+# `ogm-disposable-` repository, and the size of any repository. Development tooling (`evaluation`;
+# an interim name). It ships beside the evaluation's store layer, which it serves.
+jms-live-store = "jms_kapps.evaluation.live_store:main"
+# The runs of a spec of the measurement harness, one by one, each a run of `jms-eval-uc2`, skipping
+# a run whose record exists (`evaluation`).
+jms-eval-sweep = "jms_kapps.evaluation.sweep:main"
+# The numbers of the runs of a spec of the measurement harness, as one table beside their records
+# (`evaluation`).
+jms-eval-table = "jms_kapps.evaluation.table:main"
+# The report of the runs of a spec of the measurement harness, tables and charts in a folder beside
+# their records, made again by the sweep after each run (`evaluation`). Its module imports the
+# report only when it runs, so a plain install without the extra gets a line naming the extra, and
+# the release's install check passes.
+jms-eval-report = "jms_kapps.evaluation.report_command:main"
+# The store-only baseline of one recorded UC2 run: its store requests sent again straight to the
+# store, on a dataset of its own, with its record (`evaluation`).
+jms-eval-baseline = "jms_kapps.evaluation.baseline:main"
+
+# The strategies of use case 2, one entry-point group for each kind: the entry's name is the name
+# that `jms-uc2 --module-strategy` and `--wms-strategy` take, and the entry loads one strategy
+# object (`jms_kapps.uc2.strategies`). `real` is the demonstration's behaviour, the default of both.
+# A benchmark strategy of the `evaluation` folder registers here the same way, one entry in the
+# group of its kind, named as the strategy. There are two groups, so that each entry is named
+# exactly as the strategy a person types.
+[project.entry-points."jms_kapps.uc2.module_strategies"]
+real = "jms_kapps.uc2.strategies:REAL_MODULE_STRATEGY"
+southward = "jms_kapps.evaluation.southward:SOUTHWARD_MODULE_STRATEGY"
+
+[project.entry-points."jms_kapps.uc2.wms_strategies"]
+real = "jms_kapps.uc2.strategies:REAL_WMS_STRATEGY"
+southward = "jms_kapps.evaluation.southward:SOUTHWARD_WMS_STRATEGY"
+
+[project.optional-dependencies]
+# The observation of a run of the measurement harness (`evaluation`): OpenTelemetry, with which
+# the wrapper of each participant of a run instruments FastAPI, requests and httpx. Only the harness
+# needs it, so a plain install of jms_kapps leaves it out; `uv sync --extra evaluation` installs
+# it, and the development group below takes it in too, so that the harness's tests run. The run
+# report (`evaluation`) adds pandas for its tables and matplotlib, with its headless backend, for
+# its charts.
+evaluation = [
+    "opentelemetry-api>=1.45.1",
+    "opentelemetry-sdk>=1.45.1",
+    "opentelemetry-instrumentation-fastapi>=0.66b1",
+    "opentelemetry-instrumentation-httpx>=0.66b1",
+    "opentelemetry-instrumentation-requests>=0.66b1",
+    "pandas>=3.0.6",
+    "matplotlib>=3.11.2",
+]
+
+[dependency-groups]
+dev = [
+    "jms-kapps[evaluation]",
+    "mypy>=2.1.0",
+    "pytest>=9.0.3",
+    "pytest-playwright>=0.9.0",
+    "requests>=2.34",
+    "ruff>=0.15.15",
+]
+
+[project.urls]
+# The publish repository and its changelog, as in kapps_ogm. jms_kapps is not published on PyPI:
+# a reader clones the repository and runs `uv sync`. The distribution name uses a hyphen and the
+# repository name an underscore; they are two names for one thing.
+Homepage = "https://github.com/circularfactory/jms_kapps"
+Changelog = "https://github.com/circularfactory/jms_kapps/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+# Stated rather than inferred. hatchling would find `src/jms_kapps` from the distribution name,
+# but the src layout plus a renamed distribution is exactly the pair that makes the inference
+# silently pick the wrong directory.
+packages = ["src/jms_kapps"]
+
+[tool.pytest.ini_options]
+# The smoke tests and the guard test run from a clean checkout. The `graphdb` tests need a live
+# GraphDB, skip without its connection variables, and clear the dataset they run against. The
+# `influxdb` tests need a live InfluxDB, and skip when none answers. The `browser` tests run a
+# page's JavaScript in a headless browser, against fakes and no store, and skip where no browser
+# is installed. The `posix` tests need what only POSIX has, and skip on Windows; the `windows`
+# tests need what only Windows has, and skip elsewhere (`conftest.py`). The `paper_claim` tests
+# prove the paper's claims, which their docstrings number, and one run by the marker runs them all
+# (`test_paper_claims.py`).
+testpaths = ["tests"]
+addopts = ["--strict-markers"]
+# A deprecated name of the triple-store interface or of the middleware fails the test that uses
+# it: each emits one DeprecationWarning, "<name> is deprecated; use <successor>, ...", "...; set
+# <variable>, ..." or "...; pass <provider>, ...", or, for the middleware's `request()`,
+# "SemanticMiddleware.request() is deprecated ...". jms_kapps uses their successors only. A
+# warning is matched by its message, because each is reported at its caller's line, not in the
+# module that emits it.
+filterwarnings = [
+    "error:.* is deprecated; (use|set|pass) :DeprecationWarning",
+    "error:SemanticMiddleware\\.request\\(\\) is deprecated:DeprecationWarning",
+]
+markers = [
+    "graphdb: needs a live GraphDB, and clears the dataset it runs against",
+    "influxdb: needs a live InfluxDB, and skips when none answers",
+    "live: needs a live service; `tests/_live_marker.py` gives it to every graphdb and influxdb test, so that `-m \"not live\"` is the offline tier",
+    "browser: runs a page in a headless browser, and skips where none is installed",
+    "posix: works only on POSIX, as with SIGHUP, a signal to a process group or a POSIX shell, and skips on Windows",
+    "windows: works only on Windows, as with a CTRL_BREAK, cmd.exe or PowerShell, and skips elsewhere",
+    "paper_claim: proves a numbered claim of the paper, which its docstring names; one run by the marker runs them all",
+]
+
+[tool.mypy]
+# The same two lines the sibling repositories carry, over the one source root this repository
+# has, and the scripts beside it, which do not ship in the wheel: the screenshot script of the
+# reviewer guide. Neither sibling configures ruff at all, so
+# neither does this one.
+python_version = "3.12"
+files = ["src", "scripts"]
+
+[[tool.mypy.overrides]]
+# pandas ships no py.typed marker, and its stubs (`pandas-stubs`) are a package of their own that
+# the run report of the measurement harness (`evaluation`) does not need for its few calls:
+# without this its import is an import-untyped error. Only the report imports pandas; this
+# suppresses the missing marker and nothing of this repository's annotations.
+module = ["pandas", "pandas.*"]
+ignore_missing_imports = true

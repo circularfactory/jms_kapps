@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+.env
+# pytest-playwright's traces, screenshots and videos, with its --tracing, --screenshot, --video
+test-results/

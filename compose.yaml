@@ -1,0 +1,153 @@
+# The local services of jms_kapps: a GraphDB with the `jms-kapps` repository already created, and
+# the InfluxDB of use case 1. `docker compose up -d --wait` in the repository root starts them and
+# returns once both answer, `docker compose stop` stops them, and `docker compose down -v` also
+# deletes their data.
+#
+# The GraphDB here is only the fallback, for a machine on which no store is configured. Every demo
+# runs on the store that `TRIPLESTORE_URL`, `TRIPLESTORE_USERNAME` and `TRIPLESTORE_PASSWORD` name,
+# and `./run-uc2` starts this stack only when no `TRIPLESTORE_URL` is set, nor its deprecated
+# predecessor `GRAPHDB_URL`. This repository is a paper artifact, so its first instruction must
+# also work for a reader with no account on any server: that reader gets this stack. The InfluxDB
+# here is the fallback in the same way: a run of use case 1 uses the one that `INFLUXDB_URL` names,
+# and this one only without it. See `docs/reference/triple-store.md`.
+#
+# A run and a `graphdb` test each clear the repository they run against, and a shared server
+# carries repositories other people depend on. So on a shared server, a demo runs on a repository
+# that only the demo uses, and the tests on a throwaway repository of their own.
+
+# Names the compose project. Without it, the project takes the name of the directory this file is
+# in, which is a worktree's name in a development checkout.
+name: jms-kapps
+
+services:
+  graphdb:
+    # Pinned rather than floating. The use cases run on a SHACL repository with the
+    # `rdfsplus-optimized` ruleset, and a version that changed either would change what the tests
+    # measure without anyone choosing it. Adapted from `examples/docker/docker-compose.yml` in
+    # kapps_semantic_middleware.
+    image: ontotext/graphdb:10.8.1
+    # Fixed rather than generated, so the container is easy to find with `docker ps`, and so the
+    # service stays at one replica.
+    container_name: jms-kapps-graphdb
+    environment:
+      # Sets both `-Xms` and `-Xmx`, so the heap is the same on every machine rather than a
+      # quarter of whatever memory the machine has. To check what a running container has, read
+      # the flags of its PID 1. GraphDB's own log line `Max Heap Size` rounds down to whole
+      # gigabytes.
+      GDB_HEAP_SIZE: 2g
+      # GraphDB refuses a GROUP BY or DISTINCT whenever the heap's maximum minus its used memory
+      # is under this floor, 250 MB by default. Used memory counts garbage the collector has not
+      # collected yet, so the collector's timing crosses the floor, not a shortage. Measured on
+      # this repository of about a thousand statements: at the image's default heap, a refusal
+      # in a run whose tests all passed; at 2g, a refused startup query, after which the module
+      # exited with its address still advertised and the Launcher tests failed. At zero, the
+      # JVM's own limit is the only one, and the queries here are small.
+      #
+      # The property name is the one GraphDB 10.8.1 reads, in its class
+      # `com.ontotext.trree.util.DistinctMemoryMonitor`. GraphDB 11 documents it as deprecated,
+      # so check it when the image moves.
+      GDB_JAVA_OPTS: "-Ddefault.min.distinct.threshold=0"
+    ports:
+      # Bound to the loopback address. GraphDB runs here with its security off, so anyone who can
+      # reach the port can clear the repository.
+      - "127.0.0.1:7200:7200"
+    volumes:
+      # Version-dependent path; /opt/graphdb/home is correct for 10.x.
+      - graphdb-data:/opt/graphdb/home
+    restart: unless-stopped
+    # `up -d` returns when a container has started, not when what is inside it can answer.
+    # Measured on this stack: it returned after one second while GraphDB first answered after
+    # fifteen, so a reader who ran the tests straight afterwards met fourteen seconds of failures
+    # with no way to tell that from a broken checkout.
+    #
+    # The check asks for the repository rather than for the server, so `up -d --wait` returns only
+    # once the thing a run actually needs is there. Checking the server instead still returned
+    # before the init container had created the repository, which is a smaller version of the same
+    # race. There is no deadlock: the init container waits for the server on its own, and this
+    # check turns green as a result of what the init container did.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:7200/repositories/jms-kapps/size || exit 1"]
+      interval: 3s
+      timeout: 5s
+      # Generous: a first start unpacks and initialises, and exhausting the retries would stop the
+      # stack rather than wait for a slow machine.
+      retries: 60
+      start_period: 10s
+
+  # Creates the repository through the REST API, and is safe to run again: it checks first and
+  # exits without touching an existing repository. That matters because the data in it belongs to
+  # whoever ran the tests last, and this container must never be the thing that clears it.
+  graphdb-init:
+    image: curlimages/curl:8.11.0
+    container_name: jms-kapps-graphdb-init
+    depends_on:
+      - graphdb
+    volumes:
+      # The file the reference page on the triple store points a reader at, so the repository
+      # created here and the one a reader creates on their own GraphDB are the same.
+      - ./graphdb/jms-kapps-repo-config.ttl:/config/jms-kapps-repo-config.ttl:ro
+    command: >-
+      /bin/sh -c "
+        until curl -sf http://graphdb:7200/rest/repositories >/dev/null 2>&1; do
+          echo 'waiting for graphdb...';
+          sleep 2;
+        done;
+        if curl -sf http://graphdb:7200/repositories/jms-kapps/size >/dev/null 2>&1; then
+          echo 'repository jms-kapps already exists';
+          exit 0;
+        fi;
+        curl -sf -X POST http://graphdb:7200/rest/repositories -H 'Content-Type: multipart/form-data' -F 'config=@/config/jms-kapps-repo-config.ttl' && echo 'repository jms-kapps created';
+      "
+    restart: "no"
+
+  # The time-series store of use case 1: the raw curves of each unscrewing operation. The graph
+  # holds only the operation and a reference into this store.
+  influxdb:
+    # Pinned to one release. InfluxDB 3 Core, not 2.x: its SQL answers in JSON, which the client
+    # reads with httpx alone, and it has no limit on the number of series, so each frame can be a
+    # tag value of its own.
+    image: influxdb:3.11.5-core
+    # Fixed rather than generated, so the container is easy to find with `docker ps`.
+    container_name: jms-kapps-influxdb
+    command:
+      - influxdb3
+      - serve
+      - --node-id=jms-kapps
+      - --object-store=file
+      - --data-dir=/var/lib/influxdb3/data
+      # A local store for one developer, and reachable only from this machine (see `ports`), so
+      # it asks for no token. A shared server asks for one: set `INFLUXDB_TOKEN`.
+      - --without-auth
+    ports:
+      # InfluxDB 3's own port. Bound to the loopback address, because the store asks for no token.
+      - "127.0.0.1:8181:8181"
+    volumes:
+      - influxdb-data:/var/lib/influxdb3
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8181/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    # Not because InfluxDB needs the GraphDB repository: it does not. It is what makes
+    # `up -d --wait` return 0 on every start. `--wait` counts a container that has exited as a
+    # failure, even with exit code 0, unless some service waits for it with this condition; then
+    # `--wait` waits for it to complete instead. The init container is the one that exits, and at
+    # once on each start after the first, because the repository is there already. Measured with
+    # Compose 5.6.0: without this, every start after the first exited 1 with
+    # `container jms-kapps-graphdb-init exited (0)`. This is the smallest change that works.
+    # GraphDB cannot wait for the init container, because the init container waits for GraphDB,
+    # and the other way, a healthcheck that creates the repository, replaces the init container.
+    # The cost: InfluxDB starts only once GraphDB answers and the repository is there, about
+    # 15 s whenever GraphDB starts too; `up -d influxdb` alone starts GraphDB as well; and if the
+    # init container fails, InfluxDB does not start.
+    depends_on:
+      graphdb-init:
+        condition: service_completed_successfully
+
+volumes:
+  graphdb-data:
+  influxdb-data:
+
+# No MQTT broker here. Use case 2 speaks REST between modules, and a middleware whose bindings
+# declare MQTT brings up the broker itself.

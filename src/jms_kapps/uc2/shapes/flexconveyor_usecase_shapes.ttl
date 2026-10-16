@@ -1,0 +1,218 @@
+@prefix : <http://w3id.org/circularfactory/FlexConveyor#> .
+@prefix cfc: <https://w3id.org/circularfactory/Core#> .
+@prefix svc: <https://w3id.org/circularfactory/Service#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################################
+# SHACL Shapes for the FlexConveyor System
+#
+# Structure:
+#   1. The modules and their connections
+#   2. The transport and its box, in SHACL Core
+#################################################################
+
+# Changed from the artifact (`turtle/flexconveyor_usecase_JMS_SHACL.ttl` on `paper`, d3201180):
+#
+# - `cfc:` is the published Core, and possession is Core's reified `cfc:PossessionState`. A resource
+#   has one state from its first possession on, and points at it (`cfc:hasPossessor`); a box points
+#   at the state of its possessor (`cfc:hasPossessedWorkpiece`). A handover changes only the box's
+#   link.
+# - `:FlexConveyorModuleShape` follows that path. Its property shape has an IRI, so that the
+#   validation report names it.
+# - A box has no lifecycle state, so the rules that tied the box's state to its possession are
+#   keyed on its `:BoxTransportOperation` instead: on the transport's `svc:operationStatus`, and
+#   on the box's possessor. Section 2 replaces `:BoxShape` and the three SHACL-SPARQL shapes,
+#   `:CreatedBoxNotOnModuleShape`, `:DeliveredBoxNotPossessedShape` and
+#   `:InTransitBoxPossessedShape`. The origin and the destination are checked on the transport,
+#   which carries them now.
+# - The rules look for a possessing module, not for any possessor, because the
+#   WarehouseManagementSystem holds a box at the end of its journey. (Changed on 2026-10-06,
+#   jms_kapps 41, decided by Etienne: it creates each box on its origin. Until then "at both ends
+#   of its journey".) One rule looks for any
+#   possessor: every box has exactly one (`:BoxHasOnePossessorShape`), which the artifact did not
+#   check.
+# - The possession runs from the box forward to its state, then back to the possessor:
+#   `cfc:hasPossessedWorkpiece`, then the inverse of `cfc:hasPossessor`. Both properties point from
+#   their subject into the PossessionState, so a path that starts with the inverse of
+#   `cfc:hasPossessedWorkpiece` matches nothing.
+# vendor-check: off -- the backend the shapes were measured on
+# - Every rule is SHACL Core, so the store refuses a write that breaks one at commit. GraphDB
+#   10.8.5 evaluates SHACL-SPARQL only when the whole repository is validated, never when a write
+#   is committed.
+# vendor-check: on
+
+
+#################################################################
+# 1. THE MODULES AND THEIR CONNECTIONS
+#################################################################
+
+# ---------------------------------------------------------------
+# FlexConveyorModule shape
+# ---------------------------------------------------------------
+:FlexConveyorModuleShape rdf:type sh:NodeShape ;
+    sh:targetClass :FlexConveyorModule ;
+
+    # A module holds at most one box at a time. Possession is Core's reified PossessionState:
+    # the module is the possessor of its one state, and each box it holds points at it.
+    sh:property :FlexConveyorModulePossessionShape .
+
+# Named rather than anonymous, so a validation report's sh:sourceShape says which rule broke.
+:FlexConveyorModulePossessionShape rdf:type sh:PropertyShape ;
+    sh:path ( cfc:hasPossessor [ sh:inversePath cfc:hasPossessedWorkpiece ] ) ;
+    sh:maxCount 1 ;
+    sh:class cfc:Workpiece ;
+    sh:message "A FlexConveyorModule may possess at most one Box at a time." .
+
+
+# ---------------------------------------------------------------
+# Connection shape
+# ---------------------------------------------------------------
+:ConnectionShape rdf:type sh:NodeShape ;
+    sh:targetClass :Connection ;
+
+    # Every connection must point to exactly one target module
+    sh:property [
+        sh:path :connectsTo ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class :FlexConveyorModule ;
+        sh:message "A Connection must link to exactly one FlexConveyorModule via connectsTo." ;
+    ] ;
+
+    # Every connection must have exactly one direction, from the four cardinal individuals
+    sh:property [
+        sh:path :hasDirection ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( :North :South :East :West ) ;
+        sh:message "A Connection must have exactly one hasDirection, which must be North, South, East, or West." ;
+    ] ;
+
+    # Every connection must specify exactly one port number
+    sh:property [
+        sh:path :onPort ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "A Connection must have exactly one integer onPort value." ;
+    ] .
+
+
+# # ---------------------------------------------------------------
+# # Workflow shape
+# # ---------------------------------------------------------------
+# :WorkflowShape rdf:type sh:NodeShape ;
+#     sh:targetClass :Workflow ;
+
+#     # If accessibleAt is present, it must be a single IRI (workflow may omit it when down)
+#     sh:property [
+#         sh:path :accessibleAt ;
+#         sh:maxCount 1 ;
+#         sh:nodeKind xsd:IRI ;
+#         sh:message "A Workflow's accessibleAt value, if present, must be a single IRI." ;
+#     ] .
+
+
+#################################################################
+# 2. THE TRANSPORT AND ITS BOX, IN SHACL CORE
+#
+# A box has no lifecycle state of its own. Its transport's status says where the journey is, and
+# its possessor says where the box is. Each rule below is "if the transport is in status X, the
+# box's module possession must be Y", written as
+#     sh:or ( <no transport of the box is in X>  <its possession is Y> ).
+# vendor-check: off -- the backend the shapes were measured on
+# Every path is nested single steps, never a sequence path: GraphDB 10.8.5 (RDF4J 4.3) fails with
+# an internal error when a sequence path sits inside sh:or or sh:node.
+# vendor-check: on
+#################################################################
+
+# A property shape with its own target, rather than a node shape with an anonymous property, so
+# that a validation report's sh:sourceShape names it.
+:BoxShape rdf:type sh:PropertyShape ;
+    sh:targetClass :Box ;
+    sh:path [ sh:inversePath :hasBox ] ;
+    sh:maxCount 1 ;
+    sh:message "A Box is carried by at most one BoxTransportOperation." .
+
+# Every box has exactly one possessor: a module while it travels, from its creation on its origin
+# on, and the WarehouseManagementSystem at the end of its journey (changed on 2026-10-06, jms_kapps
+# 41, decided by Etienne; until then "the WarehouseManagementSystem at both ends of its journey"). The box points at exactly one possession state, and that state has
+# exactly one possessor, so a second resource on a module's state gives every box in it a second
+# possessor. Nested single steps here too: with sh:minCount on the sequence path, even at the top
+# level of a property shape, the store fails with an internal error on every write that removes a
+# statement on the path, a handover included. A property shape with its own target, like
+# :BoxShape, so that the report names it.
+:BoxHasOnePossessorShape rdf:type sh:PropertyShape ;
+    sh:targetClass :Box ;
+    sh:path cfc:hasPossessedWorkpiece ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:node [ sh:property [ sh:path [ sh:inversePath cfc:hasPossessor ] ;
+                            sh:minCount 1 ;
+                            sh:maxCount 1 ] ] ;
+    sh:message "A Box has exactly one possessor." .
+
+:BoxTransportOperationShape rdf:type sh:NodeShape ;
+    sh:targetClass :BoxTransportOperation ;
+    sh:property [
+        sh:path :hasBox ; sh:minCount 1 ; sh:maxCount 1 ; sh:class :Box ;
+        sh:message "A BoxTransportOperation must name exactly one Box." ;
+    ] ;
+    sh:property [
+        sh:path :hasOrigin ; sh:minCount 1 ; sh:maxCount 1 ; sh:class :FlexConveyorModule ;
+        sh:message "A BoxTransportOperation must have exactly one hasOrigin pointing to a FlexConveyorModule." ;
+    ] ;
+    sh:property [
+        sh:path :hasDestination ; sh:minCount 1 ; sh:maxCount 1 ; sh:class :FlexConveyorModule ;
+        sh:message "A BoxTransportOperation must have exactly one hasDestination pointing to a FlexConveyorModule." ;
+    ] ;
+    sh:property [
+        sh:path :hasOrigin ; sh:disjoint :hasDestination ;
+        sh:message "A BoxTransportOperation's origin and destination must be different modules." ;
+    ] ;
+    sh:property [
+        sh:path svc:operationStatus ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:in ( "queued" "running" "done" "failed" ) ;
+        sh:message "A BoxTransportOperation must have exactly one status: queued, running, done or failed." ;
+    ] .
+
+:RunningTransportBoxPossessedShape rdf:type sh:NodeShape ;
+    sh:targetClass :Box ;
+    sh:message "The Box of a running BoxTransportOperation must be possessed by exactly one FlexConveyorModule." ;
+    sh:or (
+        [ sh:path [ sh:inversePath :hasBox ] ;
+          sh:node [ sh:property [ sh:path svc:operationStatus ; sh:in ( "queued" "done" "failed" ) ] ] ]
+        [ sh:path cfc:hasPossessedWorkpiece ;
+          sh:minCount 1 ;
+          sh:node [ sh:property [ sh:path [ sh:inversePath cfc:hasPossessor ] ;
+                                  sh:qualifiedValueShape [ sh:class :FlexConveyorModule ] ;
+                                  sh:qualifiedMinCount 1 ;
+                                  sh:qualifiedMaxCount 1 ] ] ]
+    ) .
+
+:DoneTransportBoxReleasedShape rdf:type sh:NodeShape ;
+    sh:targetClass :Box ;
+    sh:message "The Box of a done BoxTransportOperation must not be possessed by a FlexConveyorModule." ;
+    sh:or (
+        [ sh:path [ sh:inversePath :hasBox ] ;
+          sh:node [ sh:property [ sh:path svc:operationStatus ; sh:in ( "queued" "running" "failed" ) ] ] ]
+        [ sh:path cfc:hasPossessedWorkpiece ;
+          sh:node [ sh:property [ sh:path [ sh:inversePath cfc:hasPossessor ] ;
+                                  sh:not [ sh:class :FlexConveyorModule ] ] ] ]
+    ) .
+
+:BoxOnModuleHasTransportShape rdf:type sh:NodeShape ;
+    sh:targetClass :Box ;
+    sh:message "A Box possessed by a FlexConveyorModule must have a BoxTransportOperation that is queued, running or failed." ;
+    sh:or (
+        [ sh:path cfc:hasPossessedWorkpiece ;
+          sh:node [ sh:property [ sh:path [ sh:inversePath cfc:hasPossessor ] ;
+                                  sh:not [ sh:class :FlexConveyorModule ] ] ] ]
+        [ sh:path [ sh:inversePath :hasBox ] ;
+          sh:minCount 1 ;
+          sh:node [ sh:property [ sh:path svc:operationStatus ; sh:in ( "queued" "running" "failed" ) ] ] ]
+    ) .

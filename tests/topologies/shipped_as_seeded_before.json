@@ -1,0 +1,51 @@
+{
+ "cross": [
+  {"id": "Module1", "label": "Module 1", "types": ["FlexConveyorModule"], "connections": [["South", "Module3", 0]]},
+  {"id": "Module2", "label": "Module 2", "types": ["FlexConveyorModule"], "connections": [["East", "Module3", 0]]},
+  {"id": "Module3", "label": "Module 3", "types": ["FlexConveyorModule"], "connections": [["East", "Module4", 0], ["North", "Module1", 0], ["South", "Module5", 0], ["West", "Module2", 0]]},
+  {"id": "Module4", "label": "Module 4", "types": ["FlexConveyorModule"], "connections": [["West", "Module3", 0]]},
+  {"id": "Module5", "label": "Module 5", "types": ["FlexConveyorModule"], "connections": [["North", "Module3", 0]]}
+ ],
+ "grid": [
+  {"id": "Module1", "label": "Module 1", "types": ["EntryModule"], "connections": [["South", "Module7", 0]]},
+  {"id": "Module2", "label": "Module 2", "types": ["EntryModule"], "connections": [["South", "Module8", 0]]},
+  {"id": "Module3", "label": "Module 3", "types": ["EntryModule"], "connections": [["South", "Module9", 0]]},
+  {"id": "Module4", "label": "Module 4", "types": ["EntryModule"], "connections": [["South", "Module10", 0]]},
+  {"id": "Module5", "label": "Module 5", "types": ["EntryModule"], "connections": [["South", "Module11", 0]]},
+  {"id": "Module6", "label": "Module 6", "types": ["EntryModule"], "connections": [["South", "Module12", 0]]},
+  {"id": "Module7", "label": "Module 7", "types": ["FlexConveyorModule"], "connections": [["South", "Module13", 0]]},
+  {"id": "Module8", "label": "Module 8", "types": ["FlexConveyorModule"], "connections": [["South", "Module14", 0], ["West", "Module7", 0]]},
+  {"id": "Module9", "label": "Module 9", "types": ["FlexConveyorModule"], "connections": [["South", "Module15", 0], ["West", "Module8", 0]]},
+  {"id": "Module10", "label": "Module 10", "types": ["FlexConveyorModule"], "connections": [["South", "Module16", 0], ["West", "Module9", 0]]},
+  {"id": "Module11", "label": "Module 11", "types": ["FlexConveyorModule"], "connections": [["South", "Module17", 0], ["West", "Module10", 0]]},
+  {"id": "Module12", "label": "Module 12", "types": ["FlexConveyorModule"], "connections": [["South", "Module18", 0], ["West", "Module11", 0]]},
+  {"id": "Module13", "label": "Module 13", "types": ["FlexConveyorModule"], "connections": [["East", "Module14", 0], ["South", "Module19", 0]]},
+  {"id": "Module14", "label": "Module 14", "types": ["FlexConveyorModule"], "connections": [["East", "Module15", 0], ["South", "Module20", 0]]},
+  {"id": "Module15", "label": "Module 15", "types": ["FlexConveyorModule"], "connections": [["East", "Module16", 0], ["South", "Module21", 0]]},
+  {"id": "Module16", "label": "Module 16", "types": ["FlexConveyorModule"], "connections": [["East", "Module17", 0], ["South", "Module22", 0]]},
+  {"id": "Module17", "label": "Module 17", "types": ["FlexConveyorModule"], "connections": [["East", "Module18", 0], ["South", "Module23", 0]]},
+  {"id": "Module18", "label": "Module 18", "types": ["FlexConveyorModule"], "connections": [["South", "Module24", 0]]},
+  {"id": "Module19", "label": "Module 19", "types": ["FlexConveyorModule"], "connections": [["South", "Module25", 0]]},
+  {"id": "Module20", "label": "Module 20", "types": ["FlexConveyorModule"], "connections": [["South", "Module26", 0], ["West", "Module19", 0]]},
+  {"id": "Module21", "label": "Module 21", "types": ["FlexConveyorModule"], "connections": [["South", "Module27", 0], ["West", "Module20", 0]]},
+  {"id": "Module22", "label": "Module 22", "types": ["FlexConveyorModule"], "connections": [["South", "Module28", 0], ["West", "Module21", 0]]},
+  {"id": "Module23", "label": "Module 23", "types": ["FlexConveyorModule"], "connections": [["South", "Module29", 0], ["West", "Module22", 0]]},
+  {"id": "Module24", "label": "Module 24", "types": ["FlexConveyorModule"], "connections": [["South", "Module30", 0], ["West", "Module23", 0]]},
+  {"id": "Module25", "label": "Module 25", "types": ["ExitModule"], "connections": [["East", "Module26", 0]]},
+  {"id": "Module26", "label": "Module 26", "types": ["ExitModule"], "connections": [["East", "Module27", 0]]},
+  {"id": "Module27", "label": "Module 27", "types": ["ExitModule"], "connections": [["East", "Module28", 0]]},
+  {"id": "Module28", "label": "Module 28", "types": ["ExitModule"], "connections": [["East", "Module29", 0]]},
+  {"id": "Module29", "label": "Module 29", "types": ["ExitModule"], "connections": [["East", "Module30", 0]]},
+  {"id": "Module30", "label": "Module 30", "types": ["ExitModule"], "connections": []}
+ ],
+ "pair": [
+  {"id": "Module1", "label": "Module 1", "types": ["EntryModule"], "connections": [["South", "Module2", 0]]},
+  {"id": "Module2", "label": "Module 2", "types": ["ExitModule"], "connections": []}
+ ],
+ "tee": [
+  {"id": "Module1", "label": "Module 1", "types": ["EntryModule"], "connections": [["South", "Module2", 0]]},
+  {"id": "Module2", "label": "Module 2", "types": ["FlexConveyorModule"], "connections": [["East", "Module3", 0], ["South", "Module4", 0]]},
+  {"id": "Module3", "label": "Module 3", "types": ["ExitModule"], "connections": []},
+  {"id": "Module4", "label": "Module 4", "types": ["ExitModule"], "connections": []}
+ ]
+}

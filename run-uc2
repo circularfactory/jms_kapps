@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# Use case 2 from one line: `jms-uc2` against the triple store that the environment names, then
+# the Launcher page in a browser. Only when the environment names no store does it first start the
+# local fallback of `compose.yaml`, a store and an InfluxDB, and run against that store.
+#
+#   ./run-uc2                      the cross of five modules
+#   ./run-uc2 --dataset Tests      every argument goes to `jms-uc2` as it is
+#
+# It needs uv, and for the local fallback also Docker with Compose, either the plugin
+# (`docker compose`) or the standalone `docker-compose`. It installs no tool: uv sets up the
+# project's own environment, as `uv run` always does. Ctrl+C, SIGTERM or SIGHUP to this script,
+# and closing the terminal it runs in, stop every process of the run, as they do for `jms-uc2`: uv
+# passes SIGTERM and SIGHUP on to `jms-uc2` (uv 0.11.28, measured). A local store and InfluxDB
+# keep running; `docker compose stop` (or `docker-compose stop`) in the project's root stops them.
+#
+# Every demo runs on the configured store: the one that `TRIPLESTORE_URL`, `TRIPLESTORE_USERNAME`
+# and `TRIPLESTORE_PASSWORD` name, which this script passes on unchanged. The local store is only
+# the fallback for a machine on which no store is configured. `jms-uc2` clears the dataset it runs
+# against, `jms-kapps` unless `--dataset` names another, so that dataset is the demo's alone;
+# `jms-uc2` refuses to clear it while another run is live there. Where only the deprecated
+# variables name the store, which the store still reads, the run uses that store too, and the
+# script says that they are deprecated: it never sends a run to the local fallback while a person
+# looks at the configured store.
+
+set -eo pipefail
+
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
+# The Launcher's one fixed address. `jms-uc2` prints it, so this script only opens it.
+launcher_page="http://127.0.0.1:8090/"
+# The local fallback's store, of `compose.yaml`.
+local_store="http://localhost:7200"
+
+start_local_store() {
+    if docker compose version >/dev/null 2>&1; then
+        compose=(docker compose)
+    elif command -v docker-compose >/dev/null 2>&1; then
+        compose=(docker-compose)
+    else
+        # vendor-check: off -- the local fallback, the GraphDB of the compose file
+        echo "run-uc2: needs Docker Compose to start the local GraphDB, and finds neither \`docker compose\` nor \`docker-compose\`." >&2
+        # vendor-check: on
+        exit 1
+    fi
+
+    # From the project's root, where `compose.yaml` is. It returns once the `jms-kapps` dataset
+    # and InfluxDB answer.
+    (cd "$root" && "${compose[@]}" up -d --wait)
+
+    # For this run only.
+    export TRIPLESTORE_URL=$local_store
+    export TRIPLESTORE_USERNAME=admin
+    export TRIPLESTORE_PASSWORD=root
+}
+
+if [[ -n $TRIPLESTORE_URL ]]; then
+    echo "run-uc2: the run uses the store that TRIPLESTORE_URL names, $TRIPLESTORE_URL"
+# vendor-check: off -- the deprecated variable, which the store reads until the contract release
+elif [[ -n $GRAPHDB_URL ]]; then
+    echo "run-uc2: GRAPHDB_URL is deprecated; set TRIPLESTORE_URL, which replaces it. The run uses the store that GRAPHDB_URL names, $GRAPHDB_URL"
+else
+    echo "run-uc2: TRIPLESTORE_URL is not set, so the run uses the local GraphDB of compose.yaml, $local_store"
+    # vendor-check: on
+    start_local_store
+fi
+
+launcher_answers() {
+    curl -sf -o /dev/null --max-time 2 "$launcher_page"
+}
+
+open_launcher_page() {
+    if [[ $OSTYPE == darwin* ]]; then
+        open "$launcher_page"
+    # Without a display, xdg-open falls back to a browser in the terminal, which the run's output
+    # takes.
+    elif [[ -n $DISPLAY$WAYLAND_DISPLAY ]] && command -v xdg-open >/dev/null 2>&1; then
+        # In a session of its own, so that the Ctrl+C that stops the run does not reach a browser
+        # that xdg-open started.
+        if command -v setsid >/dev/null 2>&1; then
+            setsid xdg-open "$launcher_page"
+        else
+            xdg-open "$launcher_page"
+        fi
+    else
+        return 1
+    fi
+}
+
+# Reads a pipe that only the run holds open, so it ends when the run ends, however the run ends.
+wait_for_launcher_page() {
+    until launcher_answers; do
+        # A second, unless the pipe closes first: a timeout's status is above 128, an end of input's
+        # is not.
+        read -r -t 1 _ || [ $? -gt 128 ] || return 0
+    done
+    # The address is `jms-uc2`'s to print, and it has printed it by now.
+    if open_launcher_page >/dev/null 2>&1; then
+        echo "run-uc2: opening the Launcher page in a browser"
+    fi
+}
+
+# Only curl tells when the Launcher answers; without it, nothing opens. A Launcher that answers
+# before the run starts is another run's, and `jms-uc2` then says that its port is taken, so
+# nothing opens.
+if command -v curl >/dev/null 2>&1 && ! launcher_answers; then
+    exec 3> >(wait_for_launcher_page)
+fi
+
+# In place of this script, so that Ctrl+C, SIGTERM and SIGHUP reach `jms-uc2` as they do without it,
+# and its exit code is the script's.
+exec uv run --project "$root" jms-uc2 "$@"

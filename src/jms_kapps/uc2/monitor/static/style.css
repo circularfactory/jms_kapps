@@ -1,0 +1,185 @@
+:root {
+  --ink: #1c1c1c;
+  --muted: #6b6b6b;
+  --line: #d5d5d2;
+  --paper: #fff;
+  --ground: #f7f7f5;
+  --live: #2e7d32;
+  --starting: #b26a00;
+  --failed: #c62828;
+  --stopped: #8a8a8a;
+  --link: #0b5cad;
+  --accent: #1f4e8c;
+  /* The green frame of a module drawn from above, as on a real FlexConveyor module. */
+  --frame: #3fae49;
+  /* A live module that holds a box: neither red, which means failed, nor the orange of a box. */
+  --holds: #dbe9f8;
+  /* The page's width at most: what a window of 1400 px leaves, so that the Boxes table beside
+     the topology shows every column without scrolling. The topology keeps about its size there,
+     672 px against the 698 px of a page 1180 px wide; in a narrower window it shrinks. */
+  --page: 1360px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font: 15px/1.5 system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--ground);
+  margin: 0;
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: var(--page);
+  margin: 0 auto 8px;
+}
+
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 4px; }
+main { max-width: var(--page); margin: 0 auto; }
+
+section {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.muted { color: var(--muted); font-size: 13px; }
+.mono { font-family: ui-monospace, monospace; font-size: 12px; }
+.spacer { flex: 1; }
+
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; }
+th, td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+
+button, .button, select, input {
+  font: 13px system-ui, sans-serif;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 3px 10px;
+}
+button, .button { cursor: pointer; text-decoration: none; display: inline-block; }
+button:hover, .button:hover { background: #f0f0ee; }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: #173c6c; }
+button.link { border: 0; background: none; padding: 0; color: var(--link); font-size: 14px; }
+button.link:hover { text-decoration: underline; background: none; }
+
+a { color: var(--link); }
+td.links a { margin-right: 10px; font-size: 13px; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+tr.live .dot { background: var(--live); }
+tr.starting .dot { background: var(--starting); }
+tr.failed .dot { background: var(--failed); }
+tr.stopped .dot { background: var(--stopped); }
+tr.failed td:nth-child(2) { color: var(--failed); font-weight: 600; }
+
+tr.output td { background: #fafaf8; }
+tr.output pre {
+  margin: 4px 0 0;
+  font: 12px/1.5 ui-monospace, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.message { padding: 6px 10px; border-radius: 6px; white-space: pre-wrap; font-size: 13px; }
+.message.info { background: #eef3fa; }
+.message.ok { background: #edf6ee; }
+.message.error { background: #fdeeee; color: var(--failed); }
+
+.switch { font-size: 13px; white-space: nowrap; }
+
+/* The monitor's own. */
+/* The topology, and the column of Boxes and Handovers, half the page each: the Boxes table needs
+   about 580 px for all its columns. */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+/* A column of sections may shrink below its tables' width: each section scrolls its own. */
+.layout > div { min-width: 0; }
+svg.topology { width: 100%; height: auto; display: block; margin: 0 auto; }
+/* A connection is a grey line, with a head where it leads. (Changed on 2026-10-10, jms_kapps 24:
+   the strong arrows of the hops went, and with them the class "hop".) */
+svg.topology .wire { stroke: #c2c2bc; stroke-width: 2; }
+svg.topology .wire-head path { fill: #9d9d96; }
+/* A module is drawn from above: a green frame round dark ground, and in monitor.js its silver
+   rollers and dark belts. A live module that holds a box has the light blue of --holds for its
+   ground, which shows round the rollers; an offline one is grey and dashed, and its rollers fade. */
+svg.topology .module rect.frame { fill: #262626; stroke: var(--frame); stroke-width: 5; rx: 6; }
+svg.topology .module.live.holds rect.frame { fill: var(--holds); }
+svg.topology .module.offline rect.frame { stroke: var(--stopped); stroke-dasharray: 5 4; fill: #f3f3f1; }
+svg.topology .module .roller-end { fill: #7b7b7b; }
+svg.topology .module .belt { fill: #353535; }
+svg.topology .module .belt-pad { fill: #8f969b; }
+svg.topology .module.offline .interior { opacity: .45; filter: grayscale(1); }
+/* The disc with a box's label on its destination, the first four characters of its UUID, in the
+   colour of the box's outline: 8px, so that the four stand inside the disc (11px until 2026-10-12,
+   jms_kapps 92, when the label was the box's number). */
+svg.topology .destination circle { stroke: var(--paper); stroke-width: 2; }
+svg.topology .destination text { font: bold 8px ui-monospace, monospace; fill: var(--paper); stroke: none; }
+/* The names stand on the rollers: a light halo keeps them readable. */
+svg.topology .name text { font: bold 13px system-ui, sans-serif; fill: var(--ink); stroke: var(--paper); stroke-width: 4; paint-order: stroke; stroke-linejoin: round; }
+svg.topology .name text.kind { font-size: 10px; fill: var(--ink); stroke-width: 3; }
+svg.topology .box rect { fill: #e8a33d; stroke: #9a6414; stroke-width: 2.5; }
+svg.topology .box text { font: 10px ui-monospace, monospace; fill: var(--ink); }
+.metrics { display: flex; gap: 20px; margin: 6px 0 10px; }
+.metric b { display: block; font-size: 22px; }
+td.live { color: var(--live); font-weight: 600; }
+td.offline { color: var(--stopped); }
+pre.report { white-space: pre-wrap; word-break: break-all; max-height: 16em; overflow: auto; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
+.scroll { max-height: 22em; overflow-y: auto; }
+
+/* How the monitor reads: the switch of its mode and the interval of its graph read. */
+.modes { display: inline-flex; gap: 14px; }
+#graph-seconds { width: 5em; }
+
+/* Queries sent: one card per query, its head on one line, its text below. */
+.query { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
+.query-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.query-head .copy { margin-left: auto; }
+.query .last.failed { color: var(--failed); }
+pre.query-text { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 16em; overflow: auto; background: #fafaf8; padding: 6px 8px; border-radius: 4px; }
+
+/* The Refusals view: one card per refusal, one row per result of its report. */
+.refusal { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
+/* How long a refusal that arrives stays highlighted: monitor.js ends it when this ends. */
+.refusal.fresh { animation: arrive 6s ease-out; }
+@keyframes arrive {
+  0%, 40% { background: #fff4d6; border-color: var(--starting); box-shadow: 0 0 0 2px #f3c56b; }
+  100% { background: var(--paper); border-color: var(--line); box-shadow: none; }
+}
+.refusal-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.refusal .field { white-space: nowrap; }
+.refusal .label { color: var(--muted); font-size: 12px; margin-right: 4px; }
+.refusal [title] { cursor: help; text-decoration: underline dotted #b4b4ae; }
+.refusal details { margin-top: 4px; font-size: 13px; }
+.refusal .message { margin: 6px 0 0; }
+ul.results { list-style: none; margin: 6px 0 0; padding: 0; }
+li.result { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-top: 1px solid var(--line); }
+li.result p { margin: 0; }
+.result-message { font-weight: 600; white-space: pre-line; }
+.terms { display: flex; flex-wrap: wrap; gap: 2px 16px; }
+.terms .field { white-space: normal; word-break: break-all; }
+.badge {
+  flex: none; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+  border-radius: 4px; padding: 1px 6px; margin-top: 2px; background: #eee; color: var(--ink);
+}
+.badge.violation { background: #fdeeee; color: var(--failed); }
+.badge.warning { background: #fff4d6; color: var(--starting); }
+.badge.info { background: #eef3fa; color: var(--link); }

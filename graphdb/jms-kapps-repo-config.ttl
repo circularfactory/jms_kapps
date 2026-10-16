@@ -1,0 +1,90 @@
+#
+# The repository the jms_kapps use cases run against. `compose.yaml` creates it from this file.
+# Adapted from kapps-semantic-middleware's examples/docker/graphdb-repo-config.ttl: same SHACL
+# settings, id changed to jms-kapps, and a smaller ruleset, for the reason given at the ruleset.
+# The seed clears its default graph and replaces its shapes graph on every run, so never
+# point it at a repository anything else uses.
+#
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix rep: <http://www.openrdf.org/config/repository#>.
+@prefix sr: <http://www.openrdf.org/config/repository/sail#>.
+@prefix sail: <http://www.openrdf.org/config/sail#>.
+@prefix graphdb: <http://www.ontotext.com/config/graphdb#>.
+@prefix shacl: <http://rdf4j.org/config/sail/shacl#>.
+
+
+[] a rep:Repository ;
+    rep:repositoryID "jms-kapps" ;
+    rdfs:label "jms_kapps use cases, wiped on every seed" ;
+    rep:repositoryImpl [
+        rep:repositoryType "graphdb:SailRepository" ;
+        sr:sailImpl [
+            sail:sailType "rdf4j:ShaclSail";
+
+            sail:delegate [
+                sail:sailType "graphdb:Sail" ;
+
+                graphdb:read-only "false" ;
+
+                # Inference and Validation
+                # `rdfsplus-optimized` is enough here. The middleware's example repository runs
+                # `owl-max` for one entailment: that a class named only as the `rdfs:range` of a
+                # property is an `rdfs:Class`. The object-graph mapper refuses an IRI as a class
+                # without it. The use cases do not need it, because every class their ontologies
+                # and the middleware's shared ontologies name as a range is declared, which
+                # tests/test_ontology_declarations.py checks. The UC2 shapes follow explicit paths
+                # and need no OWL inference either.
+                #
+                # Measured on GraphDB 10.8.1, one run each: every `graphdb` test passes under either
+                # ruleset, and on the same 795 statements after a run, `owl-max` infers 1146 where
+                # this one infers 288. That is inference nothing here reads, recomputed on every
+                # seed.
+                graphdb:ruleset "rdfsplus-optimized" ;
+                graphdb:disable-sameAs "true" ;
+                graphdb:check-for-inconsistencies "false" ;
+
+                # Indexing
+                graphdb:entity-id-size "32" ;
+                graphdb:enable-context-index "false" ;
+                graphdb:enablePredicateList "true" ;
+                graphdb:enable-fts-index "false" ;
+                graphdb:fts-indexes ("default" "iri") ;
+                graphdb:fts-string-literals-index "default" ;
+                graphdb:fts-iris-index "none" ;
+
+                # Queries and Updates
+                graphdb:query-timeout "0" ;
+                graphdb:throw-QueryEvaluationException-on-timeout "false" ;
+                graphdb:query-limit-results "0" ;
+
+                # Settable in the file but otherwise hidden in the UI and in the RDF4J console
+                graphdb:base-URL "http://example.org/owlim#" ;
+                graphdb:defaultNS "" ;
+                graphdb:imports "" ;
+                graphdb:repository-type "file-repository" ;
+                graphdb:storage-folder "storage" ;
+                graphdb:entity-index-size "10000000" ;
+                graphdb:in-memory-literal-properties "true" ;
+                graphdb:enable-literal-index "true" ;
+            ] ;
+
+
+            # Settable in the UI and in the RDF4J console
+            shacl:cacheSelectNodes "true" ;
+            shacl:dashDataShapes "true" ;
+            shacl:logValidationPlans "false" ;
+            shacl:logValidationViolations "false" ;
+            shacl:parallelValidation "true" ;
+            shacl:globalLogValidationExecution "false" ;
+            shacl:performanceLogging "false" ;
+            shacl:eclipseRdf4jShaclExtensions "true" ;
+            shacl:validationResultsLimitTotal "1000000" ;
+            shacl:validationResultsLimitPerConstraint "1000" ;
+            shacl:shapesGraph <http://rdf4j.org/schema/rdf4j#SHACLShapeGraph> ;
+
+            # Settable in the file but otherwise hidden in the UI and in the RDF4J console
+            shacl:validationEnabled "true" ;
+            shacl:rdfsSubClassReasoning "true" ;
+            shacl:transactionalValidationLimit "500000" ;
+        ]
+    ].

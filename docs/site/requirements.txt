@@ -1,0 +1,9 @@
+# The docs toolchain, kept apart from the project's dev group so the docs job
+# installs only what a docs build needs. The same as the three libraries'.
+#
+# Pinned to majors, not exact versions: a published version is never rebuilt --
+# it stays on the site as a folder -- so this file only ever has to build the
+# CURRENT version. That is what lets it float.
+sphinx>=9,<10
+pydata-sphinx-theme>=0.20,<1
+myst-nb>=1.4,<2

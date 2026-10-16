@@ -1,0 +1,7 @@
+Time,RobotPosition,AxialForce,UnscrewingTorque, comment
+0.0,1.0,0.0,0.0, approach
+0.5,0.5,0.2,0.0, approach
+1.0,0.0,0.0,0.0, form-fit - touches screw head --> Nope
+1.5,-0.5,0.0,0.0, 
+2.0,-1.0,0.1,0.0, Status: Missing screw
+

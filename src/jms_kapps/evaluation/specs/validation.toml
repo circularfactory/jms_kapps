@@ -1,0 +1,69 @@
+# The validation spec of the measurement harness (jms_kapps 100; interim name, jms_kapps 83): each
+# figure that the evaluation claims, measured once with short windows, so that a reader can check
+# that the harness, the store and the reader's machine work end to end before the long specs run.
+# `jms-eval` runs it when it is given no spec. It is not a measurement: one repetition of each
+# configuration, a window of one minute, the 5-module cross. Compare its figures with the paper's
+# tables for their shape only.
+#
+# What it covers (the README of `evaluation` says where each figure is in the report and the table):
+#
+# - write throughput: the transports ended per minute of every UC2 run below.
+# - OGM latency: the commit latency of those runs (p50, p95), which the wrapper measures.
+# - store scaling: configurations 1 and 2 differ only in the prefill, 1k and 100k statements.
+# - SHACL overhead: configurations 1 and 3 differ only in SHACL, on and off.
+# - the compressed replay: the store-only baseline replays configuration 1's first valid run at
+#   the factors 1 and 2 (heavy at 2).
+# - the judgement of a ramp: configurations 4 to 6, the box rates 12, 24 and 48 (heavy).
+#
+# **Run time**, estimated (the prefill files, which `jms-eval` makes if they are missing, included;
+# the first live run replaces the estimate with a measured one in the README):
+#
+# - without the heavy parts: about 15 minutes (at most 25). Three UC2 runs of about 3 minutes
+#   (setup, the 1-minute window, the drain, the end), the replay at the factor 1 of about 2
+#   minutes, and the two prefill files, a few seconds.
+# - with the heavy parts: about 27 minutes (at most 40). The three levels of the ramp, about 3
+#   minutes each (it stops earlier at the first level that breaks), and the replay at the factor
+#   2, about 1.5 minutes, come on top of the above.
+#
+# The heavy parts run only under an approval that covers this spec (`jms-eval --help`); without
+# one `jms-eval` skips them and says so at the end.
+#
+# Files it names: `cross-1k.ttl` and `cross-100k.ttl` in the prefills folder, which `jms-eval`
+# makes with the seed 1 if they are missing.
+
+[defaults]
+series = "validation"          # the series that the readers show with each number (jms_kapps 110)
+boxes_per_minute = 6
+warm_up_seconds = 0             # no warm-up: a short window
+window_seconds = 60
+drain_bound_seconds = 120
+matcher_interval_seconds = 2
+transit_seconds = 3.0
+retry_seconds = 1.0
+heavy = false
+repetitions = 1
+
+# 1. The centre: the 5-module cross, 1k, `real`, SHACL on, with the wrapper. Its first valid run is
+# replayed at the factors 1 and 2.
+[[sweep]]
+topology = "cross"
+prefill = "{topology}-1k.ttl"
+replay_factors = [1, 2]
+
+# 2. Store scaling: the same, 100k.
+[[sweep]]
+topology = "cross"
+prefill = "{topology}-100k.ttl"
+
+# 3. SHACL overhead: the centre with SHACL off.
+[[sweep]]
+topology = "cross"
+prefill = "{topology}-1k.ttl"
+shacl = false
+
+# 4-6. The judgement of a ramp: three rising box rates on the centre. Its runs are heavy.
+[[sweep]]
+ramp = true
+topology = "cross"
+prefill = "{topology}-1k.ttl"
+boxes_per_minute = [12, 24, 48]

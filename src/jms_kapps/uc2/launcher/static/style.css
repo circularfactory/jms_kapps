@@ -1,0 +1,161 @@
+:root {
+  --ink: #1c1c1c;
+  --muted: #6b6b6b;
+  --line: #d5d5d2;
+  --paper: #fff;
+  --ground: #f7f7f5;
+  --live: #2e7d32;
+  --starting: #b26a00;
+  --failed: #c62828;
+  --stopped: #8a8a8a;
+  --killed: #7b1fa2;
+  --link: #0b5cad;
+  --accent: #1f4e8c;
+}
+
+* { box-sizing: border-box; }
+
+/* What the page hides stays hidden, whatever display a class gives it. */
+[hidden] { display: none !important; }
+
+body {
+  font: 15px/1.5 system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--ground);
+  margin: 0;
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: 1180px;
+  margin: 0 auto 8px;
+}
+
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 4px; }
+main { max-width: 1180px; margin: 0 auto; }
+
+section {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.muted { color: var(--muted); font-size: 13px; }
+.mono { font-family: ui-monospace, monospace; font-size: 12px; }
+.spacer { flex: 1; }
+
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; }
+th, td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+
+button, .button, select, input {
+  font: 13px system-ui, sans-serif;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 3px 10px;
+}
+button, .button { cursor: pointer; text-decoration: none; display: inline-block; }
+button:hover, .button:hover { background: #f0f0ee; }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: #173c6c; }
+button.link { border: 0; background: none; padding: 0; color: var(--link); font-size: 14px; }
+button.link:hover { text-decoration: underline; background: none; }
+
+a { color: var(--link); }
+td.links a { margin-right: 10px; font-size: 13px; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+tr.live .dot { background: var(--live); }
+tr.starting .dot { background: var(--starting); }
+tr.failed .dot { background: var(--failed); }
+tr.stopped .dot { background: var(--stopped); }
+tr.killed .dot { background: var(--killed); }
+tr.failed td:nth-child(2) { color: var(--failed); font-weight: 600; }
+tr.killed td:nth-child(2) { color: var(--killed); font-weight: 600; }
+/* A state the Launcher could not confirm against the graph lately: shown as last read. */
+tr.unconfirmed .dot { opacity: .35; }
+tr.unconfirmed td:nth-child(2) { font-style: italic; }
+/* The Launcher does not answer: everything shown is from its last answer. */
+body.unanswered #processes, body.unanswered #modules, body.unanswered #boxes { opacity: .55; }
+
+tr.output td { background: #fafaf8; }
+tr.output pre {
+  margin: 4px 0 0;
+  font: 12px/1.5 ui-monospace, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.message { padding: 6px 10px; border-radius: 6px; white-space: pre-wrap; font-size: 13px; }
+.message.info { background: #eef3fa; }
+.message.ok { background: #edf6ee; }
+.message.error { background: #fdeeee; color: var(--failed); }
+.message.warning { background: #fff4e0; color: #7a4a00; margin: 0 0 16px; }
+#draw-errors { margin: 0 0 16px; }
+
+.switch { font-size: 13px; white-space: nowrap; }
+td.faults .switch { display: block; }
+.switch.armed { color: var(--failed); }
+.field-problem { color: var(--failed); font-size: 13px; }
+#editor-selected input[aria-invalid="true"] { border-color: var(--failed); }
+
+/* The topology editor: a grid of cells, with a gap between each two for the edge between them. */
+#editor { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 4px; }
+.editor-body { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; margin: 8px 0; }
+.grid { --cell: 78px; --gap: 26px; display: grid; }
+.grid .cell {
+  width: var(--cell);
+  height: var(--cell);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+.grid .cell.empty { border: 1px dashed var(--line); background: none; color: var(--muted); font-size: 18px; }
+.grid .cell.empty:hover { background: #eef3fa; color: var(--accent); }
+.grid .cell.module { border: 2px solid #9fb3cc; background: #eef3fa; }
+.grid .cell.module:hover { background: #dfe9f6; }
+.grid .cell.module.selected { border-color: var(--accent); background: #d3e2f5; box-shadow: 0 0 0 2px #9fb3cc; }
+.grid .cell .name { font-weight: 600; font-size: 13px; }
+.grid .cell .roles { font-size: 11px; color: var(--muted); min-height: 1.4em; }
+.grid .edge {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.grid .edge.across { width: var(--gap); height: var(--cell); }
+.grid .edge.down { width: var(--cell); height: var(--gap); }
+.grid .edge.none { color: #a3a39e; }
+.grid .edge:hover { background: #eef3fa; }
+#editor-selected { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 200px; }
+
+/* The boxes on the station: the query's head on one line, its text below, as the monitor shows a
+   query it sends. */
+.query-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 10px; }
+.query-head .copy { margin-left: auto; }
+pre.query-text { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 24em; overflow: auto; background: #fafaf8; padding: 6px 8px; border-radius: 4px; }
+#boxes-read { margin: 6px 0 0; }

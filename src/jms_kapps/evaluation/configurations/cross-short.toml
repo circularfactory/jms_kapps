@@ -1,0 +1,17 @@
+# A short run on the 5-module cross, with SHACL on: a few boxes at a low rate, to check that a
+# run works end to end on a configured GraphDB. Not a measurement, and no heavy load.
+topology = "cross"
+prefill = "none"
+module_strategy = "real"
+wms_strategy = "real"
+shacl = true
+collect_history = false
+boxes_per_minute = 6
+warm_up_seconds = 0
+window_seconds = 60
+drain_bound_seconds = 120
+matcher_interval_seconds = 2
+transit_seconds = 3.0
+retry_seconds = 1.0
+wrapper = true
+heavy = false

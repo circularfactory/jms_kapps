@@ -1,0 +1,99 @@
+# DRAFT spec of the "after" series of the measurement harness (jms_kapps 101; interim name,
+# jms_kapps 83): the cells of `iteration-one.toml` under the precision rule that Sören decided on
+# 2026-10-12 (the numbers decision, jms_kapps 56; "The series", jms_kapps 85). The "after" series
+# starts when the builds of jms_kapps 85 are merged, on the lock of jms_kapps ec6f27c (KSM 0.2.0,
+# kapps_ogm 0.3.0, interface 2.2.0).
+#
+# Each configuration runs until the bootstrap 95 % interval of its pooled commit p95 is within
+# +-10 % of the p95 and the IQR of its throughput is at most 10 % of the median, with at least 10
+# valid runs and at most 20 runs (the `[precision]` table below). It runs in rounds: round k makes
+# repetition k of each cell that is still open, in this order, and one call goes on round after
+# round until its stop time, the stop file or the end of the rule (`evaluation/README.md` says how
+# the rounds work). A round of the 26 cells takes about 5.2 hours, and the 10 valid runs of a cell
+# come from at least 10 rounds, so from at least two time windows. 26 cells: at least 260 runs of
+# about 12 minutes, up to 520.
+#
+# Changed on 2026-10-13 (jms_kapps 111, decided by Sören as the product owner of the tests,
+# jms_kapps 85): the rounds replaced the passes, and `pass_sizes` left the `[precision]` table.
+# Until then pass 1 made repetitions 1 to 5 of each cell, pass 2 6 to 10, each later pass one more
+# of each cell that did not meet the rule, and a call made one pass and exited. The records made in
+# passes count as their repetitions, and no key of a cell changed. The change gives this file
+# another SHA-256, so an approval issued before it covers it no more.
+#
+# Open until Sören fixes them at the run step:
+# - The transit time and the retry wait stay at their defaults, 3.0 s and 1.0 s. Their values and
+#   the cells that sweep them (jms_kapps 93 made them keys of a configuration) are his to fix.
+#
+# Waiting for another ticket:
+# - The store-only baselines join when the compressed replay ticket (jms_kapps 98) lets a spec
+#   drive them.
+#
+# The 60- and 120-module cells (7 to 14) have their files since the grid ticket (jms_kapps 94): the
+# committed grids `../topologies/grid-60.json` and `../topologies/grid-120.json`. Their 1M cells
+# (9 and 13) also need their 1M prefills, which are on the run host.
+#
+# The order is Sören's: the calibration pair first, as the starting set; then SHACL off at each
+# store size; the 60- and 120-module grids; the history-on comparison; the rest; southward last.
+# A block lists a configuration once: the centre, in the pair, is not listed again.
+#
+# Files it names that a person makes (the README of `evaluation` says how): one
+# prefill file for each topology and store size, `<topology>-<size>.ttl` in the prefills folder.
+
+[defaults]
+series = "after"               # the series that the readers show with each number, "after 7"
+                                # (jms_kapps 110): no key of a configuration
+boxes_per_minute = 30           # a normal box rate, not heavy (jms_kapps 56)
+warm_up_seconds = 60            # 1 minute, not measured
+window_seconds = 300            # the measured window, 5 minutes
+drain_bound_seconds = 300       # 5 minutes; a box still waiting then counts as stuck
+matcher_interval_seconds = 2    # one read of finished transports every 2 s
+transit_seconds = 3.0           # the use case's default, until Sören fixes the value
+retry_seconds = 1.0             # the use case's default, until Sören fixes the value
+heavy = false
+
+[precision]
+latency_tolerance = 0.10        # both ends of the p95's interval within 10 % of it
+throughput_spread = 0.10        # the IQR at most 10 % of the median
+minimum_runs = 10               # valid runs
+maximum_runs = 20               # runs made; round k makes repetition k, up to round 20
+
+# 1-2. The calibration pair: the centre, the 30-module grid at 1M, `real`, SHACL on, with the
+# wrapper (the centre) and without it. The centre is listed here and not again.
+[[sweep]]
+topology = "grid"
+prefill = "{topology}-1M.ttl"
+wrapper = [true, false]
+
+# 3-6. SHACL off at each store size, on the 30-module grid.
+[[sweep]]
+topology = "grid"
+prefill = ["{topology}-1k.ttl", "{topology}-100k.ttl", "{topology}-1M.ttl", "{topology}-10M.ttl"]
+shacl = false
+
+# 7-14. The 60- and 120-module grids at each store size.
+[[sweep]]
+topology = ["../topologies/grid-60.json", "../topologies/grid-120.json"]
+prefill = ["{topology}-1k.ttl", "{topology}-100k.ttl", "{topology}-1M.ttl", "{topology}-10M.ttl"]
+
+# 15. The history-on comparison at the centre.
+[[sweep]]
+topology = "grid"
+prefill = "{topology}-1M.ttl"
+collect_history = true
+
+# 16-22. The rest: the 5-module cross at each store size, and the 30-module grid at the other
+# store sizes (its 1M is the centre).
+[[sweep]]
+topology = "cross"
+prefill = ["{topology}-1k.ttl", "{topology}-100k.ttl", "{topology}-1M.ttl", "{topology}-10M.ttl"]
+
+[[sweep]]
+topology = "grid"
+prefill = ["{topology}-1k.ttl", "{topology}-100k.ttl", "{topology}-10M.ttl"]
+
+# 23-26. `southward` last, on the 30-module grid at each store size.
+[[sweep]]
+topology = "grid"
+prefill = ["{topology}-1k.ttl", "{topology}-100k.ttl", "{topology}-1M.ttl", "{topology}-10M.ttl"]
+module_strategy = "southward"
+wms_strategy = "southward"
