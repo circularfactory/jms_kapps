@@ -1,5 +1,5 @@
 """The run's own transports: the harness learns them from the WarehouseManagementSystem's log, so
-that none of its reads names the whole store (added on 2026-10-12, jms_kapps 90).
+that none of its reads names the whole store.
 
 Right after the store admitted the create of a box, the WarehouseManagementSystem logs that the
 box's transport is `queued` (`jms_kapps.uc2.transport.status_record`), and the line names the

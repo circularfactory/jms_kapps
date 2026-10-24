@@ -3,9 +3,12 @@
 A box has no lifecycle state of its own. Its BoxTransportOperation's status says where the journey
 is, and its possessor says where the box is, so use case 2's rules tie the two together. Each test
 makes the write that breaks one rule, as a participant or the seed makes it: a module hands a box
-over through the middleware's handover, and a status changes in one commit of the middleware. Every
-shape is SHACL Core, so the store refuses the write at commit: the report names the focus node, the
-shape, and the path where the report carries one, and the graph does not change.
+over through the middleware's handover, and a status changes in one commit of the middleware. The
+store refuses each such write at commit: the report names the focus node, the shape, and the path
+where the report carries one, and the graph does not change. Every shape is SHACL Core but one, the
+rule that a transport's destination is reachable from its origin over the connections, which is
+SHACL-SPARQL; its result carries no path. That rule lives in a shapes file of its own, which a launch
+does not load, so the `ogm` fixture seeds with `sparql_shapes=True`.
 
 Every refusal raises one type, the triplestore interface's `ShaclValidationError`, with the store's
 report verbatim, at both of the middleware's write paths (§4.2.2 of the paper): fault scenario 1
@@ -24,8 +27,10 @@ from collections.abc import Callable
 
 import pytest
 from _bulk import bulk_validation_report
+from _explicit import explicit_statements
+from _uc2_run import POSSESSION_PATH
 from kapps_ogm import OGM, Update
-from kapps_semantic_middleware import Mode, SemanticMiddleware
+from kapps_semantic_middleware import Mode, SemanticMiddleware, possession
 from kapps_semantic_middleware.credentials import triplestore_env_present
 from kapps_semantic_middleware.validation_report import (
     ValidationResult,
@@ -38,7 +43,6 @@ from rdflib.namespace import RDF, SH
 
 from jms_kapps.common.triplestore import bindings, connect
 from jms_kapps.uc2.seed import MODULES, place_box, possession_triples, seed_two_modules
-from jms_kapps.uc2.vertical_slice import POSSESSION_PATH, explicit_statements
 from jms_kapps.uc2.vocabulary import FC, FCI_NS, WMS, box_iri, transport_iri
 
 pytestmark = [
@@ -62,7 +66,7 @@ def db(dataset):
 def ogm(db):
     """Two modules, and box 1 on module 1, its transport to module 2 running."""
     ogm = OGM(db=db)
-    m1, m2 = seed_two_modules(db, transit_seconds=0)
+    m1, m2 = seed_two_modules(db, transit_seconds=0, sparql_shapes=True)
     place_box(ogm, box_iri(1), on=m1, origin=m1, destination=m2)
     return ogm
 
@@ -102,8 +106,10 @@ def middleware(ogm: OGM, resource: IRI) -> SemanticMiddleware:
 
 
 def hand_over(ogm: OGM, box: IRI, *, by: IRI, to: IRI) -> None:
-    """`by` hands `box` to `to` through the middleware's handover, as a module does."""
-    with middleware(ogm, by).handover(mode=MES.Pass, workpiece=box, counterpart=to):
+    """`by` hands `box` to `to` through the possession extension's handover, as a module does."""
+    with possession.handover(
+        middleware(ogm, by), mode=MES.Pass, workpiece=box, counterpart=to
+    ):
         pass
 
 
@@ -121,7 +127,7 @@ def give_to_the_wms(ogm: OGM, box: IRI, *, status: str | None) -> None:
             (operation, FC.hasBox, box),
             (operation, FC.hasOrigin, m1),
             (operation, FC.hasDestination, m2),
-            (operation, SVC.operationStatus, Literal(status)),
+            (operation, SVC.hasOperationStatus, Literal(status)),
         ]
     assert ogm.db.triples_add(triples)
 
@@ -137,15 +143,15 @@ def hand_to_the_wms(ogm: OGM, box: IRI, *, done: bool) -> None:
     new = possession_triples(ogm.db, box, WMS)
     if done:
         transport = transport_iri(box)
-        old.append((transport, SVC.operationStatus, Literal(OperationStatus.RUNNING)))
-        new.append((transport, SVC.operationStatus, Literal(OperationStatus.DONE)))
+        old.append((transport, SVC.hasOperationStatus, Literal(OperationStatus.RUNNING)))
+        new.append((transport, SVC.hasOperationStatus, Literal(OperationStatus.DONE)))
     assert ogm.db.triples_update(old_triples=old, new_triples=new)
 
 
 def set_status(ogm: OGM, transport: IRI, status: str) -> None:
     """Set `transport`'s status in one `mw.commit()` of Module 1's middleware, as a participant
     commits a status."""
-    change = Update(instance_iri=transport, data={str(SVC.operationStatus): [status]})
+    change = Update(instance_iri=transport, data={str(SVC.hasOperationStatus): [status]})
     with middleware(ogm, MODULES[0]).commit(entry=[change]):
         pass
 
@@ -185,7 +191,7 @@ def test_a_placed_box_travels_on_its_module_with_a_running_transport(ogm):
             <{transport}> <{FC.hasBox}> <{box_iri(1)}> ;
                 <{FC.hasOrigin}> ?origin ;
                 <{FC.hasDestination}> ?destination ;
-                <{SVC.operationStatus}> ?status .
+                <{SVC.hasOperationStatus}> ?status .
         }}""",
     )
 
@@ -351,7 +357,7 @@ def test_a_second_transport_for_a_box_is_refused(ogm):
                 (second, FC.hasBox, box_iri(1)),
                 (second, FC.hasOrigin, m1),
                 (second, FC.hasDestination, m2),
-                (second, SVC.operationStatus, Literal(OperationStatus.QUEUED)),
+                (second, SVC.hasOperationStatus, Literal(OperationStatus.QUEUED)),
             ]
         ),
     )
@@ -392,3 +398,72 @@ def test_the_module_letting_go_of_the_box_of_a_running_transport_is_refused(ogm)
     assert (
         result(box_iri(1), FC.BoxHasOnePossessorShape, BOX_POSSESSION_PATH) in results
     ), results
+
+
+# The rule in SHACL-SPARQL: a transport's destination is reachable from its origin over the
+# connections. The seed connects module 1 to module 2, one way, so module 1 is reached from no
+# module.
+
+
+@pytest.mark.paper_claim
+def test_a_transport_toward_an_unreachable_destination_is_refused(ogm):
+    """`:ReachableDestinationShape`, a SPARQL target and a SPARQL constraint: a transport opened
+    on module 2 toward module 1, which no connection reaches from module 2. Box 2, its possession
+    by module 2 and its transport arrive in one write, and the report names this rule alone.
+
+    A rule across entities that SHACL Core cannot express is a SHACL-SPARQL shape, and the store
+    refuses the write that breaks it at commit, with the same exception and report as a Core rule,
+    and the graph does not change.
+
+    Paper claim 17: cross-entity rules are SHACL-SPARQL."""
+    m1, m2 = MODULES
+    transport = transport_iri(box_iri(2))
+
+    results = refused(
+        ogm,
+        lambda: place_box(ogm, box_iri(2), on=m2, origin=m2, destination=m1),
+    )
+
+    assert result(transport, FC.ReachableDestinationShape) in results, results
+    assert {found.shape for found in results} == {str(FC.ReachableDestinationShape)}, (
+        results
+    )
+
+
+@pytest.mark.paper_claim
+@pytest.mark.parametrize("change", ["destination", "connection"])
+def test_a_change_that_leaves_a_transport_s_destination_unreached_is_refused(
+    ogm, change
+):
+    """The same rule on a transport that exists: its destination changed to a module that no
+    connection reaches, or the connection removed that reached it, a write that never touches
+    the transport. With its SPARQL target, the store finds the transport again at the commit.
+
+    Paper claim 17: cross-entity rules are SHACL-SPARQL."""
+    m1, m2 = MODULES
+    transport = transport_iri(box_iri(1))
+    m3 = IRI("Module3", base=FCI_NS)
+    assert ogm.db.triple_add((m3, RDF.type, FC.FlexConveyorModule))
+    if change == "destination":
+
+        def write() -> object:
+            return ogm.db.triples_update(
+                old_triples=[(transport, FC.hasDestination, m2)],
+                new_triples=[(transport, FC.hasDestination, m3)],
+            )
+
+    else:
+        connection = IRI(
+            str(
+                bindings(
+                    ogm.db, f"SELECT ?c WHERE {{ <{m1}> <{FC.hasConnection}> ?c }}"
+                )[0]["c"]
+            )
+        )
+
+        def write() -> object:
+            return ogm.db.triple_delete((m1, FC.hasConnection, connection))
+
+    results = refused(ogm, write)
+
+    assert result(transport, FC.ReachableDestinationShape) in results, results

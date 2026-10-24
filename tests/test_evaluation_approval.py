@@ -1,5 +1,4 @@
-"""One approval covers the heavy runs of one spec in one period (jms_kapps 96, from the decisions of
-jms_kapps 85, note 1864593): the approval file, and the three commands that start a heavy run,
+"""One approval covers the heavy runs of one spec in one period: the approval file, and the three commands that start a heavy run,
 `jms-eval-sweep`, `jms-eval-uc2` and `jms-eval-baseline`.
 
 No test here makes a heavy run on a store, and none holds an approval that covers a real spec of the
@@ -40,7 +39,7 @@ from jms_kapps.evaluation.spec import configurations, read_spec, resolved
 
 EVALUATION = Path(jms_kapps.__file__).parent / "evaluation"
 
-# A spec of two ramps, a sustained load and a configuration at normal load (jms_kapps 96).
+# A spec of two ramps, a sustained load and a configuration at normal load.
 SPEC = (
     RAMP_SPEC
     + """
@@ -249,8 +248,7 @@ def test_inside_the_period_the_sweep_runs_every_heavy_configuration_of_the_appro
 def test_a_heavy_run_outside_the_period_is_skipped_with_a_reason(
     tmp_path, store, monkeypatch, capsys, start, end, named
 ):
-    """Skipped and listed, and the sweep goes on with the normal runs (jms_kapps 112: until
-    2026-10-14 refused before the first run)."""
+    """Skipped and listed, and the sweep goes on with the normal runs."""
     spec = write_spec(tmp_path, SPEC)
     fabricated = FabricatedRuns()
     monkeypatch.setattr(sweep, "run_on_the_configured_store", fabricated)
@@ -350,8 +348,7 @@ def test_a_heavy_run_without_an_approval_is_skipped_with_a_reason(
 
 def test_a_sweep_skips_a_heavy_run_when_the_period_ends(tmp_path):
     """The period is checked again at each heavy run's start (`bench.run`): the sweep skips that
-    run and lists it, and nothing was sent for it (jms_kapps 112: until 2026-10-14 the sweep
-    stopped there)."""
+    run and lists it, and nothing was sent for it."""
     spec = read_spec(write_spec(tmp_path, SPEC))
     found = configurations(spec)
     chosen = [c for c in found if c.number == 10]
@@ -697,7 +694,7 @@ def test_cover_names_each_case_it_refuses(tmp_path):
 
 
 def test_no_file_of_the_repository_holds_the_key_of_a_shipped_spec():
-    """No test, CI job or example gives an approval that covers a real spec (jms_kapps 96): such an
+    """No test, CI job or example gives an approval that covers a real spec: such an
     approval would name the spec's SHA-256, which no tracked file holds."""
     root = find_repo_root(Path(__file__))
     keys = {spec_key(path): path.name for path in (EVALUATION / "specs").glob("*.toml")}
@@ -714,7 +711,7 @@ def test_no_file_of_the_repository_holds_the_key_of_a_shipped_spec():
 
 
 def test_no_text_of_the_harness_names_etienne_as_the_approver():
-    """Any person approves (jms_kapps 96). The clause about the server's admins stays."""
+    """Any person approves. The clause about the server's admins stays."""
     texts = {
         path.name: path.read_text(encoding="utf-8")
         for path in [
@@ -757,16 +754,16 @@ def test_the_draft_after_series_spec_has_no_heavy_cell():
 def test_a_heavy_cell_of_a_spec_with_the_precision_rule_is_skipped_without_an_approval(
     tmp_path, store, monkeypatch, capsys
 ):
-    """Under the precision rule (jms_kapps 101) the sweep still covers each heavy run on its
-    own: the draft after-series spec with heavy cells and no approval makes no run (jms_kapps
-    112: each is skipped and listed, where until 2026-10-14 the call was refused)."""
+    """Under the precision rule the sweep still covers each heavy run on its
+    own: the draft after-series spec with heavy cells and no approval makes no run:
+    each is skipped and listed."""
     text = re.sub(
         r"(?m)^prefill = .*$",
         'prefill = "none"  # no prefill files in a test',
         AFTER_SERIES.read_text(encoding="utf-8")
         .replace("heavy = false", "heavy = true")
         # The topology files from the shipped folder: no heavy run is refused before the first
-        # run any more, so each configuration resolves (jms_kapps 112).
+        # run any more, so each configuration resolves.
         .replace('"../topologies/', f'"{EVALUATION / "topologies"}/'),
     )
     assert "[precision]" in text and "heavy = true" in text

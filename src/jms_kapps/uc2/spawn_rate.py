@@ -6,9 +6,6 @@ spawn each time one is due at that rate, on a thread of its own, whether the spa
 ended or not, each with its origin and its destination left to the WarehouseManagementSystem,
 until the rate is set to 0. The timer has no wait of its own: how many spawns may be under way at
 once is the WarehouseManagementSystem's rule, which refuses a spawn beyond it (`wms`).
-(Changed on 2026-10-07, jms_kapps 51, decided by Etienne: "the WMS can spawn as fast as the
-hardware allows, with no wait of its own". Until then: "The timer below then spawns one box after
-another at that rate".)
 """
 
 from __future__ import annotations
@@ -45,17 +42,7 @@ class SpawnTimer:
     once, so the spawns started match the spawns due. A change of rate counts from the last due
     spawn: the next is due one new interval after it, or at once if that is past. The spawns under
     way when the rate is set to 0 still end. Where the process can start no more threads, a due
-    spawn runs on the timer's own thread, so that none is lost unrecorded. (Changed on 2026-10-07,
-    jms_kapps 51, decided by Etienne: "the WMS can spawn as fast as the hardware allows, with no
-    wait of its own". Until then: "Spawns one box after another at the rate in force, on a thread
-    of its own. The first box of a rate is spawned at once, and each next one an interval after
-    the one before it started, so a person who sets a rate sees a box at once. A spawn runs to its
-    end before the next one starts: one that takes longer than the interval delays the next, and
-    none overlap. A change of rate counts from the last spawn: the next box is due one new
-    interval after it, or at once if that is past. A spawn already under way when the rate is set
-    to 0 still ends." That a late timer starts the spawns that fell due meanwhile at once is the
-    build's reading of "spawn k of a rate is due k intervals after the first", and so is the spawn
-    on the timer's own thread where no thread starts.)
+    spawn runs on the timer's own thread, so that none is lost unrecorded.
 
     Args:
         spawn: Spawns one box, with its origin and its destination left to the
@@ -113,8 +100,7 @@ class SpawnTimer:
 
         The timer and its spawns run on daemon threads, which the end of the process would cut
         short, in the middle of a spawn: its transport would stay open with nobody to end it. So
-        the process stops the timer this way when it shuts down. (Changed on 2026-10-07, jms_kapps
-        51, decided by Etienne. Until then it waited "until a spawn under way has ended".)
+        the process stops the timer this way when it shuts down.
         """
         deadline = None if timeout is None else time.monotonic() + timeout
         with self._lock:
@@ -165,7 +151,6 @@ class SpawnTimer:
         except RuntimeError:
             # The process can start no more threads. The spawn runs on the timer's own thread
             # instead, which then waits for it, so that no spawn that was due is lost unrecorded.
-            # (The build's reading of jms_kapps 51: "no box is lost silently".)
             with self._lock:
                 self._under_way.discard(thread)
             logger.warning(

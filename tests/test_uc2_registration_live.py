@@ -40,7 +40,7 @@ WORKFLOWS = {
     FC.BoxTransportWorkflow: FC.BoxTransportCapability,
 }
 
-# The term the UC2 ontology had for a Convey workflow, until jms_kapps 41 took it out.
+# The term the UC2 ontology once had for a Convey workflow, taken out since.
 CONVEY_WORKFLOW = IRI("ConveyWorkflow", base=FC_NS)
 
 # A module registers its workflows just after its server has started; a shared store is slower.
@@ -88,7 +88,7 @@ def test_a_module_that_comes_online_registers_reserve_receive_and_its_box_transp
     """Paper claim 2 (§5.2): a module's workflows are each "instantiated when a module comes online
     and registered to the graph by the middleware". A module registers three: Reserve, Receive and
     the BoxTransportWorkflow, each realizing its capability, which the module provides. No module
-    registers a Convey: a module's convey is its own move since jms_kapps 40. Each endpoint lies
+    registers a Convey: a module's convey is its own move. Each endpoint lies
     under the address of the module's live service, where a peer calls it."""
     with participants(dataset) as party:
         for module in (M1, M2):

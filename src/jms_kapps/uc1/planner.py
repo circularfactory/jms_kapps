@@ -10,37 +10,41 @@ screwing resource's `:UnscrewingCapability`, creates the operation `queued` in o
 notifies that service — in that order, so a notification that fails leaves nothing of the operation
 in the graph. The planner looks up no address and calls no workflow itself.
 
-**The operation names three things**, and only two of them fit in that one commit. `:hasScrew` and
-`:hasWorkpiece` are the operation's own properties and go in `op.data`. `:hasOperation` belongs to
-the Screw, which already exists, and `issue_operation()` joins only creations nested in its block,
-not an update of another instance. The ontology declares `:hasOperation` the `owl:inverseOf`
-`:hasScrew`, so the store infers the back-link inside the operation's own commit, and the pair is
-never one-sided. The planner also writes it explicitly, in a second commit right after;
-explicit and inferred give one value. If that commit is refused, the inferred link stands, so the
-planner logs a warning and goes on rather than raising. An issuing call that accepts changes of
-its own, which kapps_ogm can already write (`OGM.commit(changes=[Create, Update])`), is
-kapps_semantic_middleware 480.
+**One press is one commit.** The operation names three things. `:concernsScrew` and `:concernsWorkpiece` are
+the operation's own properties and go in `op.data`. `:hasOperation` belongs to the Screw, which
+already exists, so the planner writes it with `op.update()`, the issuing call's update of an
+existing instance. The operation, its `queued` status and the Screw's explicit back-link are one
+write transaction: the store admits all of it or none of it, and a refusal leaves neither the
+operation nor the back-link in the graph. The ontology also declares `:hasOperation` the
+`owl:inverseOf` `:concernsScrew`, so a store whose ruleset infers inverses would hold the link anyway;
+explicit and inferred give one value.
 
 **A dispatch that finds no service is not a fault.** `issue_operation()` raises
 `OperationResolutionError` before its block and writes nothing, so the Screw has no operation. The
 planner records that and returns, because a Screw nobody can take must not raise at the caller.
-Every other error is a fault of this press and reaches the caller.
+
+**Nor is an operation that the store refuses.** Use case 1's shapes admit an unscrewing operation
+only for a Screw whose Screw type holds each of the seven values the attempt needs. The store
+checks the planner's commit, and a commit it refuses raises `ShaclValidationError` with the store's
+validation report: nothing was written, and nobody was notified. The planner records the Screw as
+refused, with the rules the report names, their messages and the report. Every other error is a
+fault of this press and reaches the caller.
 """
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from typing import Any
 
-from kapps_ogm import Update
 from kapps_semantic_middleware.errors import OperationResolutionError
-from kapps_triplestore_interface import IRI
+from kapps_semantic_middleware.validation_report import readable_results, rule_names
+from kapps_triplestore_interface import IRI, ShaclValidationError
 
 from jms_kapps.uc1.planner_memory import DONE, PlannerMemory
 from jms_kapps.uc1.vocabulary import JMS
 
-logger = logging.getLogger(__name__)
+# Why the entry of a Screw whose operation the store refused says it was refused.
+STORE_REFUSED = "the triple store refused the unscrewing operation"
 
 # How long one operation may take before the planner stops waiting for it. A lost notification
 # leaves a wait without a limit open forever, so every press passes one.
@@ -60,11 +64,12 @@ def dispatch(
 
     Returns:
         The handle of the issued Operation, on which the caller waits for its end, or None when no
-        live service realizes the capability. The Screw then has no operation, and nothing was
-        written. The handle carries the Operation's IRI as `iri`.
+        live service realizes the capability or the store refused the operation. The Screw then
+        has no operation, and nothing was written. The handle carries the Operation's IRI as `iri`.
 
     Raises:
-        Any error of the issuing call other than `OperationResolutionError`.
+        Any error of the issuing call other than `OperationResolutionError` and
+        `ShaclValidationError`.
     """
     try:
         with middleware.issue_operation(
@@ -73,41 +78,35 @@ def dispatch(
         ) as operation:
             # The Operation's own properties, as the middleware takes them: the IRI of the
             # property, and a list of values. One operation names one Screw and one workpiece.
-            operation.data[str(JMS.hasScrew)] = [{"id": str(screw)}]
-            operation.data[str(JMS.hasWorkpiece)] = [{"id": str(workpiece)}]
+            operation.data[str(JMS.concernsScrew)] = [{"id": str(screw)}]
+            operation.data[str(JMS.concernsWorkpiece)] = [{"id": str(workpiece)}]
+            # The Screw already exists, so its back-link is an update of an existing instance, in
+            # the Operation's own commit: admitted or refused together with the Operation.
+            operation.update(str(screw), {str(JMS.hasOperation): [operation.iri]})
     except OperationResolutionError as refusal:
         memory.refused(screw, why=str(refusal))
         return None
+    except ShaclValidationError as refusal:
+        memory.refused(
+            screw,
+            why=STORE_REFUSED,
+            rules=tuple(rule_names(refusal.report)),
+            messages=_messages(refusal.report),
+            report=refusal.report,
+        )
+        return None
 
-    _write_back_link(middleware, screw, operation.iri)
     memory.dispatched(screw, operation.iri)
     return operation
 
 
-def _write_back_link(middleware: Any, screw: IRI, operation: IRI) -> None:
-    """Write the Screw's `:hasOperation`, the counterpart of the operation's `:hasScrew`.
-
-    The store already inferred it from `:hasScrew` in the operation's own commit, because the
-    ontology declares the pair `owl:inverseOf`; this writes it explicitly too. A refusal here is
-    logged and does not raise: the inferred link stands, and the operation is under way.
-    """
-    try:
-        with middleware.commit(
-            entry=[
-                Update(
-                    instance_iri=screw,
-                    data={str(JMS.hasOperation): [{"id": str(operation)}]},
-                )
-            ]
-        ):
-            pass
-    except Exception as refusal:  # noqa: BLE001 - the press goes on, whatever the store said
-        logger.warning(
-            "%s holds no back-link to %s: %s. The operation is in the graph and under way.",
-            screw,
-            operation,
-            refusal,
-        )
+def _messages(report: str) -> tuple[str, ...]:
+    """What the rules of `report` say, each message once, in the order the reader gives them."""
+    messages: list[str] = []
+    for result in readable_results(report) or []:
+        if result.message is not None and result.message.short not in messages:
+            messages.append(result.message.short)
+    return tuple(messages)
 
 
 def unscrew_one(
@@ -126,9 +125,9 @@ def unscrew_one(
     middleware: that loop has to take the notification which ends the wait. The planner's process
     runs it in a worker thread.
 
-    **Nothing here raises for the three ends the ticket names.** A dispatch that finds no live
-    screwing resource, an operation that ends `failed`, and a wait that passes its timeout each
-    keep their entry in `memory`. Only an error that is none of these reaches the caller.
+    **Nothing here raises for the ends a press can have.** A dispatch that finds no live
+    screwing resource, an operation the store refuses, an operation that ends `failed`, and a wait
+    that passes its timeout each keep their entry in `memory`. Only an error that is none of these reaches the caller.
 
     Args:
         middleware: The planner's middleware instance.
@@ -137,8 +136,9 @@ def unscrew_one(
         memory: What the planner knows, which this writes to.
         timeout: How long to wait for the operation to end, in seconds. None waits without a
             limit, which a lost notification can make forever.
-        read_outcome: Reads the outcome the detector wrote on an operation that ended `done`.
-            Left out, nothing is read and no outcome is recorded.
+        read_outcome: Reads the outcome the detector wrote on an operation, at every end: an
+            operation that ended `failed` holds one too, when the outcome is a failure outcome. Left
+            out, nothing is read and no outcome is recorded.
         read_why: Reads why an operation ended `failed`. Left out, nothing is read and the
             failure is recorded without a reason.
     """
@@ -152,9 +152,9 @@ def unscrew_one(
     except TimeoutError as expiry:
         memory.timed_out(screw, why=str(expiry))
         return
+    outcome = read_outcome(operation.iri) if read_outcome else None
     if status == DONE:
-        outcome = read_outcome(operation.iri) if read_outcome else None
         memory.ended(screw, DONE, outcome=outcome)
     else:
         why = read_why(operation.iri) if read_why else None
-        memory.ended(screw, status, why=why)
+        memory.ended(screw, status, outcome=outcome, why=why)

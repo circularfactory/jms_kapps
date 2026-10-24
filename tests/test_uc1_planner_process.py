@@ -33,6 +33,9 @@ class Handle:
         self.data: dict[str, object] = {}
         self._holds = holds
 
+    def update(self, instance_iri: str, data: dict[str, object]) -> None:
+        """The issuing call's update of an existing instance, which the planner stages."""
+
     def wait_ended(self, timeout: float | None = None) -> str:
         time.sleep(self._holds)
         return DONE
@@ -51,10 +54,6 @@ class Middleware:
         yield Handle(
             IRI(f"UnscrewingOperation{self.dispatches}", base=JMS_NS), self._holds
         )
-
-    @contextmanager
-    def commit(self, *instances, entry=(), **rest):  # type: ignore[no-untyped-def]
-        yield None
 
 
 class Mapper:
@@ -228,3 +227,98 @@ def test_the_offer_reads_the_grinders_and_their_screws_at_start(
 
     assert offer.screws() == OFFERED
     assert offer.product_of(SCREW) == PRODUCT
+
+
+def test_the_planner_logs_an_operation_it_does_not_take_at_debug(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The line "does nothing with" is a DEBUG record: a run's terminal, which shows INFO, stays
+    quiet, and the activity page of the planner does not carry it."""
+    from types import SimpleNamespace
+
+    from jms_kapps.uc1.planner_process import build
+
+    monkeypatch.setattr("jms_kapps.uc1.planner_process.read_offer", lambda ogm: OFFERED)
+    middleware = build(SimpleNamespace(db=None), "127.0.0.1", 8000)  # type: ignore[arg-type]
+
+    with caplog.at_level("DEBUG", logger="jms_kapps.uc1.planner_process"):
+        middleware._notification_handler(SimpleNamespace(id=str(OTHER)))
+
+    (record,) = [r for r in caplog.records if "does nothing with" in r.getMessage()]
+    assert record.levelname == "DEBUG"
+    assert OTHER.fragment in record.getMessage()
+
+
+def test_the_planner_serves_the_pages_that_its_row_on_the_page_links(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The API docs, the activity page and the dashboard with its Logs tab answer."""
+    from types import SimpleNamespace
+
+    from fastapi.testclient import TestClient
+
+    from jms_kapps.uc1.planner_process import build
+
+    monkeypatch.setattr("jms_kapps.uc1.planner_process.read_offer", lambda ogm: OFFERED)
+    client = TestClient(build(SimpleNamespace(db=None), "127.0.0.1", 8000).app)  # type: ignore[arg-type]
+
+    for path in ("docs", "activity", "dashboard", "dashboard?tab=Logs"):
+        assert client.get("/" + path).status_code == 200, path
+
+
+def test_the_record_route_serves_each_pressed_screw_as_json() -> None:
+    """What the dashboard box shows, read-only: each Screw's status and, for one the store
+    refused, the rules, their messages and the report."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from jms_kapps.uc1.planner_process import PRESSES_ROUTE, mount_presses
+
+    memory = PlannerMemory()
+    memory.pressed(SCREW)
+    memory.dispatched(SCREW, IRI("UnscrewingOperation1", base=JMS_NS))
+    memory.ended(SCREW, DONE, outcome="ScrewIntact")
+    memory.pressed(OTHER)
+    memory.refused(
+        OTHER,
+        why="the triple store refused the unscrewing operation",
+        rules=("UnscrewingOperationScrewShape at UnscrewingOperation2",),
+        messages=("An unscrewing operation concerns exactly one Screw.",),
+        report="<the report>",
+    )
+    app = FastAPI()
+    mount_presses(app, memory)
+
+    answer = TestClient(app).get(PRESSES_ROUTE)
+
+    assert answer.status_code == 200
+    done, refused = answer.json()["screws"]
+    assert done["screw"] == str(SCREW)
+    assert (done["status"], done["outcome"]) == ("done", "ScrewIntact")
+    assert done["operation"] == str(IRI("UnscrewingOperation1", base=JMS_NS))
+    assert (done["rules"], done["messages"], done["report"]) == ([], [], None)
+    assert refused["screw"] == str(OTHER)
+    assert refused["status"] == "refused"
+    assert refused["operation"] is None
+    assert refused["rules"] == ["UnscrewingOperationScrewShape at UnscrewingOperation2"]
+    assert refused["messages"] == [
+        "An unscrewing operation concerns exactly one Screw."
+    ]
+    assert refused["report"] == "<the report>"
+    assert refused["why"] == "the triple store refused the unscrewing operation"
+
+
+def test_the_planner_serves_its_record_route(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from fastapi.testclient import TestClient
+
+    from jms_kapps.uc1.planner_process import PRESSES_ROUTE, build
+
+    monkeypatch.setattr("jms_kapps.uc1.planner_process.read_offer", lambda ogm: OFFERED)
+    client = TestClient(build(SimpleNamespace(db=None), "127.0.0.1", 8000).app)  # type: ignore[arg-type]
+
+    answer = client.get(PRESSES_ROUTE)
+
+    assert answer.status_code == 200
+    assert answer.json() == {"screws": []}

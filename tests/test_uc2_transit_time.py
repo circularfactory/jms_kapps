@@ -1,4 +1,4 @@
-"""A module's transit time is read from the graph, once, when its process starts (jms_kapps 8).
+"""A module's transit time is read from the graph, once, when its process starts.
 
 Offline: the graph is a fake that answers the one read, and no store, middleware or process is
 started. The live runs are in `test_uc2_transit_time_live.py`.

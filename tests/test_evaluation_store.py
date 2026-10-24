@@ -1,5 +1,4 @@
-"""The store of a run of the measurement harness (jms_kapps 47, the store decided by Etienne on
-2026-10-11, jms_kapps 55).
+"""The store of a run of the measurement harness.
 
 A run creates its own repository, `eval-` plus its run id, from jms_kapps' repository config, with
 the shapes or as the twin without them, and deletes only that repository. The guard refuses every
@@ -114,7 +113,7 @@ def test_no_request_names_a_repository_the_guard_refuses(name):
     assert set(store.repositories) == {"jms-kapps", "kapps-demo", "Tests"}
 
 
-# The guard allows the read-only monitoring view of any repository (jms_kapps 95), the protected
+# The guard allows the read-only monitoring view of any repository, the protected
 # ones included, and nothing else outside the run's own `eval-` repository: one test for each case.
 
 OWN = "eval-20261011-120000-ab12"

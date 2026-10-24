@@ -20,11 +20,6 @@ it once at its start and then every second, while the Launcher serves its page, 
 open or not, and keeps what it answered; `Launcher.state()` renders that, so a page that polls
 adds no store request. It keeps the text of the query exactly as it handed it to the store, and
 the page shows that text. A read that fails keeps the boxes the last one read, and says why.
-
-(Added on 2026-10-10, jms_kapps 23, decided by Etienne on 2026-10-05: "the launcher displays the
-sparqlquery that it runs by itself to get all current boxes that are not in the wms and their
-current module they are on, so that [anyone] can run the query by himself and gets presented a
-list.")
 """
 
 from __future__ import annotations
@@ -68,7 +63,7 @@ SELECT ?box ?module ?transport ?status WHERE {{
   FILTER NOT EXISTS {{ ?module a {_term(FC.WarehouseManagementSystem)} }}
   OPTIONAL {{
     ?box {_term(FC.hasTransport)} ?transport .
-    OPTIONAL {{ ?transport {_term(SVC.operationStatus)} ?status }}
+    OPTIONAL {{ ?transport {_term(SVC.hasOperationStatus)} ?status }}
   }}
 }}
 ORDER BY ?box

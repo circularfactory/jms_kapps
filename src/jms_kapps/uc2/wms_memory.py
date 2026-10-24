@@ -51,8 +51,7 @@ class KnownTransport:
 
 def _explained(reason: str, report: str | None) -> str:
     """`reason`, followed by the rules the store's `report` names when the store refused, and by
-    what those rules say. (Changed on 2026-10-06, jms_kapps 41, decided by Etienne: "Last spawns"
-    shows the store's reason. Until then it ended with the rules.)"""
+    what those rules say."""
     return reason + rules_clause(report) + messages_clause(report) if report else reason
 
 
@@ -68,14 +67,11 @@ class WmsMemory:
     the transports it opened with their last known status, and the boxes it holds.
 
     It knows a transport's status from its own commits, and from the notification that the
-    transport ended. A transport it opened on its origin stays `queued` here until then, since
+    transport ended. A transport it opened on its origin stays `queued` here until it ends, since
     only the module it is assigned to writes it meanwhile, unless the origin cannot be told of
     it: then the WarehouseManagementSystem ends it `failed` itself. It holds a box only once a
     notification brings the box back with its transport done: it creates each box on the box's
-    origin. (Changed on 2026-10-06, jms_kapps 41, decided by Etienne. Until then it held a box
-    "from the moment it
-    opens the box's transport until it hands the box to the origin, and again once a
-    notification brings the box back".)
+    origin.
 
     It keeps every transport and every box it holds for as long as it runs, a few hundred bytes
     each; a reader asks for the newest few.
@@ -112,8 +108,7 @@ class WmsMemory:
             return self._answered
 
     def opened(self, transport: Transport) -> None:
-        """It opened `transport`, with its box on the box's origin. (Changed on 2026-10-06,
-        jms_kapps 41, decided by Etienne. Until then the box was "in its own possession".)"""
+        """It opened `transport`, with its box on the box's origin."""
         with self._lock:
             self._transports[transport.operation] = KnownTransport(transport)
 

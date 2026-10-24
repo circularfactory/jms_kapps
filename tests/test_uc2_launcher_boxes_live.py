@@ -1,4 +1,4 @@
-"""The Launcher's query for the boxes on the station, on a seeded dataset (jms_kapps 23).
+"""The Launcher's query for the boxes on the station, on a seeded dataset.
 
 The dataset is the one `--dataset` names, which the test clears and seeds: the cross, Box 1
 on Module 1 and Box 2 on Module 3, each with its transport running, and Box 3 back in the
@@ -49,7 +49,7 @@ def test_on_a_seeded_dataset_the_query_gives_exactly_the_boxes_on_modules(db):
             (done, FC.hasBox, box_iri(3)),
             (done, FC.hasOrigin, m1),
             (done, FC.hasDestination, m4),
-            (done, SVC.operationStatus, Literal(OperationStatus.DONE)),
+            (done, SVC.hasOperationStatus, Literal(OperationStatus.DONE)),
         ]
     )
     boxes = StationBoxes(db)

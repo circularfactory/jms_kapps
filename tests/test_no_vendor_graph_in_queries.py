@@ -6,9 +6,7 @@ exceptions are listed here by file.
 
 The store's own graphs include those of GraphDB's history plugin, one for each point in time,
 whose namespace also holds the plugin's switch: the one module that uses the plugin, the vendor
-exception Etienne decided on 2026-10-06, is listed here, so that no other file names it. (Changed
-on 2026-10-10, jms_kapps 22: until then the check knew the pseudo-graphs of the explicit and the
-implicit statements alone, and listed no exception.)
+exception, is listed here, so that no other file names it.
 """
 
 from __future__ import annotations

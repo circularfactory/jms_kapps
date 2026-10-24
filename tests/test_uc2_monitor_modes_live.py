@@ -1,5 +1,5 @@
 """The monitor's two modes in a real run: the real `jms-uc2` on the cross, and the monitor's page in a
-headless browser, opened through the Launcher's port as a person opens it (jms_kapps 24).
+headless browser, opened through the Launcher's port as a person opens it.
 
 It starts and stops `jms-uc2` with the helpers of `test_uc2_running_system.py`, against the
 dataset `--dataset` names, which it clears. It imports them from that test module, unlike
@@ -42,6 +42,7 @@ from playwright.sync_api import Page, expect
 from test_uc2_running_system import (
     CROSS_PROCESSES,
     arm,
+    assert_monitor_mode,
     back_in_the_wms,
     monitor_state,
     running,
@@ -103,11 +104,17 @@ def test_the_monitor_page_switches_between_graph_and_streams_and_graph_only_in_a
         state = run.wait_until_live()
         wms = through_the_launcher(state, "wms")
         monitor = through_the_launcher(state, "monitor")
+        # The Launcher starts the monitor in "graph only": the page shows it, and
+        # the switch at Refusals turns it on.
+        assert_monitor_mode(monitor, "graph only")
         page.goto(f"{monitor}/")
         refusals = page.locator("#refusals article.refusal")
-        graph_only = page.get_by_role("radio", name="graph only")
-        graph_and_streams = page.get_by_role("radio", name="graph + streams")
-        expect(graph_and_streams).to_be_checked()
+        follow = page.get_by_role(
+            "checkbox", name="Follow the services' handover event streams"
+        )
+        expect(follow).not_to_be_checked()
+        follow.check()
+        expect(follow).to_be_checked()
 
         # Box A: Module 5 refuses to complete it without releasing it.
         arm(M5, "complete-without-releasing")
@@ -128,17 +135,17 @@ def test_the_monitor_page_switches_between_graph_and_streams_and_graph_only_in_a
         )
         page.screenshot(path=tmp_path / "1-graph-and-streams.png", full_page=True)
 
-        graph_only.check()
+        follow.uncheck()
 
         eventually(lambda: monitor_state(monitor)["reading"]["mode"] == "graph only")
         switched_at = time.monotonic()
         expect(refusals).to_have_count(0)
         expect(page.locator("#refusals")).to_contain_text(
-            "a refused write leaves no trace in the graph"
+            "a refused write leaves no trace in the knowledge graph"
         )
         streams = page.locator('#queries article.query[data-read="streams"]')
         expect(streams.locator(".every")).to_have_text("not sent in graph only")
-        interval = page.get_by_label("Read the graph every")
+        interval = page.get_by_label("Read the knowledge graph every")
         interval.fill("2")
         interval.press("Enter")
         eventually(lambda: monitor_state(monitor)["reading"]["graph_seconds"] == 2.0)
@@ -163,7 +170,7 @@ def test_the_monitor_page_switches_between_graph_and_streams_and_graph_only_in_a
         assert query(monitor, "streams")["sent"] == streams_last_sent
         page.screenshot(path=tmp_path / "3-graph-only-box-back.png", full_page=True)
 
-        graph_and_streams.check()
+        follow.check()
 
         eventually(
             lambda: query(monitor, "streams")["sent"] != streams_last_sent, timeout=10

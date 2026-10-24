@@ -53,8 +53,7 @@ class _PageServer(uvicorn.Server):
     a stream open through the Launcher's port, as an activity page or a dashboard's Logs tab, makes
     that wait last until its stream ends, up to two seconds. Once uvicorn has shut down, it puts
     back the handlers it found and raises the signal again. Here it does neither: its wait for the
-    open streams keeps its bound, `GRACEFUL_SHUTDOWN_SECONDS`, whatever signals follow (jms_kapps
-    70).
+    open streams keeps its bound, `GRACEFUL_SHUTDOWN_SECONDS`, whatever signals follow.
     """
 
     @contextlib.contextmanager
@@ -79,14 +78,13 @@ def run(
     convey a box (which is the default of the Launcher page's field too), and each module waiting
     `retry_seconds` before it asks an occupied or reserved module again. The first launch runs the
     modules with the module strategy `module_strategy` and the WarehouseManagementSystem with the
-    WMS strategy `wms_strategy`, which the Launcher page's two pickers then start at (added on
-    2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07). With `collect_history`, the first
+    WMS strategy `wms_strategy`, which the Launcher page's two pickers then start at. With
+    `collect_history`, the first
     launch's reset turns on the store's history collection, and the Launcher page's checkbox
-    "collect history" then starts on (added on 2026-10-10, jms_kapps 22, decided by Etienne on
-    2026-10-07). Each module of a launch that names no deadlock alarm time raises the alarm for a
+    "collect history" then starts on. Each module of a launch that names no deadlock alarm time
+    raises the alarm for a
     box that has waited `deadlock_alarm_seconds` for a Reserve, which is the default of the
-    Launcher page's field "deadlock alarm (s)" too (added on 2026-10-11, jms_kapps 77, decided by
-    Etienne).
+    Launcher page's field "deadlock alarm (s)" too.
 
     Returns the exit code.
     """
@@ -114,6 +112,7 @@ def run(
         print(f"jms-uc2: port {LAUNCHER_PORT} is not free: {error}", file=sys.stderr)
         return 1
 
+    address = f"http://{LAUNCHER_HOST}:{LAUNCHER_PORT}/"
     launcher = Launcher(
         graph=TripleStoreGraph(db),
         dataset=dataset,
@@ -121,6 +120,7 @@ def run(
             resource, dataset, retry_seconds=retry_seconds
         ),
         wms_command=wms_command(dataset),
+        page_address=address,
         monitor_command=monitor_command(dataset),
         transit_seconds=transit_seconds,
         module_strategy=module_strategy,
@@ -134,7 +134,6 @@ def run(
     # The page's open connections are bounded as the children's are, because every child is
     # stopped only once the page's server has shut down.
     server = _PageServer(server_config(create_app(launcher)))
-    address = f"http://{LAUNCHER_HOST}:{LAUNCHER_PORT}/"
     launching = True
 
     def begin(signum: int) -> None:
@@ -154,7 +153,6 @@ def run(
             print(f"Seeding {dataset} with the topology {topology!r}", flush=True)
             launcher.launch(chosen, name=topology, force=force)
             launching = False
-            print(f"\nThe Launcher page is at {address}", flush=True)
             server.run(sockets=[sock])
         except KeyboardInterrupt:
             # A Ctrl+C during the launch. A clean stop is not an error, so it does not read like

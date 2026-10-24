@@ -1,24 +1,35 @@
-"""Offline tests of UC1's page: the rendering, the routes, the server on a bound socket, and
-the page-port guard of `jms-uc1`.
+"""Offline tests of UC1's page: the rendering, the routes, the help texts, the block of addresses
+for the terminal, the server on a bound socket, and the page-port guard of `jms-uc1`.
 
-No GraphDB, no InfluxDB, no network except a bound local socket José of the page itself. The
-snapshots are hand-made `ChildSnapshot`s, with all fields. The page's stop is checked on a real
-`PageServer` over a socket bound to port 0.
+No GraphDB, no InfluxDB, no network except a bound local socket of the page itself. The snapshots
+are hand-made `ChildSnapshot`s, with all fields. The page's stop is checked on a real `PageServer`
+over a socket bound to port 0. The page in a browser: `test_uc1_page_browser.py`.
 """
 
 from __future__ import annotations
 
+import html
+import re
 import socket
+import sys
+from html.parser import HTMLParser
+from pathlib import Path
 from urllib.parse import quote
 
 import httpx
 import pytest
+from _uc1_lists import ListStore
 from fastapi.testclient import TestClient
 from kapps_triplestore_interface import IRI
 
+import jms_kapps.uc1.page
+import jms_kapps.uc2.launcher
 from jms_kapps.common.process import bind_socket
-from jms_kapps.common.supervision import ChildSnapshot
-from jms_kapps.uc1.page import PageServer, build_app, render
+from jms_kapps.common.supervision import ChildSnapshot, Supervisor
+from jms_kapps.uc1.page import PageServer, address_block, build_app, render
+from jms_kapps.uc1.page_lists import LEARNED_VALUES, OPERATIONS, PageLists
+
+NAMES = ["Anomaly detector", "Screwing resource", "Learner", "Planner"]
 
 
 def _child(
@@ -27,71 +38,218 @@ def _child(
     state: str = "live",
     address: str | None = None,
     resource: IRI | None = None,
+    output: list[str] | None = None,
+    pid: int = 1,
+    has_service: bool = True,
 ) -> ChildSnapshot:
     """One child of the page's table, with all the fields a `ChildSnapshot` has."""
     return ChildSnapshot(
-        resource=resource or IRI(f"http://example.org/test#{quote(name, safe='')}"),
+        resource=resource or IRI(f"http://example.org/test#{quote(name.replace(' ', ''), safe='')}"),
         name=name,
         state=state,
-        pid=1,
-        command="",
-        output=[],
+        pid=pid,
+        command="python -m x",
+        output=output or [],
         address=address,
         unconfirmed_for=None,
         stoppable=False,
+        why_failed=None,
+        has_service=has_service,
     )
 
 
-def test_render_has_one_card_per_child_in_order() -> None:
-    """Each child is one card, in the given order, and the planner's call to action links to its
-    dashboard."""
-    children = [
-        _child("Planner", address="http://127.0.0.1:1234/"),
-        _child("Detector", address=None),
+def _four() -> list[ChildSnapshot]:
+    return [
+        _child(name, address=f"http://127.0.0.1:{9000 + i}/", pid=100 + i)
+        for i, name in enumerate(NAMES)
     ]
-    services = {
-        children[0].resource: IRI("http://example.org/test#PlannerService"),
-        children[1].resource: IRI("http://example.org/test#DetectorService"),
-    }
-
-    page = render(children, services)
-
-    assert page.count('<div class="card participant">') == 2
-    assert page.index("Planner") < page.index("Detector")
-    assert "Press <strong>Unscrew</strong>" in page
-    assert "http://127.0.0.1:1234/dashboard" in page
-
-    # The middleware line shows the service class and the address.
-    assert "PlannerService" in page
-    assert "http://127.0.0.1:1234/" in page
 
 
-def test_render_shows_resource_and_middleware() -> None:
-    """A card names the local name of its resource; a child without an address shows 'not yet
-    registered', and one without a service shows '—'."""
-    child = _child("Planner", resource=IRI("http://example.org/test#Planner1"))
-    services = {child.resource: IRI("http://example.org/test#PlannerService")}
+class _Rows(HTMLParser):
+    """The process rows of a rendered page: for each, its cells' text and its links."""
 
-    page = render([child], services)
+    def __init__(self) -> None:
+        super().__init__()
+        self.rows: list[dict] = []
+        self._row: dict | None = None
+        self._cell = -1
+        self._link: str | None = None
 
-    assert "Planner1" in page
-    assert "PlannerService" in page
-    assert "not yet registered" in page
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "tr" and "data-resource" in a and "output" not in a.get("class", ""):
+            self._row = {"resource": a["data-resource"], "cells": ["", "", "", ""], "links": []}
+            self.rows.append(self._row)
+            self._cell = -1
+        elif self._row is not None and tag == "td":
+            self._cell += 1
+        elif self._row is not None and tag == "a":
+            self._link = a["href"]
+            self._row["links"].append([a["href"], ""])
 
-    orphan = _child(
-        "Detector",
-        resource=IRI("http://example.org/test#Detector1"),
-        address="http://127.0.0.1:9999/",
-    )
-    page2 = render([orphan], {})
-    assert '<dd class="mono">Detector1</dd>' in page2
-    assert "http://127.0.0.1:9999/" in page2
+    def handle_endtag(self, tag):
+        if tag == "tr":
+            self._row = None
+        elif tag == "a":
+            self._link = None
+
+    def handle_data(self, data):
+        if self._row is not None and 0 <= self._cell < 4:
+            self._row["cells"][self._cell] += data
+            if self._link is not None:
+                self._row["links"][-1][1] += data
+
+
+def _rows(page: str) -> list[dict]:
+    parser = _Rows()
+    parser.feed(page)
+    return parser.rows
+
+
+def test_render_has_one_row_per_child_in_order_with_name_state_and_pid() -> None:
+    """Each child is one row, in the given order, with its name, its state and its PID."""
+    children = [
+        _child("Planner", state="live", pid=7, address="http://127.0.0.1:1234/"),
+        _child("Detector", state="starting", pid=8),
+    ]
+
+    rows = _rows(render(children))
+
+    assert [r["cells"][:3] for r in rows] == [
+        ["Planner", "live", "7"],
+        ["Detector", "starting", "8"],
+    ]
+
+
+def test_each_link_of_a_row_points_at_the_page_of_the_process_it_names() -> None:
+    """API docs, activity, dashboard and logs, each through the page's own port under the path of
+    its own row's process, relative to the page, and the logs link opens the dashboard's Logs
+    tab."""
+    children = _four()
+
+    rows = _rows(render(children))
+
+    for child, row in zip(children, rows, strict=True):
+        base = f"p/{child.resource.fragment}"
+        assert row["links"] == [
+            [f"{base}/docs", "API docs"],
+            [f"{base}/activity", "activity"],
+            [f"{base}/dashboard", "dashboard"],
+            [f"{base}/dashboard?tab=Logs", "logs"],
+        ]
+    # The same links in the state route, from the same table.
+    state = TestClient(build_app(lambda: children)).get("/api/state").json()
+    for child, process in zip(children, state["processes"], strict=True):
+        assert [(link["label"], link["href"]) for link in process["links"]] == [
+            (label, href) for href, label in _rows(render([child]))[0]["links"]
+        ]
+
+
+def test_a_row_has_no_links_before_its_process_has_an_address() -> None:
+    (row,) = _rows(render([_child("Planner", address=None)]))
+
+    assert row["links"] == []
+
+
+def test_the_output_of_a_process_is_in_the_page_and_hidden_until_clicked() -> None:
+    page = render([_child("Planner", output=["one", "two <b>"])])
+
+    assert "<pre>one\ntwo &lt;b&gt;</pre>" in page
+    assert re.search(r'<tr class="output"[^>]* hidden>', page)
+
+
+def test_the_page_has_no_refresh_of_its_own_and_loads_its_script_from_its_static_folder() -> None:
+    page = render(_four())
+
+    assert "http-equiv" not in page
+    assert '<script src="static/page.js"></script>' in page
+    assert '<link rel="stylesheet" href="static/style.css">' in page
+    assert "<script>" not in page
+
+
+def test_what_to_do_is_visible_with_its_two_steps_and_names_a_dashboard_in_each() -> None:
+    """The section has no `details` around its steps, and each step links the dashboards where
+    its result shows."""
+    page = render(_four())
+    section = page.split('<section id="what-to-do">')[1].split("</section>")[0]
+    steps = re.findall(r"<li>(.*?)</li>", section, re.DOTALL)
+
+    assert len(steps) == 2
+    before_details = section.split("<details>")[0]
+    assert before_details.count("<li>") == 2
+    assert "Screw1" in steps[0] and "Screw2" in steps[1]
+    for step in steps:
+        assert 'data-dashboard-of="Planner"' in step
+        assert 'data-dashboard-of="Anomaly detector"' in step
+    assert 'data-dashboard-of="Learner"' in steps[0]
+    assert 'href="p/Planner/dashboard"' in steps[0]  # the planner's
+
+
+class _Text(HTMLParser):
+    """The text of every `p.intro`, and of every `p` and `summary` of the page."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.intros: list[str] = []
+        self.helps: list[str] = []
+        self._in: str | None = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "p" and "intro" in dict(attrs).get("class", ""):
+            self._in = "intro"
+            self.intros.append("")
+        elif tag in ("p", "summary"):
+            self._in = "help"
+            self.helps.append("")
+
+    def handle_endtag(self, tag):
+        if tag in ("p", "summary"):
+            self._in = None
+
+    def handle_data(self, data):
+        if self._in == "intro":
+            self.intros[-1] += data
+        elif self._in == "help":
+            self.helps[-1] += data
+
+
+def _sentences(text: str) -> list[str]:
+    return [s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s]
+
+
+def test_no_section_has_an_intro_of_more_than_two_sentences() -> None:
+    parser = _Text()
+    parser.feed(render(_four()))
+
+    assert len(parser.intros) == 4
+    for intro in parser.intros:
+        assert 1 <= len(_sentences(intro)) <= 2, intro
+
+
+def test_the_help_texts_name_no_reader_state_no_purpose_and_compare_nothing() -> None:
+    parser = _Text()
+    parser.feed(render(_four()))
+    texts = " ".join(parser.intros + parser.helps).lower()
+
+    for words in (
+        r"\byou\b",
+        r"\buser\b",
+        r"\bperson\b",
+        r"\breader\b",
+        r"this page",
+        r"\bno longer\b",
+        r"\bnow\b",
+        r"\binstead\b",
+        r"\bearlier\b",
+        r"\bpreviously\b",
+    ):
+        assert not re.search(words, texts), words
 
 
 def test_render_escapes_every_value() -> None:
     """A name or a state that holds markup appears escaped, and the page holds no raw tag from
     it. An IRI cannot hold markup: the IRI class refuses it."""
-    children = [_child("<b>x</b>", state='<i>"quoted"</i>')]
+    children = [_child("<b>x</b>", state='<i>"quoted"</i>', output=["<script>"])]
 
     page = render(children)
 
@@ -99,27 +257,28 @@ def test_render_escapes_every_value() -> None:
     assert "<b>x</b>" not in page
     assert "&lt;i&gt;&quot;quoted&quot;&lt;/i&gt;" in page
     assert "<i>" not in page
+    assert "<script>" not in page
 
 
-def test_render_has_no_planner_link_without_address() -> None:
-    """Without a planner address there is no Unscrew button."""
-    children = [_child("Planner", address=None)]
-    page = render(children)
-    assert "Open the planner's dashboard</a>" not in page
+def test_the_planner_button_shows_with_its_address_and_hides_without() -> None:
+    with_address = render([_child("Planner", address="http://127.0.0.1:1234/")])
+    without = render([_child("Planner", address=None)])
+
+    assert 'href="p/Planner/dashboard" target="_blank" rel="noopener" data-dashboard-of="Planner" class="button primary"' in with_address
+    assert re.search(r"<a [^>]*data-dashboard-of=\"Planner\" class=\"button primary\"[^>]* hidden>", without)
 
 
 def test_routes_answer_over_the_test_client() -> None:
-    """`GET /` answers 200 with text/html; `GET /api/state` answers the six keys per process,
+    """`GET /` answers 200 with text/html; `GET /api/state` answers the keys per process,
     including the resource IRI and the service class IRI or null."""
     children = [
-        _child("Planner", address="http://127.0.0.1:1234/"),
+        _child("Planner", address="http://127.0.0.1:1234/", output=["hello"]),
         _child("Detector", address=None),
     ]
     services = {
         children[0].resource: IRI("http://example.org/test#PlannerService"),
     }
-    app = build_app(lambda: children, services)
-    client = TestClient(app)
+    client = TestClient(build_app(lambda: children, services))
 
     page = client.get("/")
     assert page.status_code == 200
@@ -132,15 +291,176 @@ def test_routes_answer_over_the_test_client() -> None:
     assert set(planner) == {
         "name",
         "state",
+        "pid",
+        "command",
+        "output",
         "address",
         "dashboard",
+        "links",
+        "unconfirmed_for",
         "resource",
         "service",
     }
+    assert planner["output"] == ["hello"]
+    assert planner["dashboard"] == "p/Planner/dashboard"
     assert planner["resource"] == str(children[0].resource)
     assert planner["service"] == "http://example.org/test#PlannerService"
-    assert state["processes"][1]["resource"] == str(children[1].resource)
+    assert state["processes"][1]["links"] == []
     assert state["processes"][1]["service"] is None
+
+
+def test_the_static_files_are_served_next_to_the_page() -> None:
+    client = TestClient(build_app(list))
+
+    assert client.get("/static/style.css").status_code == 200
+    assert client.get("/static/page.js").status_code == 200
+    assert client.get("/static/sfb-logo.png").content.startswith(b"\x89PNG")
+
+
+class CountingReader:
+    """The supervisor's reader of the store, which counts its calls."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __call__(self, workflows):  # type: ignore[no-untyped-def]
+        self.calls += 1
+        return []
+
+
+def test_a_poll_of_the_page_sends_no_request_to_the_store() -> None:
+    """The page reads the supervisor's snapshot, which is its memory: polling `/` and
+    `/api/state` many times never calls the supervisor's reader of the store."""
+    reader = CountingReader()
+    supervisor = Supervisor(reader, echo=lambda line: None, stop_timeout=5.0)
+    supervisor.spawn(
+        IRI("http://example.org/test#Sleeper"),
+        "Sleeper",
+        [sys.executable, "-c", "import time; time.sleep(60)"],
+    )
+    try:
+        client = TestClient(build_app(supervisor.snapshot))
+        for _ in range(5):
+            assert client.get("/").status_code == 200
+            (process,) = client.get("/api/state").json()["processes"]
+            assert process["name"] == "Sleeper"
+    finally:
+        supervisor.stop_all()
+
+    assert reader.calls == 0
+
+
+ROW = re.compile(r"  (.+?)\s{2,}(http\S*|no address yet)")
+
+
+def test_the_block_of_addresses_lists_the_page_and_each_dashboard_between_blank_lines() -> None:
+    """Each dashboard through the page's own port, so that one forwarded port reaches each."""
+    block = address_block("http://127.0.0.1:8091/", _four())
+
+    assert block.startswith("\nPages of the run:\n")
+    assert block.endswith("\n") and not block.endswith("\n\n")
+    rows = {m[1].strip(): m[2] for line in block.splitlines() if (m := ROW.match(line))}
+    assert rows == {
+        "Use case 1 page": "http://127.0.0.1:8091/",
+        "Anomaly detector dashboard": "http://127.0.0.1:8091/p/Anomalydetector/dashboard",
+        "Screwing resource dashboard": "http://127.0.0.1:8091/p/Screwingresource/dashboard",
+        "Learner dashboard": "http://127.0.0.1:8091/p/Learner/dashboard",
+        "Planner dashboard": "http://127.0.0.1:8091/p/Planner/dashboard",
+    }
+    # Two columns: every address starts at the same place.
+    assert len({line.index("http") for line in block.splitlines() if "http" in line}) == 1
+
+
+def test_a_process_without_an_address_shows_that_in_the_block() -> None:
+    block = address_block("http://127.0.0.1:8091/", [_child("Planner", address=None)])
+
+    assert "Planner dashboard  no address yet" in block
+
+
+def test_a_device_has_no_dashboard_row_in_the_block_but_says_what_it_is() -> None:
+    """The robot controller stand-in speaks only MQTT: its row names no dashboard and does not
+    wait for an address that never comes."""
+    robot = _child("Robot controller", address=None, has_service=False)
+    block = address_block(
+        "http://127.0.0.1:8091/",
+        [_child("Planner", address="http://127.0.0.1:1234/"), robot],
+    )
+
+    assert re.search(r"  Robot controller\s{2,}no address: a device, it speaks only MQTT$", block, re.MULTILINE)
+    assert "no address yet" not in block
+    assert "Robot controller dashboard" not in block
+
+
+def test_the_run_prints_the_block_after_the_start(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`main` prints the block of the supervisor's four children once they are ready, set apart
+    by a blank line before and after, and before the line that says the run is on."""
+    from jms_kapps.uc1 import __main__ as main_module
+
+    children = _four()
+
+    class FakeSupervisor:
+        def __init__(self, reader, service_of=None) -> None:
+            pass
+
+        def begin_stop(self) -> None:
+            pass
+
+        def wait_until_ready(self) -> None:
+            pass
+
+        def snapshot(self):
+            return children
+
+        def stop_all(self) -> None:
+            pass
+
+        def may_not_have_deregistered(self):
+            return set()
+
+    class FakeEvent:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def set(self) -> None:
+            pass
+
+        def is_set(self) -> bool:
+            return False
+
+        def wait(self, timeout: float) -> bool:
+            self.calls += 1
+            return True
+
+    class FakePage:
+        def __init__(self, *a) -> None:
+            pass
+
+        def start(self) -> None:
+            pass
+
+        def stop(self) -> None:
+            pass
+
+    monkeypatch.setattr(main_module, "connect", lambda dataset: object())
+    monkeypatch.setattr(main_module, "reader", lambda db: (lambda w: []))
+    monkeypatch.setattr(main_module, "refuse_if_live", lambda *a, **k: None)
+    monkeypatch.setattr(main_module, "Supervisor", FakeSupervisor)
+    monkeypatch.setattr(main_module, "PageServer", FakePage)
+    monkeypatch.setattr(main_module, "start_run", lambda *a: None)
+    monkeypatch.setattr(main_module, "endpoint_for", lambda d: type("E", (), {"url": "x"}))
+    monkeypatch.setattr(main_module.threading, "Event", FakeEvent)
+    monkeypatch.setattr(main_module, "bind_socket", lambda host, port: socket.socket())
+
+    code = main_module.main(["--page-port", "8999"])
+
+    out = capsys.readouterr().out
+    assert code == 0
+    block = address_block("http://127.0.0.1:8999/", children)
+    assert block + "\n" in out
+    assert out.index("Pages of the run:") < out.index("Use case 1 runs.")
+    assert out.split("Pages of the run:")[0].endswith("\n\n")
 
 
 def test_page_server_answers_over_http_and_stops_its_thread() -> None:
@@ -187,3 +507,251 @@ def test_main_refuses_a_taken_page_port_before_any_connection(
 
     assert code == 1
     assert "in use" in capsys.readouterr().err
+
+
+# The look: the page carries use case 2's colour variables, and its logo.
+UC1 = Path(jms_kapps.uc1.page.__file__).parent / "static"
+LAUNCHER = Path(jms_kapps.uc2.launcher.__file__).parent / "static"
+
+
+def _colour_variables(stylesheet: str) -> dict[str, str]:
+    for block in re.findall(r":root\s*{([^}]*)}", stylesheet):
+        found = dict(re.findall(r"(--[\w-]+)\s*:\s*([^;]+);", block))
+        if any(value.strip().startswith("#") for value in found.values()):
+            return {name: value.strip() for name, value in found.items()}
+    return {}
+
+
+def test_the_stylesheet_starts_with_the_colour_variables_of_the_launcher() -> None:
+    mine = (UC1 / "style.css").read_text(encoding="utf-8")
+    theirs = (LAUNCHER / "style.css").read_text(encoding="utf-8")
+
+    assert _colour_variables(mine) == _colour_variables(theirs) != {}
+    # At the top: the first rule is the :root block.
+    assert re.sub(r"/\*.*?\*/", "", mine, flags=re.DOTALL).lstrip().startswith(":root")
+
+
+def test_the_header_carries_the_logo_and_the_logo_is_the_launchers_file() -> None:
+    header = render(_four()).split("</header>")[0]
+
+    assert 'src="static/sfb-logo.png"' in header
+    assert (UC1 / "sfb-logo.png").read_bytes() == (LAUNCHER / "sfb-logo.png").read_bytes()
+
+
+def test_the_page_has_a_white_background() -> None:
+    stylesheet = (UC1 / "style.css").read_text(encoding="utf-8")
+
+    assert _colour_variables(stylesheet)["--ground"].lower() in {"#fff", "#ffffff"}
+    assert re.search(r"body\s*{[^}]*background:\s*var\(--ground\)", stylesheet)
+
+
+def test_the_page_has_no_absolute_path_to_its_own_files() -> None:
+    """Every path the page asks for is relative, so that it works under any path in front."""
+    page = render(_four())
+
+    for attribute in re.findall(r'(?:src|href)="([^"]+)"', page):
+        assert not attribute.startswith("/"), attribute
+
+
+# -- Operations and Learned values -------------------------------------------------------------- #
+
+DETECTOR_DASHBOARD = "p/Anomalydetector/dashboard"
+
+
+def _read_lists(children: list[ChildSnapshot]) -> tuple[ListStore, PageLists]:
+    """The lists after one read, the deciding resource of each operation the first child's (the
+    anomaly detector's) and issued by the fourth's (the planner's)."""
+    store = ListStore(str(children[0].resource), str(children[3].resource))
+    lists = PageLists(store)
+    lists.read()
+    return store, lists
+
+
+def test_the_state_gives_each_operation_with_its_deciding_service_and_its_dashboard() -> None:
+    """Both operations, each with its Screw, issuer, status, outcome and reason; the deciding
+    service of both is the anomaly detector, named as its process and linked to its dashboard."""
+    children = _four()
+    _, lists = _read_lists(children)
+    client = TestClient(build_app(lambda: children, None, lists.last))
+
+    operations = client.get("/api/state").json()["operations"]
+
+    assert operations["query"] == OPERATIONS
+    assert operations["error"] is None
+    assert [
+        (r["screw"], r["issuer_name"], r["status"], r["outcome"], r["reason"])
+        for r in operations["rows"]
+    ] == [
+        ("Screw1", "Planner", "done", "ScrewIntact", None),
+        ("Screw2", "Planner", "failed", "MissingScrew", "ANOMALY: <MissingScrew>"),
+    ]
+    for row in operations["rows"]:
+        assert row["decided_by"] == str(children[0].resource)
+        assert row["decided_by_name"] == "Anomaly detector"
+        assert row["decided_by_dashboard"] == DETECTOR_DASHBOARD
+
+
+def test_the_state_gives_the_learned_values_with_their_query() -> None:
+    children = _four()
+    _, lists = _read_lists(children)
+    client = TestClient(build_app(lambda: children, None, lists.last))
+
+    learned = client.get("/api/state").json()["learned_values"]
+
+    assert learned["query"] == LEARNED_VALUES
+    assert learned["rows"] == [{"screw_type": "M4", "now": "1.8", "at_start": "1.8"}]
+
+
+def test_a_resource_of_no_process_of_the_run_shows_by_its_local_name_without_a_link() -> None:
+    children = _four()
+    _, lists = _read_lists(children)
+    client = TestClient(build_app(lambda: children[1:3], None, lists.last))
+
+    row = client.get("/api/state").json()["operations"]["rows"][0]
+
+    assert row["decided_by_name"] == "Anomalydetector"
+    assert row["decided_by_dashboard"] is None
+
+
+def test_the_page_renders_both_lists_and_each_query_exactly_as_sent_with_a_copy_button() -> None:
+    """Without JavaScript the page shows the rows, the deciding service linked to its dashboard,
+    and each query's text, which unescapes to exactly the text the store received."""
+    children = _four()
+    store, lists = _read_lists(children)
+
+    page = render(children, lists.last())
+
+    for name, query in (("operations", OPERATIONS), ("learned-values", LEARNED_VALUES)):
+        shown = re.search(rf'<pre id="{name}-query"[^>]*>(.*?)</pre>', page, re.DOTALL)
+        assert shown is not None
+        assert html.unescape(shown.group(1)) == query
+        assert query in store.received
+        assert re.search(rf'<button[^>]*data-copies="{name}-query"[^>]*>Copy the query', page)
+    decided = (
+        f'<td class="decided-by"><a href="{DETECTOR_DASHBOARD}" target="_blank" '
+        'rel="noopener">Anomaly detector</a></td>'
+    )
+    assert page.count(decided) == 2
+    assert "ANOMALY: &lt;MissingScrew&gt;" in page
+    assert "<td>M4</td><td>1.8</td><td>1.8</td>" in page
+
+
+def test_before_the_first_read_the_lists_are_empty_and_their_copy_buttons_off() -> None:
+    page = render(_four())
+
+    for name in ("operations", "learned-values"):
+        assert re.search(rf'<button[^>]*data-copies="{name}-query" disabled>', page)
+        assert re.search(rf'<pre id="{name}-query"[^>]*></pre>', page)
+
+
+def test_a_poll_of_the_page_sends_no_query_of_the_lists() -> None:
+    """The lists come from their background read: ten polls each of `/` and `/api/state` send
+    no query to the store."""
+    children = _four()
+    store, lists = _read_lists(children)
+    sent = len(store.received)
+    client = TestClient(build_app(lambda: children, None, lists.last))
+
+    for _ in range(10):
+        assert client.get("/").status_code == 200
+        assert client.get("/api/state").json()["operations"]["rows"]
+
+    assert len(store.received) == sent
+
+
+def test_a_failed_read_keeps_the_last_answer_and_the_page_says_why() -> None:
+    children = _four()
+    store, lists = _read_lists(children)
+    client = TestClient(build_app(lambda: children, None, lists.last))
+    before = client.get("/api/state").json()
+
+    store.away = "the store is away"
+    lists.read()
+
+    after = client.get("/api/state").json()
+    for name in ("operations", "learned_values"):
+        assert after[name]["error"] == "the store is away"
+        assert after[name]["rows"] == before[name]["rows"]
+        assert after[name]["read_at"] == before[name]["read_at"]
+    assert re.search(
+        r'<p id="operations-read" class="message error">The latest read failed: '
+        r"the store is away\. The list is the one read at \d\d:\d\d:\d\d UTC\.</p>",
+        client.get("/").text,
+    )
+
+
+def test_the_run_reads_the_lists_from_the_seed_on_and_stops_them(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`main` starts the background read of the lists only after the seed, since the dataset
+    holds the previous run's values before it, and stops it at the end of the run."""
+    from jms_kapps.uc1 import __main__ as main_module
+
+    events: list[str] = []
+
+    class FakeLists:
+        def __init__(self, db) -> None:
+            pass
+
+        def last(self):
+            return None
+
+        def start(self) -> None:
+            events.append("lists start")
+
+        def stop(self) -> None:
+            events.append("lists stop")
+
+    class FakeSupervisor:
+        def __init__(self, reader, service_of=None) -> None:
+            pass
+
+        def begin_stop(self) -> None:
+            pass
+
+        def wait_until_ready(self) -> None:
+            pass
+
+        def snapshot(self):
+            return []
+
+        def stop_all(self) -> None:
+            pass
+
+        def may_not_have_deregistered(self):
+            return set()
+
+    class FakePage:
+        def __init__(self, *a) -> None:
+            pass
+
+        def start(self) -> None:
+            pass
+
+        def stop(self) -> None:
+            pass
+
+    class StoppedEvent:
+        def set(self) -> None:
+            pass
+
+        def is_set(self) -> bool:
+            return False
+
+        def wait(self, timeout: float) -> bool:
+            return True
+
+    monkeypatch.setattr(main_module, "connect", lambda dataset: object())
+    monkeypatch.setattr(main_module, "reader", lambda db: (lambda w: []))
+    monkeypatch.setattr(main_module, "refuse_if_live", lambda *a, **k: None)
+    monkeypatch.setattr(main_module, "Supervisor", FakeSupervisor)
+    monkeypatch.setattr(main_module, "PageServer", FakePage)
+    monkeypatch.setattr(main_module, "PageLists", FakeLists)
+    monkeypatch.setattr(main_module, "run_core_seed", lambda db: events.append("seed"))
+    monkeypatch.setattr(main_module, "start_run", lambda seed, *a: seed())
+    monkeypatch.setattr(main_module, "endpoint_for", lambda d: type("E", (), {"url": "x"}))
+    monkeypatch.setattr(main_module.threading, "Event", StoppedEvent)
+    monkeypatch.setattr(main_module, "bind_socket", lambda host, port: socket.socket())
+
+    assert main_module.main(["--page-port", "8999"]) == 0
+    assert events == ["seed", "lists start", "lists stop"]

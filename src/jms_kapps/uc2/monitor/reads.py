@@ -9,8 +9,7 @@ never by a local name turned back into one; a local name is made only where a pe
 
 Each read keeps the query it sent last, exactly as the store received it, with when it went, how
 long the store took to answer and how many rows came back (`GraphReads.sent`): the monitor's page
-shows them as "Queries sent". (Added on 2026-10-08, jms_kapps 24, decided by Etienne on
-2026-10-05: "we should at least then be able to expose the sparql queries that are sent".)
+shows them as "Queries sent", so that the SPARQL queries that are sent are visible.
 """
 
 from __future__ import annotations
@@ -73,7 +72,7 @@ class ModuleRow:
 class BoxRow:
     """One box, as the graph holds it. `holder` is whoever possesses it, if anyone does.
 
-    A box has no state of its own. `status` is its transport's `svc:operationStatus`, and `origin`
+    A box has no state of its own. `status` is its transport's `svc:hasOperationStatus`, and `origin`
     and `destination` are its transport's, if it has a transport.
     """
 
@@ -229,7 +228,7 @@ class GraphReads:
                 ?box a <{FC.Box}> .
                 OPTIONAL {{
                     ?transport a <{FC.BoxTransportOperation}> ; <{FC.hasBox}> ?box .
-                    OPTIONAL {{ ?transport <{SVC.operationStatus}> ?status }}
+                    OPTIONAL {{ ?transport <{SVC.hasOperationStatus}> ?status }}
                     OPTIONAL {{ ?transport <{FC.hasOrigin}> ?origin }}
                     OPTIONAL {{ ?transport <{FC.hasDestination}> ?destination }}
                 }}

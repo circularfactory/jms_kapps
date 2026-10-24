@@ -4,18 +4,19 @@ The replay reads a recording and stamps it as if the robot recorded it now, or a
 caller gives. The screwing resource writes the result like any other frame. A frame that the
 time-series store already holds does not need the replay: the reader gives the same `Frame` back.
 
-**The only recordings so far are legacy mock data.** `success.csv` and `missing_screw.csv` in
+**The recordings are example data:** two example recordings of an unscrewing attempt, to try the
+anomaly detector against, not training data. `success.csv` and `missing_screw.csv` in
 `data/unscrewing_timeseries/` come from the paper's artifact, commit `d320118`, without a change.
-They are not measurements:
 
-- Their units are not known. The replay copies the values without a conversion.
-- Their `Time` column is taken to be in seconds. That is an assumption.
+- The units are an assumption of the demo, not a property of the files: the replay takes the
+  ontology's units (newton, newton metre, millimetre, second) and copies the values without a
+  conversion.
+- Their `Time` column is taken to be in seconds, as part of that assumption.
 - Their phases come from their last column, `comment`, which a person wrote by hand. The replay
   maps each of its labels to a phase in `PHASE_OF_LABEL`. A label that names no phase gives no
   phase. The one label it maps against its wording is the touching sample's: the labels call it
   form-fit, and the replay gives it to the Approach, where the decision tree finds contact. So the
-  phases of a mock frame are mock as well: a person's labels, not phase boundaries that the robot
-  recorded.
+  phases of a replayed frame are a person's labels, not phase boundaries that the robot recorded.
 
 Each frame that the replay makes from them says so in its `source`, and the store keeps that tag.
 """
@@ -25,24 +26,24 @@ from __future__ import annotations
 import csv
 import io
 import time
+from importlib import resources
 
-from jms_kapps.common.triplestore import read_asset
 from jms_kapps.uc1.frame import AXIAL_FORCE, ROBOT_POSITION, UNSCREWING_TORQUE, Frame
 
-# The recordings that ship with this package. Both are legacy mock data.
-MOCK_RECORDINGS = ("success", "missing_screw")
+# The recordings that ship with this package. Both are example data.
+EXAMPLE_RECORDINGS = ("success", "missing_screw")
 
-# What a replayed mock frame carries as its source, before the recording's name.
-MOCK_SOURCE = "legacy-mock-d320118"
+# What a replayed frame carries as its source, before the recording's name.
+EXAMPLE_SOURCE = "example-d320118"
 
-# The columns of a mock recording, and the signal each becomes.
+# The columns of an example recording, and the signal each becomes.
 _COLUMNS = {
     "RobotPosition": ROBOT_POSITION,
     "AxialForce": AXIAL_FORCE,
     "UnscrewingTorque": UNSCREWING_TORQUE,
 }
 
-# The phase that each label of a mock recording's `comment` column names, for every label that
+# The phase that each label of an example recording's `comment` column names, for every label that
 # the two recordings hold.
 #
 # The sample where the tool reaches the screw head is the Approach's, though its label says
@@ -66,22 +67,28 @@ PHASE_OF_LABEL: dict[str, str | None] = {
 }
 
 
-def mock_frame(name: str, *, start: int | None = None) -> Frame:
-    """The legacy mock recording `name`, as a frame whose first sample is at `start`.
+def example_frame(name: str, *, start: int | None = None) -> Frame:
+    """The example recording `name`, as a frame whose first sample is at `start`.
 
     Args:
-        name: One of `MOCK_RECORDINGS`.
+        name: One of `EXAMPLE_RECORDINGS`.
         start: The time of the first sample, in nanoseconds since the Unix epoch. Defaults to now.
 
     Raises:
         ValueError: If the package ships no recording of that name, or if the recording has a
             label that `PHASE_OF_LABEL` does not map.
     """
-    if name not in MOCK_RECORDINGS:
+    if name not in EXAMPLE_RECORDINGS:
         raise ValueError(
-            f"no mock recording {name!r}: the replay has {', '.join(MOCK_RECORDINGS)}"
+            f"no example recording {name!r}: the replay has {', '.join(EXAMPLE_RECORDINGS)}"
         )
-    text = read_asset("jms_kapps.uc1", "data", "unscrewing_timeseries", f"{name}.csv")
+    # Read with the standard library alone, so that the robot controller stand-in, which replays
+    # these recordings, imports nothing of the middleware.
+    text = (
+        resources.files("jms_kapps.uc1")
+        .joinpath("data", "unscrewing_timeseries", f"{name}.csv")
+        .read_text(encoding="utf-8")
+    )
     rows = [
         row for row in csv.DictReader(io.StringIO(text), skipinitialspace=True) if row
     ]
@@ -93,7 +100,7 @@ def mock_frame(name: str, *, start: int | None = None) -> Frame:
             for column, signal in _COLUMNS.items()
         },
         phases=[_phase(name, row["comment"]) for row in rows],
-        source=f"{MOCK_SOURCE}/{name}",
+        source=f"{EXAMPLE_SOURCE}/{name}",
     )
 
 
@@ -101,6 +108,6 @@ def _phase(name: str, label: str) -> str | None:
     label = label.strip()
     if label not in PHASE_OF_LABEL:
         raise ValueError(
-            f"the mock recording {name!r} has the label {label!r}, which names no known phase"
+            f"the example recording {name!r} has the label {label!r}, which names no known phase"
         )
     return PHASE_OF_LABEL[label]

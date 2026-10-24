@@ -1,4 +1,4 @@
-"""The wrapper of the measurement harness (jms_kapps 48): a participant started through it runs as
+"""The wrapper of the measurement harness: a participant started through it runs as
 it would without it, and its spans go into a file of the run's folder. FastAPI, requests and httpx
 are instrumented with OpenTelemetry from outside, and the object-graph mapper's public calls are
 wrapped, not edited: KSM, the mapper and the triple-store interface stay as they are.
@@ -395,7 +395,7 @@ def test_a_plain_install_of_jms_kapps_resolves_without_opentelemetry():
     assert not [
         r for r in manifest["project"]["dependencies"] if "opentelemetry" in r.lower()
     ]
-    # The extra also holds the run report's pandas and matplotlib (jms_kapps 86).
+    # The extra also holds the run report's pandas and matplotlib.
     assert all(
         r.startswith(("opentelemetry-", "pandas", "matplotlib"))
         for r in manifest["project"]["optional-dependencies"]["evaluation"]

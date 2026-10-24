@@ -1,6 +1,6 @@
 """The time-series pipeline end to end, on a live InfluxDB and a live GraphDB.
 
-A mock frame is written to InfluxDB. Its reference is stored on an unscrewing operation through
+A frame replayed from an example recording is written to InfluxDB. Its reference is stored on an unscrewing operation through
 the middleware, as the screwing resource will store it: the operation is opened as the planner
 opens it, a `cfc:Operation` under the middleware's operation scope, and the reference is one
 `mw.commit()` on it. Then the reference is read back from the graph under a class scope, and the
@@ -12,14 +12,10 @@ InfluxDB answers at `INFLUXDB_URL` (without it, at the local service that
 names, and write their frames into the InfluxDB database `Tests`, whatever the dataset.
 InfluxDB keeps those frames. Nothing in the cleared graph points at them.
 
-Changed on 2026-10-05, after Etienne Hoffmann decided that the local stack is only the fallback
-(the ticket "jms_kapps' demos run on the configured live GraphDB (422)" in
-kapps_semantic_middleware); the parenthesis read "(default: the local service that
-`docker compose up -d --wait` starts)".
+The local stack is only the fallback.
 
-Changed on 2026-10-15 (jms_kapps 103), after Sören Weindel decided on 2026-10-12 that all UC1 live
-tests share one InfluxDB database, `Tests` (`_uc1_influx.py`): each test wrote its frames into a
-database of the dataset's name, which filled the five that InfluxDB 3 Core allows.
+All UC1 live tests share one InfluxDB database, `Tests` (`_uc1_influx.py`), since InfluxDB 3 Core
+allows five databases only.
 """
 
 from __future__ import annotations
@@ -30,13 +26,13 @@ from kapps_ogm import OGM, ClassScope, Update
 from kapps_semantic_middleware import Mode, SemanticMiddleware
 from kapps_semantic_middleware.credentials import triplestore_env_present
 from kapps_semantic_middleware.operation import operation as operation_scope
-from kapps_semantic_middleware.vocabulary import CFC
+from kapps_semantic_middleware.vocabulary import CFC, SVC, OperationStatus
 from kapps_triplestore_interface import IRI
 from rdflib import XSD
 
 from jms_kapps.common.triplestore import bindings, read_asset, reset
 from jms_kapps.common.triplestore import connect as connect_store
-from jms_kapps.uc1.replay import mock_frame
+from jms_kapps.uc1.replay import example_frame
 from jms_kapps.uc1.timeseries import FrameReader, FrameReference, FrameWriter
 from jms_kapps.uc1.timeseries import connect as connect_influxdb
 from jms_kapps.uc1.vocabulary import JMS, JMS_NS
@@ -101,8 +97,9 @@ def store_on_operation(mw: SemanticMiddleware, reference: FrameReference) -> IRI
         str(JMS.UnscrewingOperation),
         operation_scope(ClassScope(), capability=str(UNSCREWING_CAPABILITY)),
         instance_iri=str(operation),
-    ):
-        pass
+    ) as created:
+        # The store's operation-status shape refuses an Operation created without a status.
+        created.update({str(SVC.hasOperationStatus): [OperationStatus.RUNNING]})
     with mw.commit(
         entry=[
             Update(
@@ -125,7 +122,7 @@ def reference_on(mw: SemanticMiddleware, operation: IRI) -> str:
 def test_a_frame_is_written_its_reference_stored_on_an_operation_and_its_curves_read_back(
     influxdb, mw
 ):
-    frame = mock_frame("success", start=START)
+    frame = example_frame("success", start=START)
 
     written = FrameWriter(influxdb, database=INFLUX_TEST_DATABASE).write(frame)
     operation = store_on_operation(mw, written)
@@ -137,7 +134,7 @@ def test_a_frame_is_written_its_reference_stored_on_an_operation_and_its_curves_
 
 def test_the_operation_keeps_its_capability_beside_its_reference(influxdb, mw):
     written = FrameWriter(influxdb, database=INFLUX_TEST_DATABASE).write(
-        mock_frame("success")
+        example_frame("success")
     )
     operation = store_on_operation(mw, written)
 
@@ -150,7 +147,7 @@ def test_the_operation_keeps_its_capability_beside_its_reference(influxdb, mw):
 
 def test_the_graph_holds_the_reference_as_a_string(influxdb, mw):
     written = FrameWriter(influxdb, database=INFLUX_TEST_DATABASE).write(
-        mock_frame("success")
+        example_frame("success")
     )
     operation = store_on_operation(mw, written)
 
@@ -165,8 +162,8 @@ def test_the_graph_holds_the_reference_as_a_string(influxdb, mw):
 
 def test_two_frames_at_the_same_time_are_read_back_apart(influxdb, mw):
     writer = FrameWriter(influxdb, database=INFLUX_TEST_DATABASE)
-    success = mock_frame("success", start=START)
-    missing = mock_frame("missing_screw", start=START)
+    success = example_frame("success", start=START)
+    missing = example_frame("missing_screw", start=START)
 
     operations = {
         name: store_on_operation(mw, writer.write(frame))

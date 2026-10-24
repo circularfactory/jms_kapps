@@ -1,6 +1,5 @@
-"""A ramp's comparison with the replay of the matching UC2 configuration (jms_kapps 99, decided by
-Sören Weindel on 2026-10-12 as the product owner of the tests, jms_kapps 85; interim names,
-jms_kapps 83). Pure functions: no store, no clock.
+"""A ramp's comparison with the replay of the matching UC2 configuration (interim names).
+Pure functions: no store, no clock.
 
 A ramp's level is UC2-limited when fewer than 90 % of its offered spawns are accepted (`ramp`).
 Then the store may have been far from its limit, and the table says how far: beside UC2's achieved
@@ -14,16 +13,14 @@ collection (`MATCHING_KEYS`). When several configurations match, the first in sp
 box rate and the other keys may differ: the replay's rate is the factor, not a box rate.
 
 **The replay's first repetition.** A replay may be repeated on request (`heavy_parts`); every
-repetition of a ramp is compared with the replay's first repetition (jms_kapps 114, decided by
-Sören on 2026-10-13, interim reading).
+repetition of a ramp is compared with the replay's first repetition (interim reading).
 
 **Three outcomes of the replay's side.** `broken`: the offered store request rate per minute at
 the replay's first broken level (the lowest factor whose baseline is broken). `not broken`: the
 replay broke at no level, text "not broken up to factor F", F the highest factor replayed.
 `no replay`: no configuration matches, or the matching one has no replay level that counts.
 
-**The licensed cores** (jms_kapps 108, decided by Sören on 2026-10-13 as the product owner of the
-tests, jms_kapps 85, note 1866296, decision 1; interim names). GraphDB Enterprise runs at most one
+**The licensed cores** (interim names). GraphDB Enterprise runs at most one
 concurrent query for each licensed core, and the compressed replay is an open loop, so its first
 broken level can be this limit of the license, not the capacity of the store. The replay's side
 says the licensed cores beside it: the maximum of CPU cores (`maxCpuCores`) of the server's license
@@ -56,7 +53,7 @@ NOT_BROKEN = "not broken"
 NO_REPLAY = "no replay"
 
 # What the replay's side says of the licensed cores where no record of its level holds them
-# (jms_kapps 108, interim name).
+# (interim name).
 NOT_READ = "not read"
 
 
@@ -79,7 +76,7 @@ def replay_side(row: Mapping[str, Any] | None) -> dict[str, Any]:
     """What the first repetition of the replay of the configuration of `row` (`matching_row`)
     says: its outcome, the configuration, and the factor and the offered store request rate per
     minute at its first broken level, or the highest factor where it broke at none. Each
-    repetition of a ramp is compared with the replay's first repetition (jms_kapps 114)."""
+    repetition of a ramp is compared with the replay's first repetition."""
     levels = (
         []
         if row is None
@@ -128,8 +125,7 @@ def replay_side(row: Mapping[str, Any] | None) -> dict[str, Any]:
 def licensed_cores(
     levels: Sequence[Mapping[str, Any]], factor: float | None
 ) -> dict[str, Any]:
-    """The licensed cores of the replay's level at `factor` among `levels` (jms_kapps 108, interim
-    name): each value that its records hold, in rising order (`licensed_cores`), and the text that
+    """The licensed cores of the replay's level at `factor` among `levels` (interim name): each value that its records hold, in rising order (`licensed_cores`), and the text that
     the table shows (`licensed_cores_text`): the values, or `NOT_READ` where no record holds one."""
     values = sorted(
         {

@@ -93,6 +93,9 @@ class Graph:
     ) -> None:
         pass
 
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
+
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return live_services(self.addresses, workflows, self.addresses)
 

@@ -1,4 +1,4 @@
-"""The prefill generator of the measurement harness (jms_kapps 79), offline: the file it writes, read
+"""The prefill generator of the measurement harness, offline: the file it writes, read
 back with rdflib, and the commands that write it. No store is involved.
 
 A prefill holds past journeys of use case 2 as use case 2 writes them when a journey has ended: each
@@ -211,10 +211,8 @@ def test_the_number_of_boxes_in_the_header_is_the_number_in_the_file(grid_10k):
 
 
 def test_every_box_is_named_by_a_uuid_of_its_own_from_the_seed(tmp_path, grid_10k):
-    """As the WarehouseManagementSystem names a box it spawns, `Box-<UUID>` (jms_kapps 92, decided
-    by Sören on jms_kapps 85: "past boxes get UUIDs from the seeded generator"). The seed gives the
-    names: the same seed the same, as the file is byte for byte, and another seed others. (Changed
-    on 2026-10-12. Until then the boxes were numbered from one.)"""
+    """As the WarehouseManagementSystem names a box it spawns, `Box-<UUID>`. The seed gives the
+    names: the same seed the same, as the file is byte for byte, and another seed others."""
     _, graph = grid_10k
 
     names = [str(box).removeprefix(f"{FCI_NS}Box-") for box in boxes_in(graph)]
@@ -227,7 +225,7 @@ def test_every_box_is_named_by_a_uuid_of_its_own_from_the_seed(tmp_path, grid_10
 
 def test_the_generator_s_version_is_2_since_the_boxes_are_named_by_uuids(tmp_path):
     """Version 1 numbered the boxes from one: the same topology, size and seed give another file
-    since jms_kapps 92."""
+    in version 2."""
     assert (
         header(made(tmp_path, 1_000))["generator"] == "jms_kapps.evaluation.prefill 2"
     )
@@ -294,7 +292,7 @@ def test_every_transport_is_done(grid_10k):
     _, graph = grid_10k
 
     statuses = {
-        transport: list(graph.objects(transport, URIRef(SVC.operationStatus)))
+        transport: list(graph.objects(transport, URIRef(SVC.hasOperationStatus)))
         for transport in transports_in(graph)
     }
 

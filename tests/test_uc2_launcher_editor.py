@@ -46,8 +46,7 @@ RUNS = [sys.executable, "-c", "import time; time.sleep(60)"]
 
 # What the page says under the grid while the load check passes.
 PASSES = "The load check passes."
-# What it says of a topology with no module. (Jms_kapps 69, decided by Etienne: an empty grid
-# fails the load check. Until then the grid passed it.)
+# What it says of a topology with no module: an empty grid fails the load check.
 NO_MODULE = "The load check refuses this topology: a topology needs at least one module"
 
 
@@ -65,6 +64,9 @@ class Graph:
         collect_history: bool = False,
     ) -> None:
         self.seeded.append(topology)
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return []
@@ -152,7 +154,7 @@ def check_result(page: Page) -> Locator:
 
 
 def launch_this(page: Page) -> Locator:
-    return page.get_by_role("button", name="Launch this", exact=True)
+    return page.get_by_role("button", name="Launch", exact=True)
 
 
 def read_back(
@@ -323,11 +325,8 @@ def test_after_every_change_the_load_check_says_under_the_grid_whether_it_passes
     expect(launch_this(page)).to_be_enabled()
     module_list_after(page, left.click)
 
-    # Both ways between Module 1 and Module 2: two-way, and no pure corridor. (Changed on
-    # 2026-10-06, jms_kapps 43, decided by Etienne: the check refuses only a pure two-way
-    # corridor. Until then two modules linked both ways were refused, as "Boxes on this topology
-    # can wait for each other forever: boxes bound for its exit modules hop around Module1 →
-    # Module2 → Module1".)
+    # Both ways between Module 1 and Module 2: two-way, and no pure corridor. The check refuses only
+    # a pure two-way corridor.
     module_list_after(page, left.click)
     expect(check_result(page)).to_have_text(PASSES)
     module_list_after(page, right.click)
@@ -375,7 +374,6 @@ def test_launch_this_asks_first_and_launches_the_edited_topology_called_by_its_b
 ):
     edit(page, launcher_url, "pair")
     sent = module_list_after(page, cell(page, 1, 1).click)
-    page.get_by_label("Topology to launch").select_option("grid")
     asked: list[str] = []
 
     def dismiss(dialog: Dialog) -> None:
@@ -400,8 +398,11 @@ def test_launch_this_asks_first_and_launches_the_edited_topology_called_by_its_b
     expect(page.locator("#running")).to_have_text("running: pair (edited)")
     assert graph.seeded == [parse_topology(sent)]
     expect(page.locator("#command-message")).to_contain_text("Launched.")
-    # The picker shows the topology the running one was edited from.
-    expect(page.get_by_label("Topology to launch")).to_have_value("pair")
+    # The picker holds the topology launched, as its entry for what runs, and the grid draws it.
+    expect(
+        page.get_by_label("Topology to launch").locator("option:checked")
+    ).to_have_text("pair (edited), running now")
+    expect(page.locator("#editor-grid [data-module]")).to_have_count(3)
 
 
 def downloaded(page: Page) -> tuple[str, bytes]:
@@ -747,7 +748,7 @@ def test_a_topology_edited_from_an_empty_grid_runs_as_such(page: Page, launcher_
     expect(page.locator("#running")).to_have_text("running: empty grid (edited)")
 
 
-# -- The transit time of a module (jms_kapps 30) ------------------------------------------------ #
+# -- The transit time of a module ------------------------------------------------ #
 
 
 def transit_field(page: Page) -> Locator:

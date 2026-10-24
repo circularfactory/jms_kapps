@@ -105,6 +105,37 @@ def test_a_dispatch_that_finds_no_resource_is_refused_with_its_reason() -> None:
     assert entry.why == "no live service realizes the capability"
 
 
+def test_a_refusal_by_the_store_keeps_its_rules_messages_and_report() -> None:
+    memory = ticking()
+    memory.pressed(SCREW_1)
+
+    memory.refused(
+        SCREW_1,
+        why="the triple store refused the unscrewing operation",
+        rules=("UnscrewingOperationScrewShape at UnscrewingOperation1",),
+        messages=("An unscrewing operation concerns exactly one Screw.",),
+        report="<the report>",
+    )
+
+    entry = memory.state().screws[0]
+    assert entry.status == REFUSED
+    assert entry.rules == ("UnscrewingOperationScrewShape at UnscrewingOperation1",)
+    assert entry.messages == ("An unscrewing operation concerns exactly one Screw.",)
+    assert entry.report == "<the report>"
+
+
+def test_a_second_press_forgets_the_store_s_last_refusal() -> None:
+    memory = ticking()
+    memory.refused(
+        SCREW_1, why="refused", rules=("a rule",), messages=("m",), report="r"
+    )
+
+    memory.pressed(SCREW_1)
+
+    entry = memory.state().screws[0]
+    assert (entry.rules, entry.messages, entry.report) == ((), (), None)
+
+
 def test_a_wait_that_passed_its_timeout_is_recorded_as_timed_out() -> None:
     memory = ticking()
     memory.pressed(SCREW_1)

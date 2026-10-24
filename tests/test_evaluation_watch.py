@@ -1,4 +1,4 @@
-"""The server watch of a UC2 run (jms_kapps 95), against stand-ins only: the resource view and the
+"""The server watch of a UC2 run, against stand-ins only: the resource view and the
 round trip every few seconds from the load's start to the drain's end, the monitoring counters of
 every repository at the run's start and end, the statement counts of the run's repository where no
 participant writes, the page cache at the window's start and the drain's end, and the license.

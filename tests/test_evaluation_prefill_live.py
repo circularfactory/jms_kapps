@@ -1,4 +1,4 @@
-"""The live criterion of the prefill generator (jms_kapps 79): a store that validates use case 2's
+"""The live criterion of the prefill generator: a store that validates use case 2's
 shapes at every commit admits a prefill of 100k statements, loaded in transactions, after the seed
 of the 30-module grid.
 
@@ -20,6 +20,7 @@ import pytest
 from _bulk import bulk_validation_report, conforms
 from kapps_semantic_middleware.credentials import triplestore_env_present
 from kapps_triplestore_interface import TripleStore
+from kapps_triplestore_interface.exceptions import ShaclValidationError
 
 from jms_kapps.common.triplestore import bindings, connect
 from jms_kapps.evaluation.prefill import transactions, write_prefill
@@ -86,8 +87,8 @@ def test_the_store_refuses_a_done_transport_whose_box_is_on_a_module(db):
     broken = f"""
 @prefix fc: <{FC_NS}> .
 @prefix fci: <{FCI_NS}> .
-@prefix cfc: <https://w3id.org/circularfactory/Core#> .
-@prefix svc: <https://w3id.org/circularfactory/Service#> .
+@prefix cfc: <http://w3id.org/circularfactory/Core#> .
+@prefix svc: <http://w3id.org/circularfactory/Service#> .
 fci:Module1 cfc:hasPossessor fci:Module1_possession .
 fci:Module1_possession a cfc:PossessionState .
 fci:Box1 a fc:Box ;
@@ -97,10 +98,10 @@ fci:Box1_transport a fc:BoxTransportOperation ;
     fc:hasBox fci:Box1 ;
     fc:hasOrigin fci:Module1 ;
     fc:hasDestination fci:Module27 ;
-    svc:operationStatus "done" .
+    svc:hasOperationStatus "done" .
 """
 
-    admitted = db.graph_add(broken, content_type="application/x-turtle")
+    with pytest.raises(ShaclValidationError):
+        db.graph_add(broken, content_type="application/x-turtle")
 
-    assert admitted is False
     assert count(db, str(FC.Box)) == 0

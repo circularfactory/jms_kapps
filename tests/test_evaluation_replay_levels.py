@@ -1,5 +1,4 @@
-"""The store-only baseline replays a recorded run compressed in time (jms_kapps 98, from the
-decisions of jms_kapps 85, note 1864593): the factor, the offered and the achieved rate of a level,
+"""The store-only baseline replays a recorded run compressed in time: the factor, the offered and the achieved rate of a level,
 the rule that breaks a level, and the approval that every factor above 1 needs.
 
 Everything here is a stand-in of the store (`test_evaluation_baseline`): a recorded run made against
@@ -298,7 +297,7 @@ def test_the_record_of_a_level_holds_the_factor_the_rates_the_refusals_and_the_t
     # Four requests in a window of 60 s over 2: 30 s, so 8 a minute.
     assert level["offered_per_minute"] == pytest.approx(8.0)
     # Three got an answer, a refusal too, the last at 10.5 s: 3 over the window of 30 s, since the
-    # replay span is at least the window (jms_kapps 107; until then 3 in 10.5 s). The record keeps
+    # replay span is at least the window. The record keeps
     # the literal span.
     assert level["answered_in_window"] == 3
     assert level["replay_span_seconds"] == pytest.approx(10.5)
@@ -310,7 +309,7 @@ def test_the_record_of_a_level_holds_the_factor_the_rates_the_refusals_and_the_t
     assert (measures["refused_in_window"], measures["timed_out_in_window"]) == (1, 1)
     assert level["broken"] is True
     # 6 a minute is below 90 % of the 8 offered: the level, broken by its unanswered and refused
-    # requests already, names the achieved rate too (jms_kapps 107).
+    # requests already, names the achieved rate too.
     assert [s["signal"] for s in level["signals"]] == [
         "refused or unanswered",
         ACHIEVED_BELOW_OFFERED,
@@ -336,7 +335,7 @@ def test_a_level_that_the_store_keeps_up_with_is_not_broken(tmp_path):
     assert level["broken"] is False
     assert level["signals"] == []
     # Four requests in the recorded minute: 4 a minute offered; the last answered at 31 s, so 4 over
-    # the window, the offered rate (jms_kapps 107: the replay span is at least the window).
+    # the window, the offered rate (the replay span is at least the window).
     assert level["offered_per_minute"] == pytest.approx(4.0)
     assert level["replay_span_seconds"] == pytest.approx(31.0)
     assert level["achieved_per_minute"] == pytest.approx(4.0)
@@ -390,7 +389,7 @@ def test_a_level_with_no_signal_is_not_broken():
     assert level["broken"] is False
     assert level["signals"] == []
     assert level["offered_per_minute"] == pytest.approx(100.0)
-    # The last answer at 59 s: 100 over the window of 60 s (jms_kapps 107).
+    # The last answer at 59 s: 100 over the window of 60 s.
     assert level["achieved_per_minute"] == pytest.approx(100.0)
 
 

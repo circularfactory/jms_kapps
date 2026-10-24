@@ -1,5 +1,4 @@
-"""A run whose repository the store did not delete (jms_kapps 116, Sören's decisions of
-2026-10-14 as the product owner of the tests): the outcome says how the measurement ended, and
+"""A run whose repository the store did not delete: the outcome says how the measurement ended, and
 only that; the deletion is a fact of its own in the record (`repository_deletion`); a completed run
 gets its observation all the same; and where the store's answer to the deletion is lost, one list
 of the server's repositories says whether it was deleted.
@@ -16,7 +15,6 @@ import ast
 import csv
 import json
 import os
-import re
 import signal
 from collections.abc import Callable, Collection
 from datetime import timedelta
@@ -308,7 +306,7 @@ def test_the_deletion_s_documentation_says_what_answer_lost_means_now():
     assert "an answer that arrived but could not be read" in readme
 
 
-# --- a gateway's 502, 503 or 504 is a lost answer (Sören, 2026-10-14) -------------------------
+# --- a gateway's 502, 503 or 504 is a lost answer -------------------------
 
 
 @pytest.mark.parametrize("status", [502, 503, 504])
@@ -585,7 +583,7 @@ def test_the_sweep_goes_on_to_the_next_replay_level_after_one_whose_repository_i
     def replay_here(path: Path, *, factor: float, **options: Any) -> dict:
         level = Baseline(tmp_path / f"x{factor:g}")
         # The record lands where the sweep finds it: a level whose record the call cannot find
-        # counts as a failed run (jms_kapps 112, note 1866704).
+        # counts as a failed run.
         level.runs = options["runs"]
         if factor == 1:
             level.store.on_delete = refused
@@ -740,10 +738,8 @@ def test_the_line_after_a_replay_level_of_the_sweep_names_a_repository_not_delet
 # --- the documentation ----------------------------------------------------------------------
 
 
-def test_the_documentation_of_the_run_s_end_states_the_rule_with_a_dated_note():
-    """The UC2 run, the baseline, the harness README and the glossary each say the new rule,
-    with a dated note that keeps the old one and names Sören's decision (jms_kapps 116; the
-    baseline's notes and the form of the notes after a review)."""
+def test_the_documentation_of_the_run_s_end_states_the_rule():
+    """The UC2 run, the baseline, the harness README and the glossary each say the new rule."""
     evaluation = Path(jms_kapps.__file__).parent / "evaluation"
     readme = (evaluation / "README.md").read_text(encoding="utf-8")
 
@@ -767,20 +763,23 @@ def test_the_documentation_of_the_run_s_end_states_the_rule_with_a_dated_note():
     }
     for name, text in texts.items():
         flat = " ".join(text.split())
-        assert "2026-10-14" in flat and "jms_kapps 116" in flat, name
-        assert "Sören" in flat, name
-        assert "the repository was not deleted" in flat, name
-        assert "repository_deletion" in flat, name
+        assert "repository_deletion" in flat or name == "CONTEXT", name
+        if name in ("bench", "baseline"):
+            continue
         if name == "CONTEXT":
+            assert "2026-10-14" in flat and "jms_kapps 116" in flat, name
+            assert "Sören" in flat, name
+            assert "the repository was not deleted" in flat, name
             assert (
                 "(Added on 2026-10-14, jms_kapps 116," in flat and "Until then" in flat
             )
+            continue
+        # The harness README states the rule in its own words: no date, ticket or name.
+        assert "jms_kapps 116" not in flat and "Sören" not in flat, name
+        if name == "README":
+            assert "the repository was not deleted" in flat, name
         else:
-            assert re.search(
-                r"\(changed on 2026-10-14, jms_kapps 116: until then ",
-                flat,
-                re.IGNORECASE,
-            ), name
+            assert "the outcome says nothing of the deletion" in flat, name
     flat = " ".join(texts["README"].split())
     assert "says how the measurement ended, and only that" in flat
     assert "A lost answer is checked once" in flat

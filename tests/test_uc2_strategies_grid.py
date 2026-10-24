@@ -1,4 +1,4 @@
-"""The two test strategies of jms_kapps 52, offline on the shipped grid, and answers outside the
+"""The two test strategies, offline on the shipped grid, and answers outside the
 contract.
 
 The module strategy `south` asks only the southern neighbour, from the connections' directions;

@@ -8,39 +8,39 @@
 </head>
 <body>
   <header>
-    <h1>Use case 2 — the Launcher</h1>
+    <img class="logo" src="sfb-logo.png" alt="SFB 1574">
+    <h1>Use case 2 Launcher</h1>
     <span id="where" class="muted"></span>
     <span class="spacer"></span>
     <a id="monitor-link" class="button" target="_blank" hidden>Open the monitor</a>
     <a id="wms-link" class="button" target="_blank" hidden>Open the WMS</a>
     <button id="stop-all" type="button">Stop all</button>
-    <!-- Added on 2026-10-10, jms_kapps 5, decided by Etienne on 2026-10-05, who asked for a clear
-      button that kills every process and clears the whole of the store's unit, the dataset. -->
+    <!-- Clear kills every process and clears the whole of the store's unit, the dataset. -->
     <button id="clear" type="button"
       title="Stop every process, then empty the dataset, graph by graph. The next launch loads everything again.">Clear</button>
   </header>
 
   <main>
     <p id="status" class="message warning" role="status" hidden></p>
-    <!-- Added on 2026-10-10, jms_kapps 6, decided by Etienne: each part of the page is drawn on
-      its own, and an error while drawing one is shown here, by the part's name, while the others
-      are drawn. -->
+    <!-- Each part of the page is drawn on its own, and an error while drawing one is shown here, by
+      the part's name, while the others are drawn. -->
     <p id="draw-errors" class="message error" role="alert" hidden></p>
 
     <section>
       <h2>Processes</h2>
-      <p class="muted">One process for each module, the Warehouse Management System, and the monitor. A process is live while its
-        service carries a fresh heartbeat in the graph. A process that does not stop in time is
-        killed, and a kill skips its deregistration. Click a name for its recent output.
-        <strong>Clear</strong>, beside <strong>Stop all</strong>, stops every process and then
-        empties the dataset, graph by graph, after it asks; it clears nothing while another
-        launcher's process is live there. The next launch loads the ontologies, the shapes and
-        the topology again.</p>
-      <p class="muted">Each module has two fault switches. With <code>skip-reserve</code> it hands a
-        box on without asking first, and the triple store refuses that when the next module holds
-        a box. With <code>complete-without-releasing</code>, as a box's destination, it completes
-        the transport before it gives the box back, which the triple store always refuses. The
-        monitor shows each refusal, and the box still arrives. A module starts with both off.</p>
+      <p class="muted">One process for each module, the Warehouse Management System, and the
+        monitor; a process is live while its service carries a fresh heartbeat in the knowledge
+        graph. Click a name for its recent output, and <strong>Clear</strong> stops every process
+        and empties the dataset, after it asks.</p>
+      <details>
+        <summary>The two faults</summary>
+        <p class="muted">Each module has two fault switches. With <code>skip-reserve</code> it
+          hands a box on without asking first, and the triple store refuses that when the next
+          module holds a box. With <code>complete-without-releasing</code>, as a box's destination,
+          it completes the transport before it gives the box back, which the triple store always
+          refuses. The monitor shows each refusal, and the box still arrives. A module starts with
+          both off.</p>
+      </details>
       <table id="processes">
         <thead>
           <tr><th>Process</th><th>State</th><th>PID</th><th>Links</th><th>Faults</th><th></th></tr>
@@ -49,19 +49,20 @@
       </table>
     </section>
 
-    <!-- Added on 2026-10-10, jms_kapps 23, decided by Etienne on 2026-10-05: "the launcher
-      displays the sparqlquery that it runs by itself to get all current boxes that are not in the
-      wms and their current module they are on, so that [anyone] can run the query by himself and
-      gets presented a list." -->
+    <!-- The launcher displays the SPARQL query that it runs by itself to get all current boxes
+      that are not in the WMS and the module they are on, so that anyone can run the query and
+      gets a list. -->
     <section id="station" aria-labelledby="station-title" hidden>
       <h2 id="station-title">Boxes on the station</h2>
       <p class="muted">Every box whose possessor is not the Warehouse Management System, with the
         module that possesses it, and its transport and that transport's status. The Launcher
-        reads them with the one SPARQL query below, every second, whether this page is open or
-        not, and the page shows what it read last; a poll of this page sends no query. The query
-        is standard SPARQL: run it on the same dataset, in the store's workbench or in any other
-        SPARQL endpoint, and you get the same list. The monitor's table of boxes shows these
-        boxes too, beside those the Warehouse Management System possesses.</p>
+        reads them every second with the SPARQL query below.</p>
+      <details>
+        <summary>The query elsewhere</summary>
+        <p class="muted">Run the query on the same dataset, in the triple store's workbench or in
+          any other SPARQL endpoint, and you get the same list. The monitor's table of boxes shows
+          these boxes too, beside those the Warehouse Management System possesses.</p>
+      </details>
       <table id="boxes">
         <thead>
           <tr><th>Box</th><th>Module</th><th>Transport</th><th>Status</th></tr>
@@ -77,100 +78,120 @@
       <pre id="boxes-query" class="mono query-text" aria-labelledby="boxes-query-title"></pre>
     </section>
 
-    <section>
-      <h2>Topology</h2>
-      <p class="muted">The modules that are running, and where each one hands boxes to. Launching
-        clears the dataset, seeds the chosen topology, and restarts every process. To build a
-        topology of your own, press <strong>Edit</strong>, which opens the editor on the chosen
-        topology, <strong>Empty grid</strong>, or <strong>Upload</strong>, which opens it on a
-        topology file: a module list, as the first iteration wrote one, and as the editor's
-        <strong>Download</strong> saves one. At the command line,
-        <code>jms-uc2 --topology &lt;path&gt;</code> starts on such a file. The two pickers
-        <strong>Module strategy</strong> and <strong>WMS strategy</strong> choose, for the next
-        launch, how each module chooses the neighbours it asks for a box, and how the Warehouse
-        Management System picks where a box starts and ends: Real behaviour is the demonstration's,
-        and a strategy whose name ends in "(synthetic)" makes traffic that a benchmark can
-        repeat. With <strong>collect history</strong> checked, the next launch turns on the triple
-        store's history collection, so that the possessor a box had at any earlier time can be
-        read, as the reference page on past possessions shows. It starts at whether the launch
-        that runs was launched with it: on where <code>jms-uc2 --collect-history</code> started the page, and off by default. A
-        launch without it leaves the collection as it was. <strong>deadlock alarm (s)</strong> is
-        how long a box that a module of the next launch holds may wait for a Reserve before the
-        module raises the deadlock alarm for it, a warning in its output that starts with
-        "possible deadlock:" and a notice on the monitor; the box keeps waiting. It starts at
-        <code>jms-uc2 --deadlock-alarm-seconds</code>, 300 s by default.</p>
-      <!-- The sentences on the deadlock alarm added on 2026-10-11, jms_kapps 77, decided by
-        Etienne. -->
-      <!-- Added on 2026-10-10, jms_kapps 22, with the names Etienne decided on 2026-10-07:
-        `jms-uc2 --collect-history`, the checkbox "collect history", and the field
-        `collect_history`. -->
-      <!-- Changed on 2026-10-06, jms_kapps 43, decided by Etienne: the load check refuses only a
-        pure two-way corridor. Until then the second sentence read: "A topology is refused, before
-        anything is cleared, where the hops that boxes from its entry modules to its exit modules
-        make run in a cycle: a module waits for its next module with no bound, so two boxes on
-        such a cycle could each wait for the other's module forever." -->
-      <!-- Changed on 2026-10-10, jms_kapps 69, decided by Etienne: the load check also refuses a
-        topology with no module. Until then the sentence on what is refused named the pure two-way
-        corridor alone. -->
-      <!-- Changed on 2026-10-07, jms_kapps 46, decided by Etienne. Until then the first sentence
-        read: "The samples pair, tee and grid run one way, from their entry modules to their exit
-        modules." -->
-      <p class="muted">The samples pair, tee, grid and merge-fault-demo run one way, from their
-        entry modules to their exit modules. The merge-fault-demo is for the fault demo: a merge of
-        two streams, where skip-reserve on Module5 collides with the box that waits on Module6. A
-        topology is refused, before anything is cleared, where it has no module, or where it has a
-        pure two-way corridor: a module whose only two connections both run both ways, where two
-        boxes that meet head-on could wait for each other forever, with no neighbour to step aside
-        to. Any other topology loads, two-way connections too: a module takes a box only where the
-        box can go on at once, and a box whose next module declines tries one detour first.</p>
-      <div class="toolbar">
+    <!-- Three rows: choose a topology, which the grid draws; edit it on the same grid; run what
+      the grid shows. What runs has a panel of its own below. -->
+    <section id="topology" aria-labelledby="topology-title">
+      <h2 id="topology-title">Topology</h2>
+      <p class="muted">The grid draws the topology chosen in the picker, and <strong>Launch</strong>
+        launches what the grid shows: it clears the dataset, seeds that topology, and restarts
+        every process. <strong>Edit</strong> makes the grid editable.</p>
+      <details>
+        <summary>Build your own topology</summary>
+        <p class="muted"><strong>Edit</strong> opens the chosen topology for editing,
+          <strong>Empty grid</strong> an empty one, and <strong>Upload</strong> a topology file.
+          Click an empty cell to add a module, a module to select it, and the gap between two
+          neighbouring modules to cycle their connection: none, one way, the other way, both ways.
+          The load check runs on every change, and only a topology that passes it can be
+          launched. <strong>Download</strong> saves a topology file, and <code>jms-uc2 --topology
+          &lt;path&gt;</code> starts on one; a file keeps no cells, so it opens where the server
+          puts its modules. While you edit, the picker, <strong>Empty grid</strong> and
+          <strong>Upload</strong> replace the edit, and they and <strong>Close</strong> ask first
+          when it has changed. While a topology that is not shipped runs, the picker has an entry
+          for it, and <strong>Edit</strong> continues from it.</p>
+      </details>
+      <details>
+        <summary>The shipped topologies</summary>
+        <!-- The load check refuses a topology with no module and one with a pure two-way
+          corridor. -->
+        <p class="muted">The samples pair, tee, grid, line and merge-fault-demo run one way, from
+          their entry modules to their exit modules. line is four modules one after another.
+          merge-fault-demo merges two streams: skip-reserve on
+          Module5 collides with the box that waits on Module6. A topology is refused, before
+          anything is cleared, where it has no module or a pure two-way corridor: a module whose
+          only two connections both run both ways, where two boxes that meet head-on could wait
+          for each other forever. Any other topology loads.</p>
+      </details>
+      <details>
+        <summary>The run settings</summary>
+        <p class="muted">Each setting counts for the next launch. <strong>transit time (s)</strong>
+          is how long a module takes to convey a box, unless the topology gives the module its
+          own. <strong>deadlock alarm (s)</strong> is how long a box that a module holds may wait
+          for a Reserve before the module raises the deadlock alarm for it: a warning in the
+          module's output that starts with "possible deadlock:" and a notice on the monitor.
+          <strong>Module strategy</strong> and <strong>WMS strategy</strong> choose how each
+          module chooses the neighbours it asks for a box, and how the Warehouse Management System
+          picks where a box starts and ends; a strategy whose name ends in "(synthetic)" makes
+          traffic that a benchmark can repeat. With <strong>collect history</strong> checked, the
+          launch turns on the triple store's history collection, so that the possessor a box had
+          at an earlier time can be read. The monitor starts in "graph only": it reads the
+          knowledge graph and nothing else. With <strong>Collect the SHACL refusals in one
+          monitor</strong> checked, it starts in "graph + streams", which also follows each
+          service's handover event stream, for the refusals and the deadlock notice: the refusals
+          do not travel through the knowledge graph.</p>
+      </details>
+
+      <!-- Choose: the picker and the sources of an edit. Download and Close take Edit's place in
+        edit mode. -->
+      <div class="toolbar" id="choose">
         <select id="shipped" aria-label="Topology to launch"></select>
+        <button id="edit-empty" type="button" title="Edit an empty grid">Empty grid</button>
+        <button id="upload" type="button" title="Edit a topology file">Upload</button>
+        <input id="upload-file" type="file" accept=".json,application/json" hidden>
+        <button id="edit" type="button" title="Edit the chosen topology on the grid">Edit</button>
+        <button id="download" type="button" hidden
+          title="Save what the grid holds as a topology file">Download</button>
+        <button id="close-editor" type="button" hidden
+          title="Leave edit mode: the grid draws the chosen topology again">Close</button>
+      </div>
+
+      <!-- Edit mode: the same grid, editable, with what was edited from above it and the load
+        check below it. -->
+      <div id="editor" hidden>
+        <strong id="editor-base"></strong>
+      </div>
+      <div class="editor-body">
+        <div id="editor-grid" class="grid"></div>
+        <div id="editor-selected" hidden></div>
+      </div>
+      <p id="grid-message" class="message" hidden></p>
+      <p id="editor-check" class="message" role="status" hidden></p>
+
+      <!-- Run: the settings of the next launch, and the one Launch button. -->
+      <div class="toolbar" id="run">
         <label class="muted" title="The time in seconds that each module of the next launch takes to convey a box, unless the topology gives the module its own. 0 means at once, with no wait.">transit time (s)
           <input id="transit-time" type="text" inputmode="decimal" size="4" aria-label="Transit time in seconds"></label>
-        <!-- Added on 2026-10-11, jms_kapps 77, decided by Etienne: the deadlock alarm time, a
-          launch option, `jms-uc2 --deadlock-alarm-seconds`, 300 s by default. -->
+        <!-- The deadlock alarm time is a launch option, `jms-uc2 --deadlock-alarm-seconds`, 300 s
+          by default. -->
         <label class="muted" title="How long a box that a module of the next launch holds may wait for a Reserve before the module raises the deadlock alarm for it: a WARNING in its output that starts with &quot;possible deadlock:&quot;, and a notice on the monitor. The box keeps waiting.">deadlock alarm (s)
           <input id="deadlock-alarm" type="text" inputmode="decimal" size="4" aria-label="Deadlock alarm time in seconds"></label>
-        <!-- Added on 2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07: "a strategy is
-          chosen at start in the Launcher, for the WMS and for the modules; the default is today's
-          real behaviour". -->
-        <label class="muted" title="How each module of the next launch chooses the neighbours it asks for a box. Real behaviour is the demonstration's.">Module strategy
+        <!-- A strategy is chosen at start in the Launcher, for the WMS and for the modules; the
+          default is the real behaviour. -->
+        <label class="muted" title="How each module of the next launch chooses the neighbours it asks for a box. Real behaviour is the default.">Module strategy
           <select id="module-strategy" aria-label="Module strategy"></select></label>
-        <label class="muted" title="How the Warehouse Management System of the next launch picks the origin and the destination of a box it spawns. Real behaviour is the demonstration's.">WMS strategy
+        <label class="muted" title="How the Warehouse Management System of the next launch picks the origin and the destination of a box it spawns. Real behaviour is the default.">WMS strategy
           <select id="wms-strategy" aria-label="WMS strategy"></select></label>
+        <!-- The names of the history option are `jms-uc2 --collect-history`, the checkbox "collect
+          history", and the field `collect_history`. -->
         <label class="muted" title="The next launch turns on the triple store's history collection, so that past possessions can be read. A launch without it leaves the collection as it was.">
           <input id="collect-history" type="checkbox"> collect history</label>
-        <button id="launch" type="button" class="primary">Launch this topology</button>
-        <button id="edit" type="button" title="Open the editor on the chosen topology">Edit</button>
-        <button id="edit-empty" type="button" title="Open the editor on an empty grid">Empty grid</button>
-        <button id="upload" type="button" title="Open the editor on a topology file">Upload</button>
-        <input id="upload-file" type="file" accept=".json,application/json" hidden>
+        <!-- The box is off by default: the monitor starts in "graph only", and this box starts it
+          in "graph + streams". -->
+        <label class="muted" title="The monitor of the next launch starts in &quot;graph + streams&quot; instead of &quot;graph only&quot;: the refusals do not travel through the knowledge graph, and the monitor reads them from each service's handover event stream. The switch at the head of the monitor's Refusals works either way. The deadlock notice comes the same way.">
+          <input id="collect-refusals" type="checkbox"> Collect the SHACL refusals in one monitor</label>
         <span class="spacer"></span>
+        <button id="launch" type="button" class="primary">Launch</button>
+      </div>
+      <p id="command-message" class="message" hidden></p>
+    </section>
+
+    <section id="running-now" aria-labelledby="running-now-title">
+      <h2 id="running-now-title">Running now</h2>
+      <p class="muted">The topology that runs, and the settings it was launched with: its modules,
+        each with where it hands boxes to.</p>
+      <div class="toolbar">
         <span id="running" class="muted"></span>
         <span id="strategies" class="muted"></span>
         <span id="history" class="muted"></span>
-      </div>
-      <p id="command-message" class="message" hidden></p>
-      <div id="editor" hidden>
-        <div class="toolbar">
-          <strong id="editor-base"></strong>
-          <span class="spacer"></span>
-          <button id="download" type="button"
-            title="Save what the editor holds as a topology file">Download</button>
-          <button id="launch-edited" type="button" class="primary" disabled>Launch this</button>
-          <button id="close-editor" type="button">Close</button>
-        </div>
-        <p class="muted">Click an empty cell to add a module, a module to select it, and the gap
-          between two neighbouring modules to cycle their connection: none, one way, the other
-          way, both ways. The server's load check runs on every change, and only a topology that
-          passes it can be launched. <strong>Download</strong> saves what the editor holds as a
-          topology file. A file keeps no cells: it opens where the server's layout puts its
-          modules.</p>
-        <div class="editor-body">
-          <div id="editor-grid" class="grid"></div>
-          <div id="editor-selected"></div>
-        </div>
-        <p id="editor-check" class="message" role="status"></p>
       </div>
       <table id="modules">
         <thead>

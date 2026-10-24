@@ -5,8 +5,7 @@ after the drain, and each participant's output, each line stamped with the time 
 
 **The measures.** Every store request of every participant, with its time, its latency, its size
 and its outcome: accepted; refused, with the store's reason; timed out or connection dropped, with
-the error of its client (`store_requests.unanswered_outcome`; the two apart since 2026-10-14,
-jms_kapps 109: until then both were timed out). Each commit of the
+the error of its client (`store_requests.unanswered_outcome`). Each commit of the
 object-graph mapper, with its latency and its outcome. Then, over the measured window only, from
 the warm-up's end to the window's end: the latencies of the commits that the store admitted; the
 completed writes per minute, the writes the store applied, each checked write counted once, by its
@@ -208,7 +207,7 @@ def store_request_records(
         if answered:
             outcome = str(answered)
         else:
-            # No answer: timed out or connection dropped, by the error (jms_kapps 109).
+            # No answer: timed out or connection dropped, by the error.
             reason = span.error() or span.attributes.get("error.type")
             outcome = store_requests.unanswered_outcome(
                 None if reason is None else str(reason)
@@ -326,8 +325,8 @@ def request_measures(
 ) -> dict[str, Any]:
     """The measures of `requests`, store requests as the record holds them, over the window
     alone: how many there were, how many the store refused, how many timed out and how many
-    lost their connection, and the share of the three, refused or unanswered (jms_kapps 109;
-    until then `refused_or_timed_out_share`); the completed writes, each checked write counted
+    lost their connection, and the share of the three, refused or unanswered; the completed
+    writes, each checked write counted
     once, by its update and not
     by the removal of its receipt, and their number per minute of `window`; and the refusals for
     want of heap, each with whether it came in the window. A UC2 run's measures hold them, and

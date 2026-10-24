@@ -1,9 +1,9 @@
 """The entry point of the `jms-uc1` console script.
 
-`jms-uc1` runs use case 1 in one of two ways. `jms-uc1` guards against a live instance, seeds the
-dataset, starts the four participants of use case 1 in their order, waits until each is ready,
-prints the dashboards, serves its page that links to each participant's dashboard, runs until a
-stop signal, and stops all of them in order. It clears the dataset it seeds, so it refuses to
+`jms-uc1` runs use case 1 in one of three ways. `jms-uc1` guards against a live instance, seeds the
+dataset, starts the five participants of use case 1 in their order, waits until each is ready,
+prints one block with the addresses of its page and of each participant's dashboard, serves
+its page, reads the page's two lists from the store every second from the seed on, runs until a stop signal, and stops all of them in order. It clears the dataset it seeds, so it refuses to
 start while another service is live there, unless `--force`. Every stop signal is one stop
 (`one_stop`): a second one does not cut the stop short.
 
@@ -12,6 +12,14 @@ starts nothing, and prints the command line of each participant. The seed exists
 distributed run seeds once, and each participant then seeds nothing and reads its part from the
 graph; each can be started by hand from its printed command line, on any computer that reaches
 the triple store.
+
+`jms-uc1 infeasible-operation` shows the store refuse a planned operation that the factory
+information state cannot carry out (`infeasible_operation`). It clears and seeds the dataset as a
+run does (guarded as the run is), with a Screw whose Screw type holds none of the seven values an
+attempt needs, starts the five participants, presses Unscrew on a Screw of the measured type and
+then on that Screw, prints the store's answer to each, and stops the participants. It exits 0 when
+the first operation ended done and the second was refused by `:UnscrewingOperationScrewShape`.
+`--record FILE` writes the store's validation report verbatim.
 
 UC1's InfluxDB is the local one unless `INFLUXDB_URL` names another. The page binds a fixed port,
 so a second `jms-uc1` on the same machine is refused at the start, before anything is cleared.
@@ -25,13 +33,13 @@ import logging
 import sys
 import threading
 from collections.abc import Sequence
+from pathlib import Path
 
 from kapps_semantic_middleware.credentials import endpoint_for
-from kapps_triplestore_interface import TripleStore
 
 from jms_kapps.common.platforms import PLATFORM
 from jms_kapps.common.process import bind_socket, one_stop
-from jms_kapps.common.services import reader
+from jms_kapps.common.services import reader, reader_of_one
 from jms_kapps.common.supervision import (
     LaunchFailed,
     LiveInstanceError,
@@ -41,10 +49,19 @@ from jms_kapps.common.supervision import (
     refuse_if_live,
 )
 from jms_kapps.common.triplestore import DEFAULT_DATASET, connect
+from jms_kapps.uc1 import infeasible_operation
+from jms_kapps.uc1.infeasible_operation import DEFAULT_WAIT_SECONDS
 from jms_kapps.uc1.learner_process import DEFAULT_LEARN_SECONDS
-from jms_kapps.uc1.page import PAGE_HOST, PAGE_PORT, PageServer, build_app
+from jms_kapps.uc1.page import (
+    PAGE_HOST,
+    PAGE_PORT,
+    PageServer,
+    address_block,
+    build_app,
+)
+from jms_kapps.uc1.page_lists import PageLists
 from jms_kapps.uc1.planner import DEFAULT_TIMEOUT_SECONDS
-from jms_kapps.uc1.run_core import Participant, participants, start_run
+from jms_kapps.uc1.run_core import participants, start_run
 from jms_kapps.uc1.run_core import seed as run_core_seed
 
 
@@ -90,20 +107,57 @@ def _parser() -> argparse.ArgumentParser:
     # Also accepted after `seed`. SUPPRESS keeps a value given before it.
     seed_parser.add_argument("--dataset", default=argparse.SUPPRESS)
     seed_parser.add_argument("--force", action="store_true", default=argparse.SUPPRESS)
+    infeasible_parser = commands.add_parser(
+        "infeasible-operation",
+        help=(
+            "Show the store refuse an unscrewing operation whose Screw's Screw type holds none "
+            "of the values the attempt needs"
+        ),
+    )
+    infeasible_parser.add_argument("--dataset", default=argparse.SUPPRESS)
+    infeasible_parser.add_argument(
+        "--force", action="store_true", default=argparse.SUPPRESS
+    )
+    infeasible_parser.add_argument(
+        "--record",
+        type=Path,
+        metavar="FILE",
+        help="Write the store's validation report of the refusal to FILE, verbatim",
+    )
+    infeasible_parser.add_argument(
+        "--wait-seconds",
+        type=float,
+        default=DEFAULT_WAIT_SECONDS,
+        help=(
+            f"Seconds to wait for each press to end (default: {DEFAULT_WAIT_SECONDS:g})"
+        ),
+    )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Start use case 1 against the named dataset, which it clears, until a stop signal stops it,
-    or seed it once and print each participant's command (`jms-uc1 seed`).
+    or seed it once and print each participant's command (`jms-uc1 seed`), or show the store
+    refuse an infeasible operation (`jms-uc1 infeasible-operation`).
 
     Returns the exit code: 0 when the run ended on a stop signal or the seed was written, 1 when
-    it could not start.
+    it could not start. `infeasible-operation` returns the exit code of its demonstration.
     """
     parser = _parser()
     args = parser.parse_args(argv)
     if args.command == "seed":
         return _seed(args)
+    if args.command == "infeasible-operation":
+        if not args.wait_seconds > 0 or args.wait_seconds == float("inf"):
+            parser.error("--wait-seconds must be positive and finite")
+        logging.basicConfig(level=logging.WARNING, force=True)
+        logging.getLogger("jms_kapps").setLevel(logging.INFO)
+        return infeasible_operation.run(
+            args.dataset,
+            force=args.force,
+            record=args.record,
+            wait_seconds=args.wait_seconds,
+        )
     if not args.learn_seconds > 0 or args.learn_seconds == float("inf"):
         parser.error("--learn-seconds must be positive and finite")
     if not args.operation_timeout > 0 or args.operation_timeout == float("inf"):
@@ -137,7 +191,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"jms-uc1: {error}", file=sys.stderr)
             return 1
 
-        supervisor = Supervisor(reader(db))
+        supervisor = Supervisor(reader(db), service_of=reader_of_one(db))
         stopping = threading.Event()
 
         def begin(signum: int) -> None:
@@ -153,23 +207,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         services = {
             p.resource: p.service for p in the_participants if p.service is not None
         }
-        page = PageServer(build_app(supervisor.snapshot, services), sock)
+        # The page's two lists, read in the background from the seed on: before it, the dataset
+        # still holds the previous run's values.
+        lists = PageLists(db)
+
+        def seed_then_read() -> None:
+            run_core_seed(db)
+            lists.start()
+
+        page = PageServer(build_app(supervisor.snapshot, services, lists.last), sock)
         page.start()
-        print(
-            f"The page of use case 1: http://{PAGE_HOST}:{args.page_port}/",
-            flush=True,
-        )
+        page_url = f"http://{PAGE_HOST}:{args.page_port}/"
+        print(f"The page of use case 1: {page_url}", flush=True)
         with one_stop(begin):
             try:
                 print(
                     f"Seeding {args.dataset} on {endpoint_for(args.dataset).url}",
                     flush=True,
                 )
-                start_run(lambda: run_core_seed(db), supervisor, the_participants)
+                start_run(seed_then_read, supervisor, the_participants)
                 if not stopping.is_set():
                     supervisor.wait_until_ready()
                 if not stopping.is_set():
-                    _print_dashboards(db, the_participants)
+                    print(
+                        address_block(page_url, supervisor.snapshot()),
+                        flush=True,
+                    )
                     print(
                         "Use case 1 runs. Press Unscrew on the planner's dashboard. Ctrl+C stops it.",
                         flush=True,
@@ -181,7 +244,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(f"jms-uc1: {error}", file=sys.stderr)
                 code = 1
             finally:
-                print("Stopping the four participants...", flush=True)
+                lists.stop()
+                print("Stopping the five participants...", flush=True)
                 supervisor.stop_all()
                 left = supervisor.may_not_have_deregistered()
                 if left:
@@ -237,30 +301,14 @@ def _seed(args: argparse.Namespace) -> int:
     )
     for participant in participants(dataset):
         print(PLATFORM.command_line(participant.command), flush=True)
+    devices = [p.name for p in participants(dataset) if p.device]
+    if devices:
+        print(
+            f"{', '.join(devices)}: a device that speaks only MQTT, started with its broker and "
+            "its recordings; it registers no service, so it has no page.",
+            flush=True,
+        )
     return 0
-
-
-def _print_dashboards(db: TripleStore, the_participants: Sequence[Participant]) -> None:
-    """Print each participant's dashboard address, or that it has none yet.
-
-    A failed read prints one line and the run goes on.
-    """
-    try:
-        live = reader(db)(())
-    # Whatever the reader raises: the addresses are a convenience, and the run goes on.
-    except Exception as error:  # noqa: BLE001
-        print(f"Could not read the dashboards' addresses: {error}", flush=True)
-        return
-    by_resource = {service.resource: service for service in live}
-    for participant in the_participants:
-        service = by_resource.get(participant.resource)
-        if service is not None and service.address is not None:
-            print(
-                f"{participant.name}: {service.address.rstrip('/')}/dashboard",
-                flush=True,
-            )
-        else:
-            print(f"{participant.name}: no address yet", flush=True)
 
 
 if __name__ == "__main__":

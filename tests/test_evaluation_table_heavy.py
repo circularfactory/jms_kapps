@@ -1,5 +1,4 @@
-"""The table keeps the repetitions of a ramp and of a replay apart (jms_kapps 114, Sören's decision
-of 2026-10-13 on jms_kapps 85, note 1866296, decision 6): each repetition of a ramp has its own
+"""The table keeps the repetitions of a ramp and of a replay apart: each repetition of a ramp has its own
 judgement, compared with the replay's first repetition, and the table shows how many repetitions
 each ramp and each replay has. A runs folder made from fabricated records; no store, no run.
 """
@@ -206,7 +205,7 @@ def test_the_markdown_shows_each_repetition_of_a_ramp_and_of_a_replay(spec):
 
 
 def test_the_pooled_cells_show_the_first_repetition_alone(spec):
-    """Sören's ruling of 2026-10-14 on jms_kapps 114: the `baseline` and `baseline xF` cells and
+    """The `baseline` and `baseline xF` cells and
     a ramp level's row cells show repetition 1, the one the ramp comparison uses; the later
     repetitions appear apart in the sections on ramps and replay levels."""
     made = table_of(spec, runs_of(spec))

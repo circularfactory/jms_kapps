@@ -320,7 +320,7 @@ def interrupted_after(seconds: float, interrupt: Callable[[], None]) -> Iterator
 
 @pytest.mark.posix(reason="sends SIGINT to the main thread")
 def test_on_posix_another_thread_ends_a_wait_of_the_main_thread_with_its_sigint_handler():
-    """The run limit's way (jms_kapps 106): SIGINT to the main thread alone, whose handler runs
+    """The run limit's way: SIGINT to the main thread alone, whose handler runs
     there and ends a wait that would not end by itself for a long time."""
     began = time.monotonic()
 

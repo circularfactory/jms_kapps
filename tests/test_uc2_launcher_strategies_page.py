@@ -3,8 +3,7 @@
 The page is the real one, served by the Launcher's real app. What stands behind the Launcher is
 fake, and nothing reaches a store: the graph records each topology it is given to seed and calls
 no service live, and every process only sleeps. The Launcher finds the test strategies beside
-`real`, through a fake set of entry points (`_strategies`). (Added on 2026-10-10, jms_kapps 52,
-decided by Etienne on 2026-10-07.)
+`real`, through a fake set of entry points (`_strategies`).
 """
 
 from __future__ import annotations
@@ -45,6 +44,9 @@ class Graph:
         collect_history: bool = False,
     ) -> None:
         self.seeded.append(topology)
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return []
@@ -118,16 +120,18 @@ def test_a_launch_sends_the_chosen_names_and_the_page_shows_the_strategies_in_fo
     with page.expect_request(
         lambda request: request.url.endswith("/api/launch")
     ) as launched:
-        page.get_by_role("button", name="Launch this topology").click()
+        page.get_by_role("button", name="Launch", exact=True).click()
 
     assert launched.value.post_data_json == {
         "name": "grid",
         "transit_time": 3,
         "module_strategy": "south",
         "wms_strategy": "exit-below",
-        # The checkbox "collect history", off (added on 2026-10-10, jms_kapps 22).
+        # The checkbox "collect history", off.
         "collect_history": False,
-        # The field "deadlock alarm (s)", at its default (added on 2026-10-11, jms_kapps 77).
+        # The checkbox "collect the SHACL refusals", off.
+        "collect_refusals": False,
+        # The field "deadlock alarm (s)", at its default.
         "deadlock_alarm_seconds": 300,
     }
     expect(page.locator("#running")).to_have_text("running: grid")

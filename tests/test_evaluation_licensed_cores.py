@@ -1,6 +1,4 @@
-"""The ramp-judgement table shows the licensed cores beside the first broken level of the replay
-(jms_kapps 108, from Sören's decision of 2026-10-13 as the product owner of the tests, jms_kapps 85,
-note 1866296, decision 1): GraphDB Enterprise runs at most one concurrent query for each licensed
+"""The ramp-judgement table shows the licensed cores beside the first broken level of the replay: GraphDB Enterprise runs at most one concurrent query for each licensed
 core, so the compressed replay's first broken level can be this limit of the license.
 
 The seam is `jms-eval-table` (`make_table`, `markdown`, `main`) on fabricated records, as the tests
@@ -196,4 +194,5 @@ def test_the_ramp_section_and_the_readme_say_what_the_number_means(spec):  # noq
     assert meaning in shown
     readme = " ".join((EVALUATION / "README.md").read_text(encoding="utf-8").split())
     assert meaning in readme
-    assert "jms_kapps 108" in readme
+    assert "Licensed cores: N." in readme
+    assert "jms_kapps 108" not in readme

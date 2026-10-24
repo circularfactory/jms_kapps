@@ -1,5 +1,4 @@
-"""The deadlock alarm time, a launch option in seconds, 300 by default (Etienne, 2026-10-11,
-jms_kapps 77): `jms-uc2 --deadlock-alarm-seconds`, the Launcher's launch field
+"""The deadlock alarm time, a launch option in seconds, 300 by default: `jms-uc2 --deadlock-alarm-seconds`, the Launcher's launch field
 `deadlock_alarm_seconds`, and the run core, which puts it on every module's command line, as it
 puts the strategies there. A value that is not a positive number is refused at launch, with a
 reason a person reads.
@@ -203,6 +202,9 @@ class FakeGraph:
         collect_history: bool = False,
     ) -> None:
         self.seeded.append(topology)
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return []

@@ -1,4 +1,4 @@
-"""The sweep of the measurement harness, iteration one (jms_kapps 78): `jms-eval-sweep` runs the
+"""The sweep of the measurement harness, iteration one: `jms-eval-sweep` runs the
 runs of a spec one by one, each a run of one configuration (part 1), skips a run whose record
 exists, and runs only the configurations and the repetitions that a selection names.
 
@@ -382,9 +382,8 @@ def test_the_prefill_comes_from_the_prefills_folder(tmp_path, configured):
 def test_a_heavy_configuration_is_skipped_without_an_approval(
     tmp_path, configured, capsys
 ):
-    """A heavy run runs only under an approval that covers it (jms_kapps 96); without one it is
-    skipped and listed, as if it was not selected (jms_kapps 112: until 2026-10-14 the call was
-    refused before its first run)."""
+    """A heavy run runs only under an approval that covers it; without one it is
+    skipped and listed, as if it was not selected."""
     text = SPEC.replace("heavy = false", "heavy = true")
 
     code = main([str(spec_file(tmp_path, text)), "--runs", str(tmp_path / "runs")])
@@ -399,7 +398,7 @@ def test_a_heavy_configuration_is_skipped_without_an_approval(
 def test_without_opentelemetry_a_configuration_with_the_wrapper_is_refused_before_any_run(
     tmp_path, configured, monkeypatch, capsys
 ):
-    """A plain install has no OpenTelemetry, the extra `evaluation` (jms_kapps 48): the spec's
+    """A plain install has no OpenTelemetry, the extra `evaluation`: the spec's
     runs are observed by default, so the sweep refuses them before the first; a spec that turns
     the wrapper off runs."""
     monkeypatch.setattr(wrapper, "missing", lambda: ["opentelemetry.sdk"])
@@ -431,8 +430,7 @@ def test_without_a_configured_store_the_sweep_does_not_start(tmp_path, capsys):
 
 
 def test_the_sweep_goes_on_after_a_run_that_fails(tmp_path, monkeypatch):
-    """A run that fails has its record, so the next call skips it; the sweep goes on after it
-    (jms_kapps 112: until 2026-10-14 it stopped at it, and the next call went on after it)."""
+    """A run that fails has its record, so the next call skips it; the sweep goes on after it."""
     runs = tmp_path / "runs"
     failing = Runs(failing={2})
     for name in ("URL", "USERNAME", "PASSWORD"):
@@ -552,8 +550,7 @@ def store_configured(monkeypatch, runs: Runs) -> None:
 def test_a_run_that_a_stop_signal_ended_runs_again_and_its_record_is_kept(
     tmp_path, monkeypatch
 ):
-    """An interrupted run is no measurement: the next call makes it again (decided on
-    2026-10-11, note on jms_kapps 78). Its record stays in its own folder, beside the new one."""
+    """An interrupted run is no measurement: the next call makes it again. Its record stays in its own folder, beside the new one."""
     runs = tmp_path / "runs"
     made = Runs(interrupted={2})
     store_configured(monkeypatch, made)
@@ -615,7 +612,7 @@ def test_a_run_with_an_interrupted_and_a_completed_record_is_done(tmp_path):
     assert not sweep.has_run({}, "k", 1)
 
 
-# The report after each run (jms_kapps 86).
+# The report after each run.
 
 
 @pytest.fixture
@@ -668,7 +665,7 @@ def test_the_report_is_made_after_a_run_that_does_not_complete_and_before_the_sw
 
     code = main([str(spec_file(tmp_path)), "--runs", str(runs)])
 
-    # A failed run does not stop the sweep, a stop signal does (jms_kapps 112).
+    # A failed run does not stop the sweep, a stop signal does.
     assert code == 1
     assert made.made_runs()[:2] == [(1, 1), (1, 2)]
     assert len(made.made_runs()) == (8 if end == "failed" else 2)
@@ -757,8 +754,7 @@ def test_the_run_just_made_is_summarised_from_the_record_the_run_returned(
     assert json.loads((folder / "report-summary.json").read_text(encoding="utf-8")) == kept
 
 
-# The pick seed per repetition, the transit time and the retry wait (jms_kapps 93; interim names,
-# jms_kapps 83).
+# The pick seed per repetition, the transit time and the retry wait (interim names).
 
 
 def test_repetition_k_has_the_same_seed_in_every_configuration_and_one_key_for_all(

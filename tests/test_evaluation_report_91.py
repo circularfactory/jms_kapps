@@ -1,4 +1,4 @@
-"""The run report shows each unanswered store request and each run's client load (jms_kapps 91).
+"""The run report shows each unanswered store request and each run's client load.
 
 The seam is `jms-eval-report` on a runs folder made from fabricated records (`_evaluation_records`),
 as for the report itself; the last tests run it on a copy of iteration one's real records when one
@@ -186,7 +186,7 @@ def test_the_waits_of_unanswered_requests_are_never_counted_as_latencies(
     row = csv(made(spec_path, runs), "runs.csv").iloc[0]
 
     assert row["read_p95"] == 0.5
-    # A dropped connection by its error (jms_kapps 109), no timeout.
+    # A dropped connection by its error, no timeout.
     assert row["connection_dropped_in_window"] == 1
     assert row["timed_out_in_window"] == 0
 
@@ -374,7 +374,7 @@ COPY = os.environ.get("JMS_KAPPS_ITERATION_ONE_COPY")
 def test_on_iteration_one_s_records_the_report_lists_the_four_dropped_connections(
     tmp_path,
 ):
-    """The copy test of jms_kapps 91, with the two outcomes of jms_kapps 109: the orchestrator
+    """The copy test, with the two outcomes of an unanswered request: the orchestrator
     runs it on its copy of iteration one's records."""
     assert COPY is not None
     runs = Path(COPY)
@@ -387,7 +387,7 @@ def test_on_iteration_one_s_records_the_report_lists_the_four_dropped_connection
     assert frame["reason"].str.contains("RemoteDisconnected").all()
     assert (frame["wait_seconds"] < 0.01).all()
     assert sorted(frame["where"]) == ["in the window"] * 2 + ["outside the window"] * 2
-    # Four dropped connections and no timeout (jms_kapps 109): the records keep "timed out",
+    # Four dropped connections and no timeout: the records keep "timed out",
     # and the report classifies each by its error.
     assert list(frame["outcome"]) == ["connection dropped"] * 4
     runs_frame = csv(runs / "report", "runs.csv")

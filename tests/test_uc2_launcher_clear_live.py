@@ -1,12 +1,12 @@
 """The Launcher's Clear on a live GraphDB: `jms-uc2` runs the cross, Clear through the page's API
 stops every process and empties the dataset, graph by graph, to 0 statements, and a launch
-after it runs again (jms_kapps 5).
+after it runs again.
 
 **Only on a disposable dataset.** Clear empties every graph of the dataset, not only what a
 launch seeds, such as any graph a person loaded. So this test runs only on a dataset whose name starts with `ogm-disposable-`, created from
 `graphdb/jms-kapps-repo-config.ttl` with only its ID changed and deleted afterwards, and refuses
 any other with a skip that says why: never `Tests`, which every library's live suite shares, nor
-`jms-kapps`, the demo's (decided by Etienne on 2026-10-07). It launches with the option
+`jms-kapps`, the demo's. It launches with the option
 `--collect-history`, so that the store collects history while Clear runs, as it refuses a clear of
 the whole dataset in one request then; the collection stays on afterwards, as a launch with the
 option leaves it.

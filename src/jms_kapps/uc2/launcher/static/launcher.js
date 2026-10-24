@@ -88,10 +88,7 @@ const drawnFrom = new WeakMap();
 // when it cannot draw it. Each is drawn on its own: an error while drawing one part leaves the
 // others drawn from the same state, and the page shows that error, under the status banner,
 // until the part draws again. So a person sees in the page which part is not current, and why,
-// rather than a page that has stopped drawing with the reason in the console only. (Added on
-// 2026-10-10, jms_kapps 6, decided by Etienne: "Each part of the page (the processes, the status,
-// the topology) is drawn on its own. An error while drawing one part does not stop the others,
-// and the page reports such an error readably.")
+// rather than a page that has stopped drawing with the reason in the console only.
 const STATUS = "the status banner";
 const PARTS = [
   ["the header", renderHeader],
@@ -100,6 +97,7 @@ const PARTS = [
   ["the boxes on the station", (state) => renderBoxes(state.boxes)],
   ["the fields of the next launch", startLaunchFields],
   ["the topology", renderTopology],
+  ["the topology picker", renderRunningEntry],
 ];
 
 // Why each part could not be drawn, by its name, while it cannot.
@@ -184,8 +182,8 @@ function renderStatus() {
     const count = lastState.processes.filter(isUnconfirmed).length;
     if (count > 0) {
       const why = lastState.heartbeat_error
-        ? `it cannot read the graph: ${lastState.heartbeat_error}`
-        : "no read of the graph has succeeded lately";
+        ? `it cannot read the knowledge graph: ${lastState.heartbeat_error}`
+        : "no read of the knowledge graph has succeeded lately";
       text =
         `The Launcher cannot confirm ${count === 1 ? "one state" : `${count} states`}, because ${why}. ` +
         "Each is shown as last read, with when it was last confirmed.";
@@ -347,7 +345,7 @@ async function setFault(module, name, armed) {
 // background read of its one SPARQL query last found them, and that query's text, exactly as the
 // Launcher sent it, for a person to copy and run on the same dataset. The page sends no query of
 // its own: it shows what the state answers. A Launcher that lists no boxes answers none, and the
-// section stays hidden. (Added on 2026-10-10, jms_kapps 23, decided by Etienne on 2026-10-05.)
+// section stays hidden.
 
 function renderBoxes(boxes) {
   const section = document.getElementById("station");
@@ -411,14 +409,42 @@ async function copyQuery() {
 
 // -- The topology -------------------------------------------------------------------------- //
 
-// The picker's launch names one of the shipped topologies; the editor's sends the whole topology
-// it holds, a module list, to `api/topology/launch`, which checks it again before it clears
-// anything. A topology file of one's own opens in the editor, and the server reads it (see
-// "Topology files" below), or it goes in at the command line, `jms-uc2 --topology <path>`. The
-// state shows the running topology in the page's own terms: each module by its local name, its
-// label if it has one, its types, and its connections, and its name as the server gives it, which
-// for a topology edited on the page names the one its editor started from, such as
-// `cross (edited)`.
+// The section has three rows: the picker with the sources of an edit, one grid, and the run
+// settings with one Launch button, which launches what the grid shows. Outside edit mode the grid
+// draws the chosen topology, read-only, as the server lays it out; Edit makes the same grid
+// editable (see "The topology editor" below). A shipped topology launches by its name; any other
+// goes whole, as a module list, to `api/topology/launch`, which checks it again before it clears
+// anything, and names it after the topology it was edited from, such as `cross (edited)`. A
+// topology file of one's own opens in the editor, and the server reads it (see "Topology files"
+// below), or it goes in at the command line, `jms-uc2 --topology <path>`.
+//
+// What runs is in the panel Running now: its name as the server gives it, its strategies, whether
+// it collects history, and its table, each module by its local name, its label if it has one, its
+// types, and its connections. While a topology that is not shipped runs, the picker has one entry
+// for it, by the value RUNNING, which draws, edits and launches the module list the state holds.
+
+// The picker's value for the running topology that is not shipped. No shipped name starts with a
+// space.
+const RUNNING = " running";
+
+// The names of the shipped topologies, in the picker's order. Read once, at the start.
+let shippedNames = [];
+
+// The picker's value as last taken: a shipped name or RUNNING. A discard that is cancelled sets
+// the picker back to it.
+let chosen = null;
+
+// The running topology that is not shipped, as {name, modules, key}, while one runs, else null.
+// `key` changes whenever what runs changes.
+let running = null;
+
+// Whether the picker has started at what runs: after that, a person's choice stays.
+let topologyPickerStarted = false;
+
+// The read-only grid of the chosen topology: how many draws were asked for, so that only the
+// latest one is shown, whether it has drawn, and its modules and their cells, as the editor holds
+// them.
+const view = { draws: 0, drawn: false, modules: [], cells: new Map() };
 
 // The fields of the next launch start, each once, at what the launch in force was launched with:
 // after that, a person's own values stay.
@@ -428,11 +454,13 @@ function startLaunchFields(state) {
   if (field.value === "") field.value = state.default_transit_time;
   startStrategyPickers(state);
   startHistoryCheckbox(state);
+  startRefusalsCheckbox(state);
   startDeadlockAlarmField(state);
 }
 
-// The running topology: its name, its strategies and whether it collects history, and its table.
-// Every row is built before anything is shown, so that the name and the table are of one topology.
+// The panel Running now: the running topology's name, its strategies and whether it collects
+// history, and its table. Every row is built before anything is shown, so that the name and the
+// table are of one topology.
 function renderTopology(state) {
   const modules = state.topology ? state.topology.modules : [];
   const rows = modules.map((module) => {
@@ -466,13 +494,136 @@ function renderTopology(state) {
   );
 }
 
-// Shows the shipped topology `name` in the picker, if it is one.
-function pick(name) {
-  const picker = document.getElementById("shipped");
-  if ([...picker.options].some((option) => option.value === name)) picker.value = name;
+// The topology a running topology's name says it was edited from: `cross` for `cross (edited)`,
+// `my-loop` for `/some/where/my-loop.json`, and "" for `edited`, which names none. A launch of
+// it names that base, so that the name stays `cross (edited)` and grows no second mark.
+function baseOf(name) {
+  if (name === "edited") return "";
+  const edited = /^(.*) \(edited\)$/.exec(name);
+  if (edited) return edited[1];
+  return name.split(/[\\/]/).pop().replace(/\.json$/i, "");
 }
 
-// Whether a launch is under way: neither launch button may start another one then.
+// The shipped topology that `name` was edited from, or null where it names none.
+function shippedBase(name) {
+  const base = baseOf(name);
+  return shippedNames.includes(base) ? base : null;
+}
+
+// The picker's entry for the running topology that is not shipped: there while one runs, gone
+// once a shipped one runs or nothing does. The picker starts, once, at what runs.
+function renderRunningEntry(state) {
+  const name = state.topology_name;
+  const was = running;
+  running =
+    state.topology && name && !shippedNames.includes(name)
+      ? { name, modules: state.topology.modules, key: JSON.stringify([name, state.topology.modules]) }
+      : null;
+  const picker = document.getElementById("shipped");
+  let entry = [...picker.options].find((option) => option.value === RUNNING);
+  if (running) {
+    if (!entry) picker.append((entry = el("option", { value: RUNNING })));
+    setProperty(entry, "textContent", `${running.name}, running now`);
+  } else if (entry) {
+    entry.remove();
+  }
+
+  if (!topologyPickerStarted) {
+    topologyPickerStarted = true;
+    // A choice a person made before the first answer stays.
+    if (chosen === null) {
+      chosen = running ? RUNNING : shippedNames.includes(name) ? name : shippedNames[0];
+      picker.value = chosen;
+      drawChosen();
+    }
+  } else if (chosen === RUNNING && !running) {
+    // What the entry drew runs no more: the picker falls back to the shipped topology it was
+    // edited from, or to the first one. An edit under way stays as it is.
+    chosen = (editor.open ? editor.shipped : was && shippedBase(was.name)) || shippedNames[0];
+    picker.value = chosen;
+    drawChosen();
+  } else if (chosen === RUNNING && was && was.key !== running.key) {
+    drawChosen();
+  } else {
+    // A rebuilt option list keeps the choice.
+    picker.value = chosen;
+  }
+}
+
+// The chosen topology as `api/topology/layout` answers it: its modules and a cell for each.
+async function chosenLayout() {
+  if (chosen === RUNNING) {
+    return call("POST", "api/topology/layout", moduleListOf(running.modules));
+  }
+  const moduleList = await call("GET", `api/topologies/${encodeURIComponent(chosen)}`);
+  return call("POST", "api/topology/layout", moduleList);
+}
+
+// What the chosen topology is called in a message: `"pair"`, or the running one's name.
+function chosenName() {
+  if (chosen !== RUNNING) return `"${chosen}"`;
+  return running ? `"${running.name}"` : "the running topology";
+}
+
+// Draws the chosen topology on the grid, read-only, unless the grid is being edited. Only the
+// latest draw is shown; one the grid cannot show leaves it empty, with the reason under it, and
+// Launch off, since the grid shows nothing to launch.
+async function drawChosen() {
+  if (editor.open) return;
+  const draw = (view.draws += 1);
+  view.drawn = false;
+  renderLaunchButtons();
+  let modules = [];
+  let cells = new Map();
+  let problem = "";
+  try {
+    const layout = await chosenLayout();
+    cells = cellsOf(layout);
+    modules = layout.modules;
+  } catch (error) {
+    problem = `Cannot draw ${chosenName()}: ${error.message}`;
+  }
+  if (draw !== view.draws || editor.open) return;
+  view.modules = modules;
+  view.cells = cells;
+  view.drawn = !problem;
+  showGridMessage(problem);
+  renderGrid();
+  renderLaunchButtons();
+}
+
+// Says under the grid why it could not draw the chosen topology, or nothing for "". Edit mode
+// shows the load check there instead.
+function showGridMessage(text) {
+  const message = document.getElementById("grid-message");
+  message.hidden = !text || editor.open;
+  message.className = "message error";
+  message.textContent = text;
+}
+
+// A change of the picker. Outside edit mode the grid draws the topology chosen. In edit mode the
+// chosen topology replaces the edit, after the discard question; a cancel sets the picker back.
+async function pickerChanged() {
+  const picker = document.getElementById("shipped");
+  if (!editor.open) {
+    chosen = picker.value;
+    drawChosen();
+    return;
+  }
+  if (!discardAsked()) {
+    picker.value = chosen;
+    return;
+  }
+  const before = chosen;
+  chosen = picker.value;
+  // One that cannot be opened leaves the edit, and the picker shows again what it was edited from.
+  if (!(await editChosen()) && chosen === picker.value) {
+    chosen = before;
+    picker.value = before;
+  }
+}
+
+// Whether a launch is under way: Launch may not start another one then.
 let launching = false;
 
 // The one confirmation of every launch, which clears the dataset, and the launch itself:
@@ -482,7 +633,7 @@ async function launchAfterAsking(what, path, body) {
   if (!confirm(`Launching ${what} clears ${where} and restarts every process. Go on?`)) return false;
   launching = true;
   renderLaunchButtons();
-  say(`Launching ${what}: stopping every process, seeding, starting\u2026`);
+  say(`Launching ${what}: stopping every process, seeding, starting…`);
   try {
     renderState(await call("POST", path, body));
     say("Launched. The processes turn live as their heartbeats arrive.", "ok");
@@ -497,11 +648,11 @@ async function launchAfterAsking(what, path, body) {
 }
 
 function renderLaunchButtons() {
-  // No launch while a clear is under way, nor a clear while a launch is (see "Clear").
-  document.getElementById("launch").disabled = launching || clearing;
-  // The editor's launch only while the server's latest check of what it holds passes.
-  document.getElementById("launch-edited").disabled =
-    launching || clearing || !(editor.check && editor.check.passes);
+  // No launch while a clear is under way, nor a clear while a launch is (see "Clear"). In edit
+  // mode, a launch only while the server's latest check of what the grid holds passes; outside
+  // it, once the chosen topology is drawn.
+  document.getElementById("launch").disabled =
+    launching || clearing || (editor.open ? !(editor.check && editor.check.passes) : !view.drawn);
   document.getElementById("clear").disabled = launching || clearing;
 }
 
@@ -519,26 +670,41 @@ function transitTime() {
   return seconds;
 }
 
-async function launch() {
-  const name = document.getElementById("shipped").value;
+// The settings of the next launch, as a launch sends them, or null where a field is refused.
+function launchSettings() {
   const seconds = transitTime();
-  if (seconds === null) return;
+  if (seconds === null) return null;
   const alarm = deadlockAlarmSeconds();
-  if (alarm === null) return;
-  await launchAfterAsking(`"${name}"`, "api/launch", {
-    name,
+  if (alarm === null) return null;
+  return {
     transit_time: seconds,
     ...chosenStrategies(),
     collect_history: collectHistory(),
+    collect_refusals: collectRefusals(),
     deadlock_alarm_seconds: alarm,
-  });
+  };
+}
+
+// Launches what the grid shows: the edit in edit mode, else the chosen topology.
+async function launch() {
+  const settings = launchSettings();
+  if (settings === null) return;
+  if (editor.open) {
+    await launchEdited(settings);
+  } else if (chosen === RUNNING) {
+    // Launched again whole, named after the topology it was edited from.
+    const query = new URLSearchParams({ base: baseOf(running.name), ...settings });
+    await launchAfterAsking(chosenName(), `api/topology/launch?${query}`, moduleListOf(running.modules));
+  } else {
+    await launchAfterAsking(chosenName(), "api/launch", { name: chosen, ...settings });
+  }
 }
 
 // -- The deadlock alarm time ------------------------------------------------------------------- //
 
 // How long a box a module holds may wait for a Reserve before the module raises the deadlock
 // alarm for it: the field "deadlock alarm (s)", which each launch sends as
-// `deadlock_alarm_seconds`. (Added on 2026-10-11, jms_kapps 77, decided by Etienne.)
+// `deadlock_alarm_seconds`.
 
 // Whether the field has started at its first value: after that, a person's value stays, an empty
 // field too.
@@ -570,8 +736,7 @@ function deadlockAlarmSeconds() {
 // Who chooses where a box goes: the strategy of the modules and that of the WMS, each chosen by its
 // name at a launch, `real` unless a person picks another. The two pickers list the strategies the
 // Launcher found, by label (`api/strategies`); each launch sends the names chosen, and the state
-// names the strategies in force, which the page shows beside the running topology's name. (Added
-// on 2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07.)
+// names the strategies in force, which the page shows beside the running topology's name.
 
 // The strategies a launch may name, by kind: {module: [{name, label}], wms: [...]}. Read once, at
 // the start.
@@ -626,8 +791,7 @@ function chosenStrategies() {
 // Whether a launch turns on the triple store's history collection, so that past possessions can be
 // read: the checkbox "collect history", which each launch sends as `collect_history`. A launch
 // without it leaves the collection as it was, so the page says only that a launch collects, never
-// that the store does not. (Added on 2026-10-10, jms_kapps 22, with the names Etienne decided on
-// 2026-10-07.)
+// that the store does not.
 
 // Whether the checkbox has started at its first value: after that, a person's choice stays.
 let historyStarted = false;
@@ -643,6 +807,28 @@ function startHistoryCheckbox(state) {
 // Whether the checkbox is on, as a launch sends it.
 function collectHistory() {
   return document.getElementById("collect-history").checked;
+}
+
+// -- The refusals in the monitor ------------------------------------------------------------- //
+
+// Whether the monitor of a launch starts in "graph + streams", and so collects the SHACL refusals
+// from each participant's handover event stream: the checkbox "Collect the SHACL refusals", which
+// each launch sends as `collect_refusals`. Without it the monitor starts in "graph only".
+
+// Whether the checkbox has started at its first value: after that, a person's choice stays.
+let refusalsStarted = false;
+
+// The checkbox starts, once, at whether the launch in force collects the refusals, so that a
+// reloaded page shows it, or off while none is in force.
+function startRefusalsCheckbox(state) {
+  if (refusalsStarted) return;
+  refusalsStarted = true;
+  document.getElementById("collect-refusals").checked = state.collect_refusals === true;
+}
+
+// Whether the checkbox is on, as a launch sends it.
+function collectRefusals() {
+  return document.getElementById("collect-refusals").checked;
 }
 
 // -- The topology editor --------------------------------------------------------------------- //
@@ -679,11 +865,20 @@ const MODULE_CLASS = "FlexConveyorModule";
 const EMPTY_GRID = "empty grid";
 
 const editor = {
-  // The topology the editor started from: a shipped one's name, EMPTY_GRID, or the name of an
-  // uploaded file without `.json`. The server calls the running topology by it.
+  // Whether the grid is in edit mode.
+  open: false,
+  // The topology the editor started from: a shipped one's name, EMPTY_GRID, the name of an
+  // uploaded file without `.json`, or what a running topology was edited from. The server calls
+  // the running topology by it.
   base: null,
-  // That topology, for a person to read: `"pair"`, `an empty grid`, `the file "loop.json"`.
+  // That topology, for a person to read: `"pair"`, `an empty grid`, `the file "loop.json"`,
+  // `"pair (edited)"`.
   startedFrom: null,
+  // The shipped topology the edit started from, or null: where the picker falls back to when the
+  // running topology it was opened from runs no more.
+  shipped: null,
+  // The module list the editor opened, as JSON: the edit has changed while it holds another.
+  opened: null,
   // Each module as {id, label, types, connections}, in the module list's order. `types` is
   // empty for a module that has no type but FlexConveyorModule and was not read with it listed.
   modules: [],
@@ -697,10 +892,10 @@ const editor = {
   check: null,
 };
 
-// What the editor holds, as a module list.
-function editedModuleList() {
+// `modules`, each as {id, label, types, connections, transit_seconds}, as a module list.
+function moduleListOf(modules) {
   const names = moduleListNames;
-  return editor.modules.map((module) => ({
+  return modules.map((module) => ({
     id: names.modules + module.id,
     [names.type]: (module.types.length ? module.types : [MODULE_CLASS]).map((type) => names.classes + type),
     ...(module.label ? { [names.label]: [module.label] } : {}),
@@ -714,11 +909,15 @@ function editedModuleList() {
   }));
 }
 
-// Opens the editor on `layout`, a topology as `api/topology/layout` answers it, started from
-// `base`, which `startedFrom` names for a person to read. Throws if a connection does not lead to the
-// neighbouring cell in its direction, since the grid can show no other, and the editor then holds
-// what it held before.
-function openEditor(base, layout, startedFrom = `"${base}"`) {
+// What the editor holds, as a module list.
+function editedModuleList() {
+  return moduleListOf(editor.modules);
+}
+
+// The cell of each module of `layout`, a topology as `api/topology/layout` answers it, by id, with
+// the modules' leftmost column and top row at 0. Throws if a connection does not lead to the
+// neighbouring cell in its direction, since the grid can show no other.
+function cellsOf(layout) {
   const cells = new Map(Object.entries(layout.places));
   for (const module of layout.modules) {
     const [x, y] = cells.get(module.id);
@@ -733,8 +932,27 @@ function openEditor(base, layout, startedFrom = `"${base}"`) {
       }
     }
   }
+  return shifted(cells);
+}
+
+// `cells` moved so that their leftmost column and top row are 0.
+function shifted(cells) {
+  const all = [...cells.values()];
+  if (!all.length) return cells;
+  const left = Math.min(...all.map(([x]) => x));
+  const top = Math.min(...all.map(([, y]) => y));
+  return new Map([...cells].map(([id, [x, y]]) => [id, [x - left, y - top]]));
+}
+
+// Opens the editor on `layout`, a topology as `api/topology/layout` answers it, started from
+// `base`, which `startedFrom` names for a person to read, and from the shipped topology
+// `shipped`, if any. Throws if the grid cannot show it (see `cellsOf`), and the editor then holds
+// what it held before.
+function openEditor(base, layout, startedFrom = `"${base}"`, shipped = null) {
+  const cells = cellsOf(layout);
   editor.base = base;
   editor.startedFrom = startedFrom;
+  editor.shipped = shipped;
   editor.modules = layout.modules.map((module) => ({
     id: module.id,
     label: module.label,
@@ -747,30 +965,79 @@ function openEditor(base, layout, startedFrom = `"${base}"`) {
   }));
   editor.cells = cells;
   editor.selected = null;
-  document.getElementById("editor").hidden = false;
+  editor.opened = JSON.stringify(editedModuleList());
+  editor.open = true;
+  view.draws += 1; // a read-only draw still under way is shown nowhere
+  renderMode();
   changed();
 }
 
-async function editShipped() {
-  const name = document.getElementById("shipped").value;
+// Whether the edit holds another module list than the one it opened.
+function editChanged() {
+  return editor.open && JSON.stringify(editedModuleList()) !== editor.opened;
+}
+
+// Whether the edit may go: it has not changed, or a person says to discard it.
+function discardAsked() {
+  return !editChanged() || confirm(`Discard your changes to the topology edited from ${editor.startedFrom}?`);
+}
+
+// Shows what only edit mode shows, and hides it outside: Edit gives way to Download and Close.
+function renderMode() {
+  const open = editor.open;
+  document.getElementById("edit").hidden = open;
+  document.getElementById("download").hidden = !open;
+  document.getElementById("close-editor").hidden = !open;
+  document.getElementById("editor").hidden = !open;
+  document.getElementById("editor-selected").hidden = !open;
+  document.getElementById("editor-check").hidden = !open;
+  if (open) showGridMessage("");
+  renderLaunchButtons();
+}
+
+// Opens the editor on the chosen topology: a shipped one, or the one that runs. A choice made
+// meanwhile wins: the editor then opens on nothing. Whether it opened.
+async function editChosen() {
+  const what = chosen;
+  const name = chosenName();
+  const runningName = what === RUNNING ? running.name : null;
   try {
-    const moduleList = await call("GET", `api/topologies/${encodeURIComponent(name)}`);
-    openEditor(name, await call("POST", "api/topology/layout", moduleList));
+    const layout = await chosenLayout();
+    if (chosen !== what) return false;
+    if (runningName !== null) {
+      openEditor(baseOf(runningName), layout, name, shippedBase(runningName));
+    } else {
+      openEditor(what, layout, name, what);
+    }
+    return true;
   } catch (error) {
-    say(`Cannot edit "${name}": ${error.message}`, "error");
+    say(`Cannot edit ${name}: ${error.message}`, "error");
+    return false;
   }
 }
 
 function editEmptyGrid() {
+  if (!discardAsked()) return;
   openEditor(EMPTY_GRID, { modules: [], places: {} }, "an empty grid");
 }
 
+// Leaves edit mode, after the discard question: the grid draws the chosen topology again.
+function closeAfterAsking() {
+  if (discardAsked()) closeEditor();
+}
+
 function closeEditor() {
-  document.getElementById("editor").hidden = true;
-  editor.checks += 1; // an answer still under way is shown nowhere
+  leaveEditMode();
+  drawChosen();
+}
+
+// Ends edit mode: the grid becomes read-only, and a check still under way is shown nowhere.
+function leaveEditMode() {
+  editor.open = false;
+  editor.checks += 1;
   editor.check = null;
   editor.selected = null;
-  renderLaunchButtons();
+  renderMode();
 }
 
 function moduleById(id) {
@@ -795,13 +1062,8 @@ function connect(module, direction, to, on) {
 // Each change: the modules' leftmost column and top row are 0 again, the grid is drawn, and the
 // server checks what the editor now holds.
 function changed() {
-  const cells = [...editor.cells.values()];
-  if (cells.length) {
-    const left = Math.min(...cells.map(([x]) => x));
-    const top = Math.min(...cells.map(([, y]) => y));
-    for (const [id, [x, y]] of editor.cells) editor.cells.set(id, [x - left, y - top]);
-  }
-  renderEditor();
+  editor.cells = shifted(editor.cells);
+  renderGrid();
   checkEdited();
 }
 
@@ -834,7 +1096,7 @@ function removeModule(id) {
 // Selects the module, or lets it go if it is selected. The topology stays as it is.
 function select(id) {
   editor.selected = editor.selected === id ? null : id;
-  renderEditor();
+  renderGrid();
 }
 
 function setRole(id, role, on) {
@@ -877,34 +1139,40 @@ function tracks(count) {
   return count > 1 ? `repeat(${count - 1}, var(--cell) var(--gap)) var(--cell)` : "var(--cell)";
 }
 
-// Draws the grid: every module on its cell, an empty row and column around them to add one on,
-// and an edge between each two neighbouring modules. Then the selected module's controls.
-function renderEditor() {
-  document.getElementById("editor-base").textContent = `Edited from ${editor.startedFrom}`;
+// Draws the grid: every module on its cell, and an edge between each two neighbouring modules.
+// In edit mode each is a button, with an empty row and column around them to add a module on,
+// and the selected module's controls beside; outside it, the chosen topology, read-only.
+function renderGrid() {
+  const editable = editor.open;
+  const { modules, cells } = editable ? editor : view;
+  if (editable) document.getElementById("editor-base").textContent = `Edited from ${editor.startedFrom}`;
   const moduleOn = new Map();
-  for (const module of editor.modules) moduleOn.set(editor.cells.get(module.id).join(","), module);
-  const cells = [...editor.cells.values()];
-  const right = Math.max(0, ...cells.map(([x]) => x)) + 1;
-  const bottom = Math.max(0, ...cells.map(([, y]) => y)) + 1;
+  for (const module of modules) moduleOn.set(cells.get(module.id).join(","), module);
+  const all = [...cells.values()];
+  const ring = editable ? 1 : 0;
+  // The last column and row: the empty ones around the modules in edit mode.
+  const right = Math.max(-1, ...all.map(([x]) => x)) + ring;
+  const bottom = Math.max(-1, ...all.map(([, y]) => y)) + ring;
   const grid = document.getElementById("editor-grid");
-  grid.style.gridTemplateColumns = tracks(right + 2);
-  grid.style.gridTemplateRows = tracks(bottom + 2);
+  grid.style.gridTemplateColumns = tracks(right + ring + 1);
+  grid.style.gridTemplateRows = tracks(bottom + ring + 1);
   const children = [];
-  for (let y = -1; y <= bottom; y += 1) {
-    for (let x = -1; x <= right; x += 1) {
-      const column = 2 * (x + 1) + 1;
-      const row = 2 * (y + 1) + 1;
+  for (let y = -ring; y <= bottom; y += 1) {
+    for (let x = -ring; x <= right; x += 1) {
+      const column = 2 * (x + ring) + 1;
+      const row = 2 * (y + ring) + 1;
       const module = moduleOn.get(`${x},${y}`);
-      children.push(placed(module ? moduleCell(module, x, y) : emptyCell(x, y), column, row));
+      if (module) children.push(placed(moduleCell(module, x, y, editable), column, row));
+      else if (editable) children.push(placed(emptyCell(x, y), column, row));
       if (!module) continue;
       const east = moduleOn.get(`${x + 1},${y}`);
-      if (east) children.push(placed(edgeButton(module, east, "East"), column + 1, row));
+      if (east) children.push(placed(edgeButton(module, east, "East", editable), column + 1, row));
       const south = moduleOn.get(`${x},${y + 1}`);
-      if (south) children.push(placed(edgeButton(module, south, "South"), column, row + 1));
+      if (south) children.push(placed(edgeButton(module, south, "South", editable), column, row + 1));
     }
   }
   grid.replaceChildren(...children);
-  renderSelected();
+  if (editable) renderSelected();
 }
 
 function placed(node, column, row) {
@@ -925,23 +1193,28 @@ function emptyCell(x, y) {
   });
 }
 
-function moduleCell(module, x, y) {
-  const selected = editor.selected === module.id;
+// The cell of `module` on `x`, `y`: a button that selects it where `editable`, else read-only.
+function moduleCell(module, x, y, editable) {
+  const selected = editable && editor.selected === module.id;
   const roles = Object.entries(ROLES)
     .filter(([role]) => module.types.includes(role))
     .map(([, name]) => name);
+  const shown = [
+    el("span", { class: "name", text: moduleName(module) }),
+    el("span", { class: "roles", text: roles.join(" · ") }),
+  ];
+  const where = { "data-cell": `${x},${y}`, "data-module": module.id, title: module.id };
+  if (!editable) return el("div", { class: "cell module", ...where }, shown);
   return el(
     "button",
     {
       type: "button",
       class: selected ? "cell module selected" : "cell module",
-      "data-cell": `${x},${y}`,
-      "data-module": module.id,
+      ...where,
       "aria-pressed": String(selected),
-      title: module.id,
       onclick: () => select(module.id),
     },
-    [el("span", { class: "name", text: moduleName(module) }), el("span", { class: "roles", text: roles.join(" · ") })]
+    shown
   );
 }
 
@@ -951,8 +1224,9 @@ const GLYPHS = {
   South: { none: "·", there: "↓", back: "↑", both: "⇅" },
 };
 
-// The edge between `a` and `b`, its neighbour in `direction`, East or South.
-function edgeButton(a, b, direction) {
+// The edge between `a` and `b`, its neighbour in `direction`, East or South: a button that cycles
+// their connection where `editable`, else read-only.
+function edgeButton(a, b, direction, editable) {
   const name = waysName(ways(a, b, direction));
   const says = {
     none: "none",
@@ -960,13 +1234,17 @@ function edgeButton(a, b, direction) {
     back: `${moduleName(b)} to ${moduleName(a)}`,
     both: "both ways",
   }[name];
-  return el("button", {
-    type: "button",
+  const shown = {
     class: `edge ${direction === "East" ? "across" : "down"} ${name}`,
     "data-edge": `${a.id} ${b.id}`,
     "aria-label": `Connection between ${moduleName(a)} and ${moduleName(b)}: ${says}`,
-    title: "Click to cycle: none, one way, the other way, both ways",
     text: GLYPHS[direction][name],
+  };
+  if (!editable) return el("span", { ...shown, role: "img" });
+  return el("button", {
+    type: "button",
+    ...shown,
+    title: "Click to cycle: none, one way, the other way, both ways",
     onclick: () => cycleConnection(a.id, b.id, direction),
   });
 }
@@ -1082,22 +1360,19 @@ function renderCheck() {
   renderLaunchButtons();
 }
 
-// Launches what the editor holds, naming the topology it started from, which the server calls the
-// running topology by. The picker then shows that topology, if it is a shipped one.
-async function launchEdited() {
-  const seconds = transitTime();
-  if (seconds === null) return;
-  const alarm = deadlockAlarmSeconds();
-  if (alarm === null) return;
-  const query = new URLSearchParams({
-    base: editor.base,
-    transit_time: seconds,
-    ...chosenStrategies(),
-    collect_history: collectHistory(),
-    deadlock_alarm_seconds: alarm,
-  });
+// Launches what the editor holds with the launch's `settings`, naming the topology it started
+// from, which the server calls the running topology by. A launch ends edit mode: the picker then
+// holds the topology launched, as its entry for what runs, and the grid draws it.
+async function launchEdited(settings) {
+  const query = new URLSearchParams({ base: editor.base, ...settings });
   const what = `the topology edited from ${editor.startedFrom}`;
-  if (await launchAfterAsking(what, `api/topology/launch?${query}`, editedModuleList())) pick(editor.base);
+  if (!(await launchAfterAsking(what, `api/topology/launch?${query}`, editedModuleList()))) return;
+  leaveEditMode();
+  if (running) {
+    chosen = RUNNING;
+    document.getElementById("shipped").value = chosen;
+  }
+  drawChosen();
 }
 
 // -- Topology files -------------------------------------------------------------------------- //
@@ -1112,7 +1387,7 @@ async function launchEdited() {
 function downloadEdited() {
   const text = `${JSON.stringify(editedModuleList(), null, 2)}\n`;
   const href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-  el("a", { href, download: `${editor.base}.json` }).click();
+  el("a", { href, download: `${editor.base || "edited"}.json` }).click();
   // Once the browser has taken the file.
   setTimeout(() => URL.revokeObjectURL(href), 1000);
 }
@@ -1122,9 +1397,11 @@ function downloadEdited() {
 // nothing of it but its name, which without `.json` names the topology the editor starts from. A
 // file the server refuses, or one the grid cannot show, leaves the editor as it was, and the page
 // says why. A topology that fails the load check opens, so that a person edits it until it passes.
+// In edit mode the file replaces the edit, after the discard question.
 async function uploadFile(file) {
   try {
     const layout = await call("POST", "api/topology/file", file);
+    if (!discardAsked()) return;
     openEditor(file.name.replace(/\.json$/i, ""), layout, `the file "${file.name}"`);
     say("");
   } catch (error) {
@@ -1145,9 +1422,7 @@ function uploadChosen(event) {
 // Clear stops every process, then empties the run's dataset graph by graph, and the page says
 // what the store holds then. It asks first, since nothing brings the data back, and the server
 // clears nothing while another launcher's process is live there, which the page then says. The
-// next launch loads the ontologies, the shapes and the topology again. (Added on 2026-10-10,
-// jms_kapps 5, decided by Etienne on 2026-10-05, who asked for a clear button that kills every
-// process and clears the whole of the store's unit, the dataset.)
+// next launch loads the ontologies, the shapes and the topology again.
 
 // Whether a clear is under way: no launch and no second clear may start then.
 let clearing = false;
@@ -1200,8 +1475,10 @@ async function poll() {
 }
 
 async function start() {
-  const names = await call("GET", "api/topologies");
-  document.getElementById("shipped").replaceChildren(...names.map((name) => el("option", { value: name, text: name })));
+  shippedNames = await call("GET", "api/topologies");
+  const picker = document.getElementById("shipped");
+  picker.replaceChildren(...shippedNames.map((name) => el("option", { value: name, text: name })));
+  picker.addEventListener("change", pickerChanged);
   directions = await call("GET", "api/directions");
   moduleListNames = await call("GET", "api/topology/format");
   strategies = await call("GET", "api/strategies");
@@ -1211,14 +1488,13 @@ async function start() {
   document.getElementById("clear").addEventListener("click", clearAfterAsking);
   document.getElementById("copy-query").addEventListener("click", copyQuery);
   document.getElementById("launch").addEventListener("click", launch);
-  document.getElementById("edit").addEventListener("click", editShipped);
+  document.getElementById("edit").addEventListener("click", editChosen);
   document.getElementById("edit-empty").addEventListener("click", editEmptyGrid);
   const chooser = document.getElementById("upload-file");
   chooser.addEventListener("change", uploadChosen);
   document.getElementById("upload").addEventListener("click", () => chooser.click());
   document.getElementById("download").addEventListener("click", downloadEdited);
-  document.getElementById("launch-edited").addEventListener("click", launchEdited);
-  document.getElementById("close-editor").addEventListener("click", closeEditor);
+  document.getElementById("close-editor").addEventListener("click", closeAfterAsking);
   await poll();
   setInterval(poll, POLL_MS);
 }

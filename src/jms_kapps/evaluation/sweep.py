@@ -17,24 +17,20 @@ record below `--runs` that says it is that repetition of a configuration with th
 (`spec.SpecConfiguration.key`). A run that failed is skipped too: a failure is a result. A run
 that a stop signal ended is no measurement: its record's `outcome` is `interrupted`, and the next
 call makes the run again, in a folder of its own, beside the interrupted attempt's, whose record
-stays as it is (decided on 2026-10-11 in the unattended rules, note on jms_kapps 78, for Etienne
-to confirm).
+stays as it is.
 
-**The precision rule and the rounds** (the rule added on 2026-10-12, jms_kapps 101; the rounds on
-2026-10-13, jms_kapps 111, decided by Sören as the product owner of the tests, jms_kapps 85, note
-1866296; interim names, jms_kapps 83). A spec with a `[precision]` table gives no fixed repetitions
+**The precision rule and the rounds** (interim names). A spec with a `[precision]` table gives no fixed repetitions
 to its configurations at normal load: each runs until the rule holds (`precision`), at most 20
 times, in rounds (`rounds`). **A round** makes one run of each selected configuration that is still
 open, in the spec's order: round k makes repetition k. A configuration is open while it does not
 meet the rule and has made fewer than 20 runs (`rounds.is_open`); one whose throughput median is
-0 once it has its minimum of valid runs stops there (changed on 2026-10-14, jms_kapps 113: until
-then it ran to 20). **One call goes on round after round** (`sweep_rounds`) until one of its ends:
+0 once it has its minimum of valid runs stops there. **One call goes on round after round** (`sweep_rounds`) until one of its ends:
 the stop time, the stop file, or the end of the rule, where no selected configuration is open. The
 state is in the records, as above: a call that stops goes on at its round in the next call, an
 interrupted attempt is made again and does not count toward the 20, a call with a smaller
 `--configurations` leaves the configurations it no longer selects as they are, and `--repetitions`
 narrows the rounds to those of its repetitions.
-**Removed configurations** (Sören's decision of 2026-10-14 on jms_kapps 111, note 1866695):
+**Removed configurations:**
 `--remove 3,7` records configurations by their keys in `removed-configurations.json` in `--runs`,
 and every later call of this command and of `jms-eval` leaves them out, whatever it selects, until
 `--put-back 3` puts them back; both run nothing, and `--list` shows each removed configuration as
@@ -43,8 +39,7 @@ holds `sweep.repetitions` 20 and `sweep.round`; a record made in a pass before t
 `sweep.pass`, and its run counts as its repetition. `--list` shows the next round and, for each
 configuration, its runs made, its valid runs and whether it is open.
 
-**The heavy parts in the rounds** (jms_kapps 114, decided by Sören on 2026-10-13 as the product
-owner of the tests, jms_kapps 85, note 1866296, decision 6; interim names, jms_kapps 83). A ramp, a
+**The heavy parts in the rounds** (interim names). A ramp, a
 replay and a sustained load (a heavy configuration that is no ramp's level) each run one time, in
 round 1, at its place in the spec's order (`heavy_parts`, `chosen_runs`, `replays_due`): a ramp at
 its block's place, its rates rising, until it ends by its rule; a replay right after its
@@ -57,18 +52,12 @@ heavy configuration with replay factors). While a part's last repetition ended b
 the next round makes one more, from the lowest level until it ends, under the same approval, and
 its records say `sweep.repetition` 2 (then 3); a repeated replay replays the run that its first
 repetition replayed. A target that exists or is under way makes nothing, so a restart with the
-same command line is safe, as Sören ruled on 2026-10-14. A target whose next repetition
-`--repetitions` leaves out makes nothing in that call, which says so and goes on. (Changed on
-2026-10-14, jms_kapps 114: until then the option named a part without a target, asked for one
-more repetition per call, and refused a call where no part it named had ended, so a restart with
-the same line ran nothing.) A heavy configuration of such a spec with `repetitions` other than 1
-is refused (`spec`). `--list` shows where each heavy part stands. (Until 2026-10-13 a ramp's levels
-and heavy configurations kept fixed repetitions, made with round 1, and a ramp or replay that
-ended never ran again.)
-(Until 2026-10-13 a call made at most one pass and exited: pass 1 made repetitions 1 to 5 of each
-configuration, pass 2 6 to 10, each later pass one more of each that did not meet the rule yet.)
+same command line is safe. A target whose next repetition
+`--repetitions` leaves out makes nothing in that call, which says so and goes on. A heavy
+configuration of such a spec with `repetitions` other than 1
+is refused (`spec`). `--list` shows where each heavy part stands.
 
-**The stop time and the stop file** (jms_kapps 111, interim names). Before each run, a replay
+**The stop time and the stop file** (interim names). Before each run, a replay
 level too, the call checks its stop time, `--stop-at` (a date and time with its zone, such as
 2026-10-14T06:00+02:00), and the stop file, `STOP` in `--runs`. At the stop time, or where the stop
 file is there, it stops before that run; a run that started before the stop time runs to its end.
@@ -79,7 +68,7 @@ sweep again; the next call goes on at the round that the records show. Both hold
 fixed repetitions too. A round that has nothing to make, since the rule cannot read records that
 name its runs, ends the call with its own message.
 
-**The series** (jms_kapps 110, interim names). `--list` and each run line, a replay level's lines
+**The series** (interim names). `--list` and each run line, a replay level's lines
 too, show a configuration's number with the spec's series
 (`spec.SpecConfiguration.name`), such as "before 7"; a record, a
 run's folder and the options that select (`--configurations`, `--remove`, `--put-back`,
@@ -90,7 +79,7 @@ WarehouseManagementSystem's picks: the base is the spec's `pick_base_seed`, else
 `DEFAULT_BASE_SEED`, so repetition k has the same seed in every configuration and the repetitions
 of two configurations stay paired. The seed is written into the run's saved configuration as a run
 setting, outside the configuration's key, and into its record; `jms-eval-uc2` run on that saved
-configuration makes the same picks. (Added on 2026-10-12, jms_kapps 93, interim names, jms_kapps 83.)
+configuration makes the same picks.
 
 **Before the first run** it refuses a spec in which a configuration misses a value, naming the
 value, and it resolves each selected configuration that has a run to make, so that a file it names
@@ -103,17 +92,14 @@ that covers it (`approval`): the option `--heavy-run-approval` gives the approva
 person may give for one spec and one period, in agreement with the server's admins. Inside the
 period the sweep runs every heavy configuration of the approved spec under that one approval,
 several ramps and sustained loads alike. **Each heavy run is checked at its start, and one that no
-approval covers then is skipped and listed** (jms_kapps 112, decided by Sören on 2026-10-13 as
-the product owner of the tests, jms_kapps 85, note 1866296; interim names, jms_kapps 83): where
+approval covers then is skipped and listed**: where
 there is no approval, the period is not now, the spec is another or changed since it was approved,
 or the call has `--set` overrides, which no approval covers. The sweep goes on with the next run,
 a skipped level of a ramp or a replay skips its higher levels in that round, and at its end the
 call lists each run it skipped with the reason. A skip writes no record, so a later call whose
 approval covers the run makes it; a call that only skipped heavy runs exits as if they were not
-selected. (Until 2026-10-14 a selection with such a heavy run was refused before its first run,
-and a sweep that reached the end of the period stopped there.) A run at normal load needs no
-approval, and the heavy switch is off by default. Each heavy run's record keeps the whole approval
-(jms_kapps 96).
+selected. A run at normal load needs no
+approval, and the heavy switch is off by default. Each heavy run's record keeps the whole approval.
 
 **A ramp** (`spec`, `ramp`) runs its rates one per run, in rising order, and a selection with a
 level of a ramp whose lower levels have neither a record nor a run to make is refused, since a ramp
@@ -123,12 +109,10 @@ one with no run that counts: the ramp's higher rates are not run, and the sweep 
 runs after them. A plateau or a UC2-limited level breaks nothing, so the ramp goes on past it
 (`ramp`). A ramp that ended in an earlier call sends no higher rate either; under the precision
 rule a repetition on request starts again from its lowest rate, and each repetition is judged
-apart (jms_kapps 114). (The ramp added
-on 2026-10-12, jms_kapps 49. Changed on 2026-10-12, jms_kapps 99, decided by Sören Weindel,
-jms_kapps 85: until then a plateau broke a level, and the ramp stopped at it.)
+apart.
 
-**A failed run does not stop the sweep; 3 failed runs in a row do** (jms_kapps 112, from the same
-decision and Sören's notes 1866704 and 1866813 on jms_kapps 112): the sweep goes on after a failed
+**A failed run does not stop the sweep; 3 failed runs in a row do**: one failed run at night must
+not end a series that runs with no person present, so the sweep goes on after a failed
 run, and stops after `FAILED_RUNS_IN_A_ROW` failed runs one after the other, so that a store that
 refuses every run is not sent the rest of the spec. A run counts as failed where its outcome is
 failed or failed over time, or where the records do not show it after the call made it, right after
@@ -137,11 +121,9 @@ the rest of the call. A completed run whose repository the
 store did not delete counts too and resets nothing; any other completed run, valid or invalid,
 resets the count. A run that a stop signal ended (Ctrl+C, SIGTERM or a closing terminal's SIGHUP)
 stops the call at once. The next call skips a failed run and goes on after it, and makes an
-interrupted one again. (Until 2026-10-14 the sweep stopped at each run that did not complete,
-and the guard of the rounds stopped the call where a record of the call's runs was gone by the next
-round.)
+interrupted one again.
 
-**The replay levels** (added on 2026-10-12, jms_kapps 98, interim names, jms_kapps 83). A block of the
+**The replay levels** (interim names). A block of the
 spec may give `replay_factors` (`spec`). After the UC2 runs of each configuration of that block the
 sweep replays the first valid run of that configuration, with the store-only baseline (`baseline`),
 once per factor in rising order, each level on a repository of its own (`replay_levels`). A level is
@@ -152,7 +134,7 @@ are not run, in this call or a later one. A level that failed ends the replay to
 toward the failed runs in a row. **Every factor above 1 is a heavy run** and runs only under an
 approval that covers the spec and the replayed configuration, exactly as a heavy configuration
 does (`approval.cover`): a level above 1 that none covers at its start is skipped and listed, with
-its higher levels, and so is a level that cannot start (jms_kapps 112). A factor of 1 is a replay
+its higher levels, and so is a level that cannot start. A factor of 1 is a replay
 at normal load. The rounds of the precision rule plan a replay as a heavy part (above): in round 1,
 right after its configuration's first valid run, and later only while it has not ended or has a
 request; a level's record says the replay's repetition. `--list` shows each configuration's
@@ -161,8 +143,7 @@ levels.
 **The report** (`report`, `jms-eval-report`) is made again after each run, right after the run
 returns and before the sweep judges how it ended, whatever the end: completed, invalid, failed or
 interrupted. It is made with the sweep's `--set` overrides, into `report/` below `--runs`. An error
-of the report is told on the sweep's output and never stops or fails the sweep. (Added on
-2026-10-12, jms_kapps 86.)
+of the report is told on the sweep's output and never stops or fails the sweep.
 
 It exits with 0 once every selected run has its record, or no selected configuration under the
 precision rule is open, or it stopped at its stop time or at the stop file, and every run it made
@@ -173,8 +154,7 @@ no exit code.
 `--remove` and `--put-back` exit with 0 once the removed configurations are written. `--list`
 shows the spec's configurations and their runs, and runs nothing, so it needs no store.
 
-The connection to the configured GraphDB is that of `jms-eval-uc2`. (Added on 2026-10-11,
-jms_kapps 78.)
+The connection to the configured GraphDB is that of `jms-eval-uc2`.
 """
 
 from __future__ import annotations
@@ -266,15 +246,14 @@ from jms_kapps.evaluation.summary import (
 PROGRAM = "jms-eval-sweep"
 
 # The stop file: where it is in the runs' folder, a call stops before its next run and removes it
-# (jms_kapps 111, interim name).
+# (interim name).
 STOP_FILE = "STOP"
 
-# The option that gives a call's stop time (jms_kapps 111, interim name).
+# The option that gives a call's stop time (interim name).
 STOP_TIME_OPTION = "--stop-at"
 
 # The removed configurations of a sweep, by their keys, in the runs' folder, and the options that
-# remove configurations and put them back (Sören's decision of 2026-10-14 on jms_kapps 111, note
-# 1866695; interim names).
+# remove configurations and put them back (interim names).
 REMOVED_FILE = "removed-configurations.json"
 REMOVE_OPTION = "--remove"
 PUT_BACK_OPTION = "--put-back"
@@ -289,7 +268,7 @@ RunReplay = Callable[..., dict[str, Any]]
 
 @dataclass(frozen=True)
 class HeavyCheck:
-    """What covers a heavy run at its start (jms_kapps 112, interim name): `approval.cover` with
+    """What covers a heavy run at its start (interim name): `approval.cover` with
     the call's approval, for the spec, the configuration's key and the configuration resolved,
     with whether the call has `--set` overrides. `why` says what makes the run heavy (a heavy
     configuration, or a replay at a factor above 1)."""
@@ -328,15 +307,14 @@ class SweepRun:
     repetition: int
     to_run: Configuration | None
     beyond_the_ramp: bool = False
-    # What covers a heavy run at its start (`HeavyCheck`, jms_kapps 112), or None for a run at
-    # normal load. Until 2026-10-14 the plan held the covered record itself, made before the
-    # call's first run.
+    # What covers a heavy run at its start (`HeavyCheck`), or None for a run at
+    # normal load.
     heavy: HeavyCheck | None = None
     # The round of the precision rule that makes the run, or None for a run of fixed repetitions
-    # (jms_kapps 111, interim name): round k makes repetition k.
+    # (interim name): round k makes repetition k.
     round_number: int | None = None
     # The factor of a replay level of the configuration's first valid run, or None for a UC2 run
-    # (jms_kapps 98, interim name). Then `repetition` is the replay's repetition (jms_kapps 114),
+    # (interim name). Then `repetition` is the replay's repetition,
     # and `beyond_the_ramp` says that the replay ended below the level.
     replay_factor: float | None = None
 
@@ -401,7 +379,7 @@ def shows(runs: Path, record: Mapping[str, Any], key: str, repetition: int) -> b
     """Whether the records below `runs` show the run just made, which returned `record`: its
     record file, in the folder of its run id, says that it is the repetition `repetition` of the
     configuration (or the level) of `key`, as `recorded` reads it, so that a later round skips it
-    (jms_kapps 112, note 1866704; interim name). Only that one record is read."""
+    (interim name). Only that one record is read."""
     read = _recorded_run(runs / str(record.get("run_id")) / "record.json")
     return read is not None and read[0] == (key, repetition) and read[1] != INTERRUPTED
 
@@ -421,7 +399,7 @@ Removed = dict[str, dict[str, Any]]
 
 def read_removed(runs: Path) -> Removed:
     """The removed configurations of the sweep below `runs` (`REMOVED_FILE`): none where the file
-    is not there (Sören's decision on jms_kapps 111, note 1866695; interim name).
+    is not there (interim name).
 
     Raises:
         SpecRefused: If the file is there and cannot be read, so that no call plans a removed
@@ -554,10 +532,10 @@ def chosen_runs(
     """The runs a call's next round chooses, in the spec's order, and the round of the precision
     rule or None.
 
-    A spec of fixed repetitions: `selected`. A spec with the rule (jms_kapps 111, interim names):
+    A spec of fixed repetitions: `selected`. A spec with the rule (interim names):
     the runs of the lowest round that has a run to make among the open selected configurations
     under the rule (`rounds.next_round`), narrowed by `repetition_numbers`; and the selected runs
-    of the heavy parts that the round makes (jms_kapps 114, `heavy_parts.due_repetitions`): the
+    of the heavy parts that the round makes (`heavy_parts.due_repetitions`): the
     levels of a ramp and the run of a sustained load, of the repetition that is due, with the
     repetitions `requested` for some. Each heavy part runs in round 1, and in a later round only
     while it has not ended or has a request. Where no round is left, those runs alone. A call
@@ -602,7 +580,7 @@ def chosen_replays(
     chosen: Sequence[tuple[SpecConfiguration, int]],
 ) -> list[SpecConfiguration]:
     """The configurations whose replay levels a call of a spec of fixed repetitions chooses
-    (jms_kapps 98, interim names), in the spec's order: those with replay factors that have a run
+    (interim names), in the spec's order: those with replay factors that have a run
     among the `chosen` ones. Under the precision rule the rounds choose them (`replays_due`)."""
     found: dict[str, SpecConfiguration] = {}
     for configuration, _ in chosen:
@@ -619,8 +597,7 @@ def replays_due(
     configuration_numbers: Sequence[int] | None,
     requested: Mapping[PartId, int] | None = None,
 ) -> dict[str, int]:
-    """The replays that a round of a spec with the precision rule makes (jms_kapps 114, interim
-    names), each by its configuration's key with the repetition that is due
+    """The replays that a round of a spec with the precision rule makes (interim names), each by its configuration's key with the repetition that is due
     (`heavy_parts.due_repetitions`), with the repetitions `requested` for some: a selected
     configuration's replay that has not ended or has a request. A replay that has no record and no
     valid run to replay yet is made only in a round with a run of its configuration among the
@@ -659,7 +636,7 @@ def replay_ends(
 
     Args:
         repetitions: The repetition of each replay that counts, by the configuration's key: the
-            first one where none is given (jms_kapps 114).
+            first one where none is given.
     """
     ends: dict[str, float] = {}
     for configuration in found:
@@ -688,7 +665,7 @@ def plan_runs(
     """The chosen runs, each with its configuration resolved where it has a run to make: no
     record yet, and, for a level of a ramp, no level below it that the ramp ended at. A heavy run
     is given what covers it at its start (`HeavyCheck`): no heavy run is refused here, since the
-    sweep checks each at its start and skips one that no approval covers then (jms_kapps 112).
+    sweep checks each at its start and skips one that no approval covers then.
 
     Args:
         approval: The approval file's approval, or None where the option is off.
@@ -701,13 +678,12 @@ def plan_runs(
         replay_ended: The factor at which the replay of each configuration ended in earlier calls,
             by its key (`replay_ends`); the levels above it are skipped.
         replay_repetitions: The repetition of the replay that the call plans, by the
-            configuration's key: the first one where none is given (jms_kapps 114).
+            configuration's key: the first one where none is given.
 
     Raises:
         SpecRefused: If a configuration with a run to make cannot be resolved; or if a level of
             a ramp has a run to make while a level below it has neither a record nor a run to
-            make in this call, since a ramp runs its rates in rising order. (Until 2026-10-14,
-            jms_kapps 112, also if a heavy run had a run to make and no approval covered it.)
+            make in this call, since a ramp runs its rates in rising order.
     """
     ramp_ends = ramp_ends or {}
     configurations_to_run: dict[str, Configuration] = {}
@@ -819,11 +795,11 @@ def _replay_levels(
     ended: float | None,
     repetition: int = 1,
 ) -> list[SweepRun]:
-    """The replay levels of `configuration`, one for each of its factors in rising order (jms_kapps
-    98, interim names), of the replay's repetition `repetition` (jms_kapps 114): skipped where the
-    level has a record, or where the replay ended below it. A level to make is resolved, and,
+    """The replay levels of `configuration`, one for each of its factors in rising order (interim
+    names), of the replay's repetition `repetition`: skipped where the level has a record, or
+    where the replay ended below it. A level to make is resolved, and,
     where it is heavy (a factor above 1, or a heavy configuration), given what covers it at its
-    start (`HeavyCheck`, jms_kapps 112): `approval.cover` for the spec and the configuration's key.
+    start (`HeavyCheck`): `approval.cover` for the spec and the configuration's key.
 
     Raises:
         SpecRefused: If the configuration cannot be resolved.
@@ -910,7 +886,7 @@ def _beyond_the_ramp(
     return last is not None and float(configuration.values["boxes_per_minute"]) > last
 
 
-# The ends of a call (jms_kapps 111, interim names), each with its own message (`Ended`).
+# The ends of a call (interim names), each with its own message (`Ended`).
 MADE = "made"
 RULE_ENDED = "no configuration open"
 STOP_TIME = "stop time"
@@ -922,17 +898,17 @@ NOTHING_TO_MAKE = "a round has nothing to make"
 # The ends at which a call has done what it was asked, so it exits with 0.
 PLANNED_ENDS = frozenset({MADE, RULE_ENDED, STOP_TIME, STOP_FILE_FOUND})
 
-# The failed runs in a row at which a call stops (jms_kapps 112, interim name).
+# The failed runs in a row at which a call stops (interim name).
 FAILED_RUNS_IN_A_ROW = 3
 
 
 @dataclass(frozen=True)
 class Ended:
-    """How a call's runs ended (jms_kapps 111, interim names): `end`, one of the ends above, and
+    """How a call's runs ended (interim names): `end`, one of the ends above, and
     the message that says it; `left_levels` where a replay level was left for want of a run to
     replay, and `waiting` the replays whose levels were left so, each by its configuration's key
-    and the replay's repetition (jms_kapps 114, interim name); `failed` the runs of the call that
-    failed, the sweep having gone on after them (jms_kapps 112, interim name)."""
+    and the replay's repetition (interim name); `failed` the runs of the call that
+    failed, the sweep having gone on after them (interim name)."""
 
     end: str
     message: str = ""
@@ -943,7 +919,7 @@ class Ended:
     @property
     def completed(self) -> bool:
         """Whether every run of the call was made and completed, and no replay level was left. A
-        heavy run that the call skipped is as if it was not selected (jms_kapps 112)."""
+        heavy run that the call skipped is as if it was not selected."""
         return (
             self.end in (MADE, RULE_ENDED) and not self.left_levels and not self.failed
         )
@@ -960,8 +936,7 @@ class Ended:
 
 
 # Why a heavy run or a replay level is skipped where a lower level of its ramp or replay was
-# skipped in the same round, or where its replay level cannot start (jms_kapps 112, interim
-# names).
+# skipped in the same round, or where its replay level cannot start (interim names).
 LOWER_RAMP_LEVEL_SKIPPED = "a lower level of its ramp was skipped"
 LOWER_REPLAY_LEVEL_SKIPPED = "a lower level of its replay was skipped"
 REPLAY_CANNOT_START = "cannot start"
@@ -969,12 +944,11 @@ REPLAY_CANNOT_START = "cannot start"
 
 @dataclass
 class Unattended:
-    """What a call keeps from run to run so that it runs with no person present (jms_kapps 112,
-    decided by Sören on 2026-10-13 as the product owner of the tests, jms_kapps 85, note 1866296;
-    interim name): the failed runs in a row, the runs of the call that failed, the heavy runs and
+    """What a call keeps from run to run so that it runs with no person present (interim name):
+    the failed runs in a row, the runs of the call that failed, the heavy runs and
     replay levels it skipped, each by what it is with why, and the configurations that it leaves
     out for the rest of the call, by their keys, since the records do not show a run of theirs
-    that it made (note 1866704)."""
+    that it made."""
 
     in_a_row: list[str] = field(default_factory=list)
     failed: list[str] = field(default_factory=list)
@@ -1088,7 +1062,7 @@ def _run_name(run: SweepRun) -> str:
 
 def _not_found(runs: Path) -> str:
     """Why a run counts as failed where the call cannot find its record below `runs` right after
-    it made it (jms_kapps 112, note 1866704)."""
+    it made it."""
     return (
         f"its record cannot be found below {runs}, so its configuration is left out for the "
         "rest of the call"
@@ -1107,9 +1081,9 @@ def _gone(runs: Path) -> str:
 def _failure(
     record: Mapping[str, Any], found: bool, runs: Path
 ) -> tuple[str | None, str | None]:
-    """Why a run just made counts toward the failed runs in a row (jms_kapps 112): `failed`, where
+    """Why a run just made counts toward the failed runs in a row: `failed`, where
     it did not complete or the records below `runs` do not show it, both said where both hold,
-    and `left`, where it completed but left its repository on the server (note 1866813); each
+    and `left`, where it completed but left its repository on the server; each
     None where it does not."""
     deletion = record.get("repository_deletion")
     left = (
@@ -1126,13 +1100,13 @@ def _failure(
 
 
 def now() -> datetime:
-    """The time now, of this machine, with its zone (jms_kapps 111, interim name)."""
+    """The time now, of this machine, with its zone (interim name)."""
     return datetime.now(UTC)
 
 
 @dataclass(frozen=True)
 class Stops:
-    """Where a call stops between two runs (jms_kapps 111, interim names): at its stop time, or
+    """Where a call stops between two runs (interim names): at its stop time, or
     where the stop file is in the runs' folder. `before_run` checks both before each run.
 
     Args:
@@ -1197,7 +1171,7 @@ class Stops:
 
 def add_stop_time_option(parser: argparse.ArgumentParser, *, folder: str) -> None:
     """Add the option of a call's stop time to `parser`, of a command whose runs' folder is the
-    option `folder` (jms_kapps 111, interim name)."""
+    option `folder` (interim name)."""
     parser.add_argument(
         STOP_TIME_OPTION,
         metavar="TIME",
@@ -1210,8 +1184,7 @@ def add_stop_time_option(parser: argparse.ArgumentParser, *, folder: str) -> Non
 
 
 def add_repeat_option(parser: argparse.ArgumentParser) -> None:
-    """Add the option that asks for one more repetition of heavy parts to `parser` (jms_kapps 114,
-    interim name)."""
+    """Add the option that asks for one more repetition of heavy parts to `parser` (interim name)."""
     parser.add_argument(
         REPEAT_OPTION,
         metavar="PART:REPETITION",
@@ -1229,7 +1202,7 @@ def stops_of(
     runs: Path, given: str | None, clock: Callable[[], datetime] = now
 ) -> Stops:
     """The stops of a call whose runs' folder is `runs`, with the stop time `given` by its option,
-    or None for none (jms_kapps 111, interim name).
+    or None for none (interim name).
 
     Raises:
         SpecRefused: As `stop_time`.
@@ -1243,7 +1216,7 @@ def _shown_time(moment: datetime) -> str:
 
 def stop_time(text: str, *, at: datetime | None = None) -> datetime:
     """The stop time that `--stop-at` gives: a date and time with its zone, such as
-    2026-10-14T06:00+02:00 or 2026-10-14T04:00Z (jms_kapps 111, interim name).
+    2026-10-14T06:00+02:00 or 2026-10-14T04:00Z (interim name).
 
     Raises:
         SpecRefused: If it is no date and time, names no zone, or has passed at `at` (this
@@ -1313,30 +1286,26 @@ def make_runs(
     so before a run, at a run that a stop signal ended, or at the third failed run in a row.
     Returns how it ended (`Ended`): `MADE` where it went through every run.
 
-    **A failed run does not stop the sweep** (jms_kapps 112, decided by Sören on 2026-10-13 as the
-    product owner of the tests, jms_kapps 85, note 1866296): it goes on, and stops after
+    **A failed run does not stop the sweep**: it goes on, and stops after
     `FAILED_RUNS_IN_A_ROW` failed runs one after the other, so that a store that refuses every run
     is not sent the rest of the spec. A run counts as failed where it did not complete (failed,
     or failed over time), or where the records below `runs` do not show it after it was made:
-    its configuration is then left out for the rest of the call (note 1866704). A completed run
-    whose repository the store did not delete counts too, and does not reset the count (note
-    1866813); any other completed run, valid or invalid, resets it. A run that a stop signal ended
-    stops the call at once, as before. (Until 2026-10-14 the sweep stopped at each run that did
-    not complete.)
+    its configuration is then left out for the rest of the call. A completed run
+    whose repository the store did not delete counts too, and does not reset the count; any other completed run, valid or invalid, resets it. A run that a stop signal ended
+    stops the call at once.
 
-    **A heavy run that no approval covers at its start is skipped and listed** (jms_kapps 112):
+    **A heavy run that no approval covers at its start is skipped and listed**:
     each heavy run is covered at its start (`SweepRun.heavy`, `HeavyCheck.cover`, with the time of
     `stops`), and one that is not covered then (no approval, another or a changed spec, a period
     that is not now, `--set` overrides) is skipped, with no record, and the sweep goes on with the
     next run. A skipped level of a ramp or a replay skips its higher levels in this round. A
-    replay level that cannot start is skipped and listed the same way. (Until 2026-10-14 such a
-    heavy run stopped the sweep.)
+    replay level that cannot start is skipped and listed the same way.
 
     After each run of a level of a ramp it judges the ramp with the broken rule (`ramp.judge`),
     from its runs below `runs` and the one just made, and where the ramp ended, it skips the
     ramp's higher levels and goes on with the runs after them.
 
-    A replay level (`SweepRun.replay_factor`, jms_kapps 98) replays the first valid UC2 run of its
+    A replay level (`SweepRun.replay_factor`) replays the first valid UC2 run of its
     configuration below `runs` with `run_replay`; after it the sweep reads whether the level is
     broken, and where it is, it skips the configuration's higher levels. A configuration with no
     valid run to replay has its levels left, and the sweep says so.
@@ -1344,7 +1313,7 @@ def make_runs(
     Args:
         found: The spec's configurations, of which a ramp's levels are judged.
         run_replay: Makes one replay level: the configured store's by default.
-        stops: The call's stop time and stop file, checked before each run (jms_kapps 111), and
+        stops: The call's stop time and stop file, checked before each run, and
             its clock, which a heavy run is covered at.
         made_runs: Where each UC2 run made is added, by its configuration's key and repetition.
         unattended: What the call keeps from run to run (`Unattended`): a new one by default.
@@ -1511,9 +1480,9 @@ def sweep_rounds(
     echo: Callable[[str], None] = print,
 ) -> Ended:
     """Make the runs of `call` (`runs_to_make`, as `plan` planned them), and under the precision
-    rule go on round after round (jms_kapps 111, interim names), each chosen again from the
+    rule go on round after round (interim names), each chosen again from the
     records (`choose`, given the keys of the configurations that the call leaves out since their
-    records cannot be found, jms_kapps 112) and planned (`plan`), until an end: the stop time or
+    records cannot be found) and planned (`plan`), until an end: the stop time or
     the stop file (`stops`, checked before each run), a run that a stop signal ended, the third
     failed run in a row (`make_runs`), or no run left to make, where no selected configuration
     under the rule is open. A spec of fixed repetitions has one part only. Each end is told with
@@ -1564,8 +1533,7 @@ def _rounds(
 ) -> Ended:
     """The rounds of `sweep_rounds`, without the removal of a stop file left over. A replay left
     for want of a valid run in one round, which a later round makes, is not left at the end
-    (jms_kapps 114: it runs right after its configuration's first valid run, in the round that
-    makes one)."""
+    (it runs right after its configuration's first valid run, in the round that makes one)."""
     made_runs: set[tuple[str, int]] = set()
     waiting: set[tuple[str, int]] = set()
 
@@ -1638,8 +1606,7 @@ def _next_round(
     made, whose record was found after it and is gone when the next round is chosen, would be made
     again. It counts as a failed run (`Unattended.judged`), its configuration is left out for the
     rest of the call (for a ramp's level, the whole ramp), and the round is chosen again without
-    it. (Changed on 2026-10-15 after a review: until then this check stopped the call,
-    `CANNOT_START`.)
+    it.
     """
     while True:
         try:
@@ -1757,7 +1724,7 @@ def _end_message(spec: Spec, call: Call) -> str:
 class _Replays:
     """What one round knows of its replays, each by its configuration's key: `ended`, a replay
     that broke, failed or has no run to replay, so its higher levels are not sent; `skipped`, a
-    replay whose level was skipped (jms_kapps 112), so its higher levels are skipped too; and
+    replay whose level was skipped, so its higher levels are skipped too; and
     `sources`, the run each replays, found at its first level."""
 
     ended: set[str] = field(default_factory=set)
@@ -1783,13 +1750,13 @@ def _replay_level(
     unattended: Unattended,
     clock: Callable[[], datetime],
 ) -> bool | Ended:
-    """Make the replay level `run` of the sweep (jms_kapps 98): the baseline of the first valid
+    """Make the replay level `run` of the sweep: the baseline of the first valid
     UC2 run of its configuration at its factor. Returns how the sweep stops where it stops
     (`Ended`), False where the level was left for want of a run to replay, else True.
 
     A heavy level that no approval covers at its start, and a level that cannot start, is skipped
     and listed (`unattended`), and so are the replay's higher levels in this round; a failed
-    level ends the replay and counts toward the failed runs in a row (jms_kapps 112).
+    level ends the replay and counts toward the failed runs in a row.
 
     Args:
         position: This run's place among the sweep's runs to make, and their number.
@@ -1811,8 +1778,8 @@ def _replay_level(
     named: str | None = None
     if configuration.key not in replays.sources:
         summaries = read_summaries(runs)
-        # Under the precision rule every repetition replays the run of the first one (jms_kapps
-        # 114); a spec of fixed repetitions replays the first valid run, as before.
+        # Under the precision rule every repetition replays the run of the first one;
+        # a spec of fixed repetitions replays the first valid run, as before.
         named = (
             None if spec.precision is None else first_replayed(configuration, summaries)
         )
@@ -1934,11 +1901,11 @@ def run_replay_on_the_configured_store(
 
 @dataclass(frozen=True)
 class Call:
-    """What one call of the sweep chooses next (jms_kapps 100, interim names; `choose_call`).
+    """What one call of the sweep chooses next (interim names; `choose_call`).
 
     `chosen` are the runs it makes or skips, in the spec's order, and `replays` the configurations
     whose replay levels it plans, with the factors it plans. `the_round` is the round of the
-    precision rule it makes next, or None (jms_kapps 111). `done` and `summaries` are what the
+    precision rule it makes next, or None. `done` and `summaries` are what the
     records below the runs' folder say. A call that withholds the heavy parts holds them apart:
     `withheld` are the heavy runs, each a configuration with its repetition, and
     `withheld_levels` the replay levels above the factor 1 and those of a heavy configuration,
@@ -1947,8 +1914,7 @@ class Call:
     and `configuration_numbers` and `repetition_numbers` the call's selection, None for all.
     `removed` are the removed configurations by their keys (`read_removed`), which the call
     leaves out, so `configuration_numbers` leaves them out too. `replay_repetitions` holds the
-    repetition of each replay it plans, by the configuration's key, where it is not the first
-    (jms_kapps 114).
+    repetition of each replay it plans, by the configuration's key, where it is not the first.
     """
 
     found: list[SpecConfiguration]
@@ -1966,7 +1932,7 @@ class Call:
     replay_repetitions: dict[str, int] = field(default_factory=dict)
 
     def replay_repetition(self, configuration: SpecConfiguration) -> int:
-        """The repetition of the replay of `configuration` that the call plans (jms_kapps 114)."""
+        """The repetition of the replay of `configuration` that the call plans."""
         return self.replay_repetitions.get(configuration.key, 1)
 
     @property
@@ -2016,13 +1982,12 @@ def choose_call(
 ) -> Call:
     """The runs and replay levels that a call chooses (`chosen_runs`, `chosen_replays`, under the
     precision rule `replays_due`), from the records below `runs`, with the repetitions of heavy
-    parts `requested` (`heavy_parts.requested_repetitions`, jms_kapps 114). Where
+    parts `requested` (`heavy_parts.requested_repetitions`). Where
     `withhold_heavy`, the heavy ones (a heavy configuration, a ramp's level, a replay level above
     1) are left out of `chosen` and `replays` and listed in `withheld` and `withheld_levels`: what
     a call without an approval can run. A configuration that is removed (`read_removed`) is left
     out of the selection, whatever it names, and so is one whose key is in `left_out`: the call
-    left it out for its rest, since the records do not show a run of it that the call made
-    (jms_kapps 112, note 1866704).
+    left it out for its rest, since the records do not show a run of it that the call made.
 
     Raises:
         SpecRefused: If a configuration selected is not one of the spec's, or the removed
@@ -2127,13 +2092,12 @@ def repetitions_on_request(
     repetition_numbers: Sequence[int] | None = None,
 ) -> tuple[dict[PartId, int], list[str]]:
     """The target repetitions of heavy parts that `text`, the value of `REPEAT_OPTION`, gives
-    (`heavy_parts.requested_repetitions`, jms_kapps 114, interim name), and what the call says of
+    (`heavy_parts.requested_repetitions`, interim name), and what the call says of
     them, from the records below `runs`. Every round of the call makes the next repetition below
     each target (`heavy_parts.Standing.after`); a target that exists or is under way makes
     nothing, so a restart with the same command line is safe. A removed part is left out. A part
     whose next repetition `repetition_numbers` does not select makes nothing in this call, which
-    says so in one line and goes on, with no refusal (changed on 2026-10-15 after a
-    review: until then the call made nothing for it and said nothing).
+    says so in one line and goes on, with no refusal.
 
     Raises:
         SpecRefused: As `requested_repetitions`; or if the spec has no precision rule, whose
@@ -2224,9 +2188,9 @@ def plan_call(
 ) -> list[SweepRun]:
     """The runs of `call`, each with its configuration resolved where it has a run to make
     (`plan_runs`), with the ramps' and replays' ends that earlier calls reached, each of the
-    repetition the call makes (jms_kapps 114). Each open
+    repetition the call makes. Each open
     configuration under the precision rule is resolved too (`Call.open`), so that a file or a
-    strategy that a later round needs is refused before the first run (jms_kapps 111).
+    strategy that a later round needs is refused before the first run.
 
     Raises:
         SpecRefused: As `plan_runs`; or if an open configuration cannot be resolved, or has the
@@ -2276,7 +2240,7 @@ def update_the_report(
     made, `record`: called right after a run returns, whatever its end, and before the sweep
     judges that end. An error of the report is told with `echo` and goes no further: it never
     stops or fails the sweep. The report is imported here, so that a sweep without pandas or
-    matplotlib still runs. (Added on 2026-10-12, jms_kapps 86.)
+    matplotlib still runs.
 
     Args:
         found: The spec's configurations with the sweep's overrides; the spec's own where empty.
@@ -2302,11 +2266,11 @@ def listing(
     removed: Removed | None = None,
 ) -> list[str]:
     """The lines `--list` shows: each configuration with its values, and its runs that have a
-    record, each with its outcome. For a spec with the precision rule (`spec`, jms_kapps 101,
-    interim names) also the rounds (jms_kapps 111), the round the next call starts at, and for
+    record, each with its outcome. For a spec with the precision rule (`spec`,
+    interim names) also the rounds, the round the next call starts at, and for
     each configuration under the rule its runs made, its valid runs and whether it is open (from
     the `summaries` of the records). A configuration in `removed` (`read_removed`) shows that it
-    is removed, and the next round leaves it out (note 1866695 on jms_kapps 111)."""
+    is removed, and the next round leaves it out."""
     removed = removed or {}
     rule = None if spec is None else spec.precision
     ruled = [c for c in found if c.ruled]
@@ -2386,7 +2350,7 @@ def listing(
 
 
 def _replay_lines(configuration: SpecConfiguration, done: Recorded) -> list[str]:
-    """The line that `--list` shows for the replay levels of `configuration` (jms_kapps 98): each
+    """The line that `--list` shows for the replay levels of `configuration`: each
     factor in rising order, with whether it is heavy and its record. None for a configuration
     without factors."""
     if not configuration.replay_factors:
@@ -2411,7 +2375,7 @@ def _heavy_lines(
     removed: Removed,
 ) -> list[str]:
     """Where each heavy part of a spec with the precision rule stands, and what the next round
-    makes of it (jms_kapps 114, interim): none for a spec without one. A removed one is left
+    makes of it (interim): none for a spec without one. A removed one is left
     out."""
     parts = [
         part
@@ -2455,7 +2419,7 @@ def _round_lines(
     rule: PrecisionRule,
     summaries: Sequence[RunSummary],
 ) -> list[str]:
-    """What the rounds of the rule make, and the round the next call starts at (jms_kapps 111)."""
+    """What the rounds of the rule make, and the round the next call starts at."""
     following = next_round(found, rule, summaries)
     return [
         (
@@ -2688,7 +2652,7 @@ def main(argv: list[str] | None = None, *, clock: Callable[[], datetime] = now) 
 
 
 def _rounds_line(call: Call, stops: Stops) -> str:
-    """What the call says of its rounds before its first run (jms_kapps 111)."""
+    """What the call says of its rounds before its first run."""
     ends = [f"the stop file {stops.stop_file}"]
     if stops.stop_time is not None:
         ends.insert(0, f"the stop time {_shown_time(stops.stop_time)}")

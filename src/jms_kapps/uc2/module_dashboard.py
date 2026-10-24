@@ -13,7 +13,6 @@ from itertools import groupby
 from typing import Any
 
 from kapps_semantic_middleware.dashboard import (
-    SHORTENING_NOTE,
     DashboardRegistry,
     escape,
     hint,
@@ -40,8 +39,7 @@ def _whole_width(box_id: str) -> str:
     box's own fragment: the dashboard draws each box in its element `box-<id>`, one cell of the
     grid, and has no option of its own for a box's width. "Routing decisions" takes the whole
     width because eight columns do not fit in half of it; the adjacency matrix, so that a
-    station of many modules draws its cells large enough to read. (Changed on 2026-10-06,
-    jms_kapps 43: the detour's column. Until then "seven columns".)"""
+    station of many modules draws its cells large enough to read."""
     return f"<style>#box-{box_id} {{ grid-column: 1 / -1; }}</style>"
 
 
@@ -62,16 +60,13 @@ def _names(iris: Sequence[IRI]) -> str:
 
 
 def _table(head: Sequence[str], rows: Iterable[Iterable[str]]) -> str:
-    """A table under the note that its identifiers are shortened. Each cell is HTML already."""
+    """A table whose cells are HTML already."""
     header = "".join(f"<th>{escape(title)}</th>" for title in head)
     body = "".join(
         "<tr>" + "".join(f"<td{_ONE_LINE}>{cell}</td>" for cell in row) + "</tr>"
         for row in rows
     )
-    return (
-        f"{hint(SHORTENING_NOTE)}"
-        f'<div class="table-scroll"><table><tr>{header}</tr>{body}</table></div>'
-    )
+    return f'<div class="table-scroll"><table><tr>{header}</tr>{body}</table></div>'
 
 
 def _next_module(module: IRI, decision: Decision) -> str:
@@ -173,8 +168,8 @@ def register_boxes(
             + hint(
                 f"{_read_when(tab, read)} A row is the module a connection leaves, a column "
                 "the module it leads to, and a cell the side it leaves by: N, E, S or W, or • "
-                "where the graph names none, with ↔ where the two connect both ways. The row of "
-                f"{tab} is marked."
+                "where the knowledge graph names none, with ↔ where the two connect both ways. "
+                f"The row of {tab} is marked."
             )
             + adjacency_matrix(module.resource, read.connections)
         )

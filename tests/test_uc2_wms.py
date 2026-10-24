@@ -42,6 +42,7 @@ from jms_kapps.uc2.handover_events import HandoverEvents
 from jms_kapps.uc2.handshake import ReserveRequest
 from jms_kapps.uc2.module import FlexConveyorModule
 from jms_kapps.uc2.module import logger as module_logger
+from jms_kapps.uc2.topology import shipped_topology
 from jms_kapps.uc2.vocabulary import (
     FC,
     FC_NS,
@@ -213,8 +214,7 @@ def after_reserve(call, then):
 def test_a_spawn_creates_the_box_on_its_origin_with_its_transport_queued_and_assigned_to_it(
     wms, world, records
 ):
-    """One create: the box, its transport and the box's first possession, on the origin
-    (Etienne, 2026-10-06, jms_kapps 41)."""
+    """One create: the box, its transport and the box's first possession, on the origin."""
     result = spawn(wms)
 
     assert result.accepted, result
@@ -230,7 +230,7 @@ def test_a_spawn_asks_the_origin_s_reserve_once_and_then_notifies_the_origin(
 ):
     """One Reserve call, one commit and one notification: the origin calls nothing of the WMS,
     and the WMS neither hands the box over nor moves it. The origin asks the Reserve of its own
-    next module before it answers (added on 2026-10-06, jms_kapps 43, decided by Etienne)."""
+    next module before it answers."""
     spawn(wms)
 
     assert network.calls == [("ReserveWorkflow", M1), ("ReserveWorkflow", M2)]
@@ -249,8 +249,7 @@ def test_the_wms_spawns_only_onto_an_origin_whose_next_module_accepts_at_once(
     wms, world, records, notifications
 ):
     """Module 3, the origin's next module, holds a box: the origin refuses, and nothing is
-    written, so no box waits on the origin for a module that cannot take it (Etienne,
-    2026-10-06, jms_kapps 43)."""
+    written, so no box waits on the origin for a module that cannot take it."""
     via_module_3(world)
     world.place(box_iri(9), M3)
 
@@ -298,16 +297,15 @@ def test_once_the_stop_has_begun_a_spawn_is_refused_and_opens_no_transport(
 
 
 @pytest.mark.parametrize(
-    "graph", ["no entry module is free", "the graph has no module other than Module1"]
+    "graph",
+    ["no entry module is free", "the knowledge graph has no module other than Module1"],
 )
 def test_once_the_stop_has_begun_a_spawn_says_so_whatever_else_stands_in_its_way(
     wms, world, records, stop, graph
 ):
     """A spawn of the timer does not name its modules, so the WMS picks them: the stop is the
-    reason it gives, not what it would have found in the graph. (Changed on 2026-10-06, jms_kapps
-    45, decided by Etienne: roles are optional, so a graph that names no exit module counts every
-    module as one, and the second case is a graph of Module 1 alone. Until then it was "the graph
-    has no exit module".)"""
+    reason it gives, not what it would have found in the graph. Roles are optional, so a graph that names no exit module
+    counts every module as one, and the second case is a graph of Module 1 alone."""
     if graph == "no entry module is free":
         world.place(box_iri(7), M1)
     else:
@@ -406,9 +404,7 @@ def test_the_wms_logs_its_side_of_each_step_of_its_spawn(caplog, wms):
 
 
 def test_the_wms_logs_a_reserve_that_the_origin_refused(caplog, wms, world):
-    """One record of the refused spawn, with its reason. (Changed on 2026-10-07, jms_kapps 51,
-    decided by Etienne: every spawn ends in one record. Until then the record read "refused a
-    spawn onto Module1, for Module2: Module1 refused to reserve: occupied by Box7".)"""
+    """One record of the refused spawn, with its reason. Every spawn ends in one record."""
     caplog.set_level(logging.INFO, logger="jms_kapps")
     world.place(box_iri(7), M1)
 
@@ -427,7 +423,7 @@ def test_a_module_that_asks_an_entry_module_the_wms_has_reserved_is_refused_as_r
 ):
     """The other way round: the WMS's Reserve came first, so a module that passes a box onto the
     entry module at the same moment is refused as reserved, and waits its turn, and the WMS's
-    create is not refused (Etienne, 2026-10-05)."""
+    create is not refused."""
     refusals = []
     wms.call = after_reserve(
         network.call,
@@ -625,11 +621,8 @@ def test_with_no_free_entry_module_the_wms_spawns_nothing_and_says_why(
 def test_a_named_origin_that_is_not_an_entry_module_is_refused_before_anything_is_written(
     wms, world, records, destination
 ):
-    """Where the topology names entry modules, a named origin must be one (Etienne, 2026-10-05).
-    (Changed on 2026-10-06, jms_kapps 45, decided by Etienne: the role holds only where the
-    topology names it. Until then the reason read: "A box from a module that is no entry module
-    could meet one from an entry module head-on, which the load check of the topology does not
-    cover".)"""
+    """Where the topology names entry modules, a named origin must be one. The role holds only where the
+    topology names it."""
     world.classes[FC.ExitModule] = [M2, M3]
 
     result = spawn(wms, origin=M2, destination=destination)
@@ -664,9 +657,8 @@ def test_a_named_destination_that_is_not_an_exit_module_is_refused_before_anythi
 def test_a_module_that_is_an_entry_and_an_exit_may_start_one_box_and_end_another(
     wms, world, tasks
 ):
-    """Module 2 ends Box 1, then starts Box 2. (Changed on 2026-10-06, jms_kapps 43, decided by
-    Etienne: Module 1's look-ahead reserves Module 2 for Box 1, so Box 2 starts once Box 1 is
-    back. Until then both spawns came one after the other, with no box carried on between.)"""
+    """Module 2 ends Box 1, then starts Box 2. Module 1's look-ahead reserves Module 2 for Box 1, so Box 2 starts once Box 1
+    is back."""
     world.connections.add((M2, M1))
     world.classes[FC.EntryModule] = [M1, M2]
     world.classes[FC.ExitModule] = [M1, M2]
@@ -679,7 +671,7 @@ def test_a_module_that_is_an_entry_and_an_exit_may_start_one_box_and_end_another
     assert second.accepted, second
 
 
-# -- Roles are optional (jms_kapps 45, decided by Etienne on 2026-10-06) ------------------------ #
+# -- Roles are optional ------------------------ #
 
 
 def no_roles(world, *modules):
@@ -693,11 +685,8 @@ def test_where_the_topology_names_no_roles_a_box_starts_on_any_free_module_for_a
     wms, world, picks
 ):
     """Module 1 holds a box, so the WMS picks the origin among Modules 2 and 3, and then the
-    destination among the modules other than the origin that it reaches. (Changed on 2026-10-07,
-    jms_kapps 51, decided by Etienne: the WMS picks only a destination that the origin reaches, so
-    Module 2 hands boxes on to Module 1, and Module 3 reaches both. Until then the connections
-    were Module 1 to Module 2 and Module 3 to Module 2, and the docstring ended "among the modules
-    other than the origin".)"""
+    destination among the modules other than the origin that it reaches. The WMS picks only a destination that the origin reaches, so Module 2 hands
+    boxes on to Module 1, and Module 3 reaches both."""
     no_roles(world, M1, M2, M3)
     world.connections = {(M1, M2), (M2, M1), (M3, M2)}
     world.place(box_iri(7), M1)
@@ -745,9 +734,7 @@ def test_where_the_topology_names_exit_modules_only_a_box_may_start_on_any_free_
     wms, world, picks
 ):
     """Module 2, the only exit module, reaches no exit module other than itself, so it is no
-    origin. (Changed on 2026-10-07, jms_kapps 51, decided by Etienne: the WMS picks only an origin
-    that reaches a destination. Until then the test was named "..._may_start_on_any_free_module",
-    and the WMS picked the origin among Modules 1, 2 and 3.)"""
+    origin. The WMS picks only an origin that reaches a destination."""
     world.classes[FC.EntryModule] = []
     world.classes[FC.FlexConveyorModule] = [M1, M3]
     world.connections = {(M1, M2), (M3, M2)}
@@ -808,8 +795,68 @@ def test_where_the_topology_names_no_roles_a_refusal_says_why_in_those_terms(
         "Module9 is not a module",
         "Module9 is not a module",
         "a box's origin and destination must differ",
-        "the graph has no module other than Module1",
+        "the knowledge graph has no module other than Module1",
     ]
+    assert records.writes == []
+
+
+def shipped_cross(world):
+    """The world holds the shipped cross as it ships: its roles and its connections."""
+    cross = shipped_topology("cross")
+    world.classes.clear()
+    for module in cross.modules:
+        world.classes.setdefault(FC_NS + module.types[0], []).append(module.resource)
+    world.connections = {
+        (module.resource, IRI(c.to, base=FCI_NS))
+        for module in cross.modules
+        for c in module.connections
+    }
+    return cross
+
+
+def test_on_the_shipped_cross_a_box_starts_on_module_1_or_2_and_ends_on_module_4_or_5(
+    wms, world, picks
+):
+    shipped_cross(world)
+    M4, M5 = module_iri(4), module_iri(5)
+
+    result = spawn(wms, origin=None, destination=None)
+
+    assert result.accepted, result
+    assert picks.made == [[M1, M2], [M4, M5]]
+    assert (result.origin, result.destination) == (str(M2), str(M5))
+    assert wms.origins_and_destinations() == ([M1, M2], [M4, M5])
+
+
+@pytest.mark.parametrize(
+    ("origin", "destination", "reason"),
+    [
+        (module_iri(3), module_iri(4), "Module3 is not an entry module"),
+        (M1, M3, "Module3 is not an exit module"),
+    ],
+    ids=["from Module 3", "to Module 3"],
+)
+def test_on_the_shipped_cross_a_spawn_may_not_name_module_3(
+    wms, world, records, origin, destination, reason
+):
+    shipped_cross(world)
+
+    refused = spawn(wms, origin=origin, destination=destination)
+
+    assert (refused.accepted, refused.reason) == (False, reason)
+    assert records.writes == []
+
+
+def test_on_the_shipped_cross_a_spawn_waits_while_every_entry_module_holds_a_box(
+    wms, world, records
+):
+    shipped_cross(world)
+    world.place(box_iri(7), M1)
+    world.place(box_iri(8), M2)
+
+    refused = spawn(wms, origin=None, destination=None)
+
+    assert (refused.accepted, refused.reason) == (False, "no entry module is free")
     assert records.writes == []
 
 
@@ -835,8 +882,7 @@ def test_each_spawn_names_its_box_by_a_new_uuid_whatever_boxes_the_graph_holds(
 ):
     """The WMS as it runs, with no names of a test's: a box named by a number in the graph gives
     no number to the next box, and two spawns name two boxes, each `Box-<UUID>` in the instances'
-    namespace. (Changed on 2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85: "a new box
-    gets a UUID". Until then each spawn took the next free box number, Box 5 after Box 4.)"""
+    namespace."""
     world.place(box_iri(4), WMS, origin=M1, destination=M2, status=OperationStatus.DONE)
     wms = WarehouseManagementSystem(
         WMS,
@@ -931,9 +977,7 @@ def test_a_spawn_whose_create_the_store_admitted_is_recorded_as_spawned_though_i
 ):
     """A spawn counts at its answer: created once the store admitted its create. So the one record
     of a spawn whose origin cannot be notified is the record of the box spawned, beside the
-    warning that the origin was not told; the answer still says why. (Added on 2026-10-07,
-    jms_kapps 51, decided by Etienne: "A spawn counts at its answer: created when the store
-    admitted its create".)"""
+    warning that the origin was not told; the answer still says why."""
     caplog.set_level(logging.INFO, logger="jms_kapps")
     notifications.undelivered_to[M1] = "Module1 has no live Service"
     if stopping:
@@ -967,8 +1011,7 @@ def test_ctrl_c_between_the_create_and_the_notification_ends_the_transport_once_
     """Ctrl+C reaches the WMS once it has created Box 1 on Module 1, and Module 1, whose server
     takes no new connection once its stop has begun, cannot be notified. The WMS ends the
     transport failed, once, and at its own stop Module 1 finds that transport ended and writes
-    nothing (Etienne, 2026-10-06, jms_kapps 42); the stop as the WMS's reason is the build's
-    reading."""
+    nothing."""
     opening = records.open
 
     def opened_then_ctrl_c(*args, **kwargs):
@@ -1099,8 +1142,7 @@ def test_a_failed_transport_costs_the_wms_no_read_of_its_own(wms, world):
 
 
 def test_a_done_transport_costs_the_wms_one_ask_for_its_box(wms, world):
-    """(Changed on 2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85: one `ASK` about the
-    one box. Until then it cost one read of what the WMS holds, every box.)"""
+    """One `ASK` about the one box."""
     world.place(B1, WMS, origin=M1, destination=M2, status=OperationStatus.DONE)
 
     wms.transport_ended(world.transport(T1))
@@ -1127,7 +1169,7 @@ def test_the_wms_accepts_nothing_it_does_not_hold(caplog, wms, world):
 def test_the_uc2_ontology_has_no_convey_term():
     """A module's convey is its own move, and the WMS spawns a box directly on its origin, so no
     party exposes a Convey workflow, and the ontology names neither its workflow class nor its
-    capability class (Etienne, 2026-10-06, jms_kapps 41)."""
+    capability class."""
     graph = Graph()
     for entry in resources.files("jms_kapps.uc2").joinpath("ontology").iterdir():
         if entry.name.endswith(".ttl"):
@@ -1139,7 +1181,7 @@ def test_the_uc2_ontology_has_no_convey_term():
     assert URIRef(f"{FC_NS}ConveyCapability") not in terms
 
 
-# -- Only a reachable exit (jms_kapps 51, decided by Etienne on 2026-10-07) ------------------- #
+# -- Only a reachable exit ------------------- #
 
 M4 = module_iri(4)
 
@@ -1251,8 +1293,7 @@ def test_where_the_topology_names_no_roles_an_unreachable_pick_says_why_in_those
 
 def test_the_wms_reads_the_connections_with_the_modules_in_one_read(wms, two_parts):
     """A spawn makes no more store reads than before: the modules with their types, now with the
-    connections; what each origin it may pick holds; the origin's capability. (Changed on
-    2026-10-12, jms_kapps 92: the read of every box, which numbered the next box, went.)"""
+    connections; what each origin it may pick holds; the origin's capability. No read of every box is made."""
 
     spawn(wms, origin=None, destination=None)
 

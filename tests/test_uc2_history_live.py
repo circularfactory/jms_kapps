@@ -1,12 +1,12 @@
 """The store's history collection on a live GraphDB: a launch's reset turns it on only with the
 launch option `collect_history`, and a past possession is read back by a query for one point in
-time (jms_kapps 22).
+time.
 
 **Only on a disposable dataset.** A reset with the option turns the dataset's history
 collection on, and every later write there is recorded. So these tests run only on a dataset
 whose name starts with `ogm-disposable-`, created for them from `graphdb/jms-kapps-repo-config.ttl`
 with only its ID changed and deleted afterwards, and refuse any other with a skip that says why:
-never `Tests`, which every library's live suite shares (decided by Etienne on 2026-10-07). The
+never `Tests`, which every library's live suite shares. The
 dataset's history collection must be off when they start, as in a dataset just created;
 they stop with the reason where it is on. They leave it on, as a launch with the option does, and
 nothing turns it off: so a second run needs a dataset created afresh, as the first did.
@@ -22,7 +22,7 @@ import time
 import pytest
 from _disposable import disposable
 from kapps_ogm import OGM
-from kapps_semantic_middleware import Mode, SemanticMiddleware
+from kapps_semantic_middleware import Mode, SemanticMiddleware, possession
 from kapps_semantic_middleware.credentials import triplestore_env_present
 from kapps_semantic_middleware.vocabulary import CFC, MES
 from kapps_triplestore_interface import IRI, TripleStore
@@ -112,8 +112,8 @@ def test_a_past_possessor_is_read_back_by_a_query_that_names_the_box(db):
     then = server_time(db)
     time.sleep(APART_SECONDS)
 
-    with middleware(ogm, first).handover(
-        mode=MES.Pass, workpiece=box, counterpart=second
+    with possession.handover(
+        middleware(ogm, first), mode=MES.Pass, workpiece=box, counterpart=second
     ):
         pass
 

@@ -1,6 +1,6 @@
 @prefix : <http://w3id.org/circularfactory/FlexConveyor#> .
-@prefix cfc: <https://w3id.org/circularfactory/Core#> .
-@prefix svc: <https://w3id.org/circularfactory/Service#> .
+@prefix cfc: <http://w3id.org/circularfactory/Core#> .
+@prefix svc: <http://w3id.org/circularfactory/Service#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -10,7 +10,7 @@
 #
 # - The three prefixes declared as the empty IRI (`domain:`, `kadi:`, `sp_ins:`) are gone. They
 #   were never used, and they stopped the file loading without a client-supplied base URI.
-# - `cfc:` is the published Core (https://w3id.org/circularfactory/Core#), which the middleware
+# - `cfc:` is the published Core (http://w3id.org/circularfactory/Core#), which the middleware
 #   loads, not the old sfb1574.kit.edu/core# namespace.
 # - Possession is Core's reified `cfc:PossessionState`, written by the middleware's handover. The
 #   binary `:hasPossession` / `:isPossessedBy` pair is gone, so `:Box` is a `cfc:Workpiece`.
@@ -26,16 +26,12 @@
 #   `cfc:Capability`. The check reads one `rdfs:subClassOf` triple and does not follow a chain.
 # - `:BoxTransportOperation` is new: the job of carrying one box, one individual per box, under
 #   `cfc:Operation`. `:hasBox` is new with it, and `:hasOrigin` and `:hasDestination` apply to it
-#   instead of to `:Box`. Its status is the middleware's `svc:operationStatus`. The object-graph
+#   instead of to `:Box`. Its status is the middleware's `svc:hasOperationStatus`. The object-graph
 #   mapper finds a property of a class only by its `rdfs:domain`, so each of these properties
 #   declares one.
 # - `:AcceptBoxWorkflow` and `:AcceptBoxCapability` are gone. The destination module notifies the
 #   WarehouseManagementSystem through the middleware once the box is back, and the
-#   WarehouseManagementSystem checks the graph; no module calls a workflow of it. (Changed on
-#   2026-10-05, KSM 413, decided by Etienne, and back on 2026-10-06, jms_kapps 41, decided by
-#   Etienne. From 2026-10-05 the last clause read: "no module calls a workflow of it to give a box
-#   back. The origin of a spawn calls its `:ConveyWorkflow`, the WarehouseManagementSystem's
-#   handover onto the station being the handshake of one hop.")
+#   WarehouseManagementSystem checks the graph; no module calls a workflow of it.
 # - `:BoxTransportCapability` and `:BoxTransportWorkflow` are new. Every module provides the
 #   capability to carry a box's transport on, realized by its workflow. A `:BoxTransportOperation`
 #   is assigned to one module at a time: Core's `cfc:executedOn` names that module, and the
@@ -48,35 +44,20 @@
 #   streams through it.
 # - `:hasTransport` is new: the link from a box to its transport, the inverse of `:hasBox`. The
 #   transport's opening writes both directions, so a module that holds a box reads its transport
-#   through the box, and no party finds a transport from the box's name. (Added on 2026-10-06,
-#   jms_kapps 39, decided by Etienne.)
+#   through the box, and no party finds a transport from the box's name.
 # - A hop between two modules works like the real FlexConveyor: the giving module asks the
 #   receiving module's Reserve, commits the handover, conveys the box, a move of its own, and
 #   calls the receiving module's Receive, its light barrier, from which the receiving module
 #   carries the box on. No module exposes a `:ConveyWorkflow` any more. The comments of
-#   `:BoxTransportOperation` and `:BoxTransportWorkflow` say so. (Changed on 2026-10-06, jms_kapps
-#   40, decided by Etienne. Until then the comment of `:BoxTransportWorkflow` ended "and the module
-#   runs it when the transport reaches it.", and the one of `:BoxTransportOperation` named no
-#   party that ends a transport after the handover. The sentence "only the
-#   WarehouseManagementSystem does, for the origin of a spawn, until the spawn changes" and the
-#   comment of `:ConveyWorkflow` went on 2026-10-06 with jms_kapps 41.)
+#   `:BoxTransportOperation` and `:BoxTransportWorkflow` say so.
 # - `:ConveyWorkflow` and `:ConveyCapability` are gone. A module's convey is its own move, which no
 #   party calls, and the WarehouseManagementSystem spawns a box directly on its origin: it asks the
 #   origin's Reserve, creates the box there with its transport in one commit, and notifies the
-#   origin. The comment of `:BoxTransportOperation` says so. (Removed on 2026-10-06, jms_kapps 41,
-#   decided by Etienne. Until then the WarehouseManagementSystem registered a `:ConveyWorkflow`,
-#   with a `:ConveyCapability`, which the origin of a spawn called, and the comment of
-#   `:BoxTransportOperation` began "The job of carrying one box: from the
-#   WarehouseManagementSystem onto the FlexConveyor station at its origin" and ended a transport
-#   failed by "the WarehouseManagementSystem when its handover to the origin is refused".)
+#   origin. The comment of `:BoxTransportOperation` says so.
 # - On the station only the module a transport is assigned to writes it: the module that passed
 #   the box on writes nothing when it cannot reach the receiving module's Receive, and the
 #   receiving module ends the transport at the bound of its reservation, or at its stop. The
-#   comment of `:BoxTransportOperation` says so. (Changed on 2026-10-06, jms_kapps 42, decided by
-#   Etienne. Until then it read: "A module that passed the box on and cannot reach the receiving
-#   module's Receive ends it too, and so does a receiving module whose reservation for the box has
-#   passed its bound with the box its own but no Receive called: its giving module was lost after
-#   the handover.")
+#   comment of `:BoxTransportOperation` says so.
 #
 # The `fc:` namespace keeps its http scheme, because the paper prints it.
 
@@ -111,7 +92,7 @@
 
 :BoxTransportOperation rdf:type owl:Class ;
     rdfs:subClassOf cfc:Operation ;
-    rdfs:comment "The job of carrying one box: from its origin module, where the WarehouseManagementSystem spawns it, to its destination module, and back to the WarehouseManagementSystem. The WarehouseManagementSystem opens it, in the commit that creates the box on the origin, and the handover that brings the box back completes it. It is assigned to one module at a time, the one that carries the box on now: cfc:executedOn names that module, and the operation implements that module's BoxTransportCapability. Both move to the next module in the handover that passes the box. Its status is svc:operationStatus: queued until the origin carries the box on, running while the box travels, done once it is back, failed when the party that cannot go on ends it: a module on the station, or the WarehouseManagementSystem when it cannot notify the origin. On the station only the module it is assigned to writes it: a receiving module whose reservation for the box has passed its bound, or whose stop has begun, with the box its own but no Receive called ends it, and the module that passed the box on writes nothing when it cannot reach the receiving module's Receive." .
+    rdfs:comment "The job of carrying one box: from its origin module, where the WarehouseManagementSystem spawns it, to its destination module, and back to the WarehouseManagementSystem. The WarehouseManagementSystem opens it, in the commit that creates the box on the origin, and the handover that brings the box back completes it. It is assigned to one module at a time, the one that carries the box on now: cfc:executedOn names that module, and the operation implements that module's BoxTransportCapability. Both move to the next module in the handover that passes the box. Its status is svc:hasOperationStatus: queued until the origin carries the box on, running while the box travels, done once it is back, failed when the party that cannot go on ends it: a module on the station, or the WarehouseManagementSystem when it cannot notify the origin. On the station only the module it is assigned to writes it: a receiving module whose reservation for the box has passed its bound, or whose stop has begun, with the box its own but no Receive called ends it, and the module that passed the box on writes nothing when it cannot reach the receiving module's Receive." .
 
 #################################################################
 # Services
@@ -119,11 +100,11 @@
 
 :FlexConveyorModuleService rdf:type owl:Class ;
     rdfs:subClassOf svc:Service ;
-    rdfs:comment "The middleware instance that wraps one FlexConveyorModule." .
+    rdfs:comment "The service that wraps one FlexConveyorModule, hosted by its own middleware instance." .
 
 :WarehouseManagementSystemService rdf:type owl:Class ;
     rdfs:subClassOf svc:Service ;
-    rdfs:comment "The middleware instance that wraps the WarehouseManagementSystem." .
+    rdfs:comment "The service that wraps the WarehouseManagementSystem, hosted by its own middleware instance." .
 
 #################################################################
 # Workflow Classes

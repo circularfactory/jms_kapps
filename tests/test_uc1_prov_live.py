@@ -1,7 +1,7 @@
-"""The PROV witness of use case 1, on a live GraphDB: the store refuses a decision snapshot that
-does not name the classification that generated it (jms_kapps 59).
+"""The PROV witness of use case 1, on a live GraphDB: the store refuses a parameter copy that
+does not name the classification that generated it.
 
-The shape is `:DecisionSnapshotGeneratedByShape` in `uc1/shapes/integration_usecase_shapes.ttl`,
+The shape is `:ParameterCopyGeneratedByShape` in `uc1/shapes/integration_usecase_shapes.ttl`,
 which the seed's reset sends. A snapshot without `prov:wasGeneratedBy` is refused at commit, with
 the triplestore interface's `ShaclValidationError`, whose report names the shape, and the graph
 does not change. The same snapshot with its classification is admitted, and the store infers the
@@ -9,7 +9,6 @@ classification's back-link, `prov:generated`.
 
 That the detector's own commit writes the classification, its agent and its end time is proved
 offline (`test_uc1_anomaly_detector.py`), and on a real run by `test_uc1_run_live.py`.
-(Added on 2026-10-16, jms_kapps 59.)
 """
 
 from __future__ import annotations
@@ -40,7 +39,7 @@ pytestmark = [
 
 SNAPSHOT = IRI("ProvTestSnapshot", base=JMS_NS)
 CLASSIFICATION = IRI("Classification_provtest", base=JMS_NS)
-SHAPE = IRI("DecisionSnapshotGeneratedByShape", base=JMS_NS)
+SHAPE = IRI("ParameterCopyGeneratedByShape", base=JMS_NS)
 
 
 @pytest.fixture
@@ -54,7 +53,7 @@ def ogm(dataset):
 def snapshot_count(ogm: OGM) -> int:
     (row,) = bindings(
         ogm.db,
-        f"SELECT (COUNT(?s) AS ?n) WHERE {{ ?s a <{JMS.DecisionSnapshot}> }}",
+        f"SELECT (COUNT(?s) AS ?n) WHERE {{ ?s a <{JMS.ParameterCopy}> }}",
     )
     return int(row["n"])
 
@@ -66,7 +65,7 @@ def test_a_snapshot_without_its_classification_is_refused_by_the_store(ogm):
     with pytest.raises(ShaclValidationError) as raised:
         ogm.commit(
             changes=[
-                Create(class_iri=JMS.DecisionSnapshot, instance_iri=SNAPSHOT, data={})
+                Create(class_iri=JMS.ParameterCopy, instance_iri=SNAPSHOT, data={})
             ]
         )
 
@@ -95,7 +94,7 @@ def test_a_snapshot_with_its_classification_is_admitted_and_the_back_link_is_inf
                 },
             ),
             Create(
-                class_iri=JMS.DecisionSnapshot,
+                class_iri=JMS.ParameterCopy,
                 instance_iri=SNAPSHOT,
                 class_scope=ClassScope.from_property_chains([[PROV.wasGeneratedBy]]),
                 data={str(PROV.wasGeneratedBy): [{"id": str(CLASSIFICATION)}]},

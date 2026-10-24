@@ -14,7 +14,6 @@ import subprocess
 import sys
 
 import pytest
-from kapps_semantic_middleware.vocabulary import CORE_NS
 from kapps_triplestore_interface import IRI
 from rdflib import RDF, RDFS, Graph, Literal, URIRef
 
@@ -28,7 +27,15 @@ from jms_kapps.uc1.screwing_resource import (
 from jms_kapps.uc1.screwing_resource import (
     replay_by_screw,
 )
-from jms_kapps.uc1.seed import RECORDING_OF, SCREW_2
+from jms_kapps.uc1.seed import (
+    M4_VALUES,
+    MQTT_BROKER_IP,
+    MQTT_BROKER_PORT,
+    RECORDING_OF,
+    ROBOT,
+    SCREW_2,
+    UNMEASURED_SCREW_TYPE,
+)
 from jms_kapps.uc1.vocabulary import JMS, JMS_NS
 
 
@@ -51,10 +58,13 @@ class FakeSupervisor:
         command: list[str],
         *,
         workflows=(),
+        has_service: bool = True,
     ) -> None:
         if self._fail_on_spawn is not None and len(self.calls) >= self._fail_on_spawn:
             raise RuntimeError("spawn failed")
-        self.calls.append(("spawn", resource, name, command, tuple(workflows)))
+        self.calls.append(
+            ("spawn", resource, name, command, tuple(workflows), has_service)
+        )
 
     def watch(self) -> None:
         self.calls.append(("watch",))
@@ -63,22 +73,25 @@ class FakeSupervisor:
         self.calls.append(("stop_all",))
 
 
-def test_participants_returns_four_in_run_order_with_the_tables_commands() -> None:
+def test_participants_returns_five_in_run_order_with_the_tables_commands() -> None:
     """One participant per resource, in the order the spec's table fixes, and each command on its
-    module with its arguments."""
+    module with its arguments. The robot controller stand-in comes right after the screwing
+    resource, whose middleware hosts its broker."""
     result = participants("ds")
 
-    assert len(result) == 4
+    assert len(result) == 5
     assert [p.resource for p in result] == [
         ANOMALY_DETECTOR_RESOURCE,
         SCREWING_RESOURCE_RESOURCE,
+        ROBOT,
         JMS.Learner1,
         JMS.Planner1,
     ]
-    assert len({p.resource for p in result}) == 4
+    assert len({p.resource for p in result}) == 5
     expected_modules = {
         ANOMALY_DETECTOR_RESOURCE: "jms_kapps.uc1.anomaly_detector",
         SCREWING_RESOURCE_RESOURCE: "jms_kapps.uc1.screwing_resource",
+        ROBOT: "jms_kapps.uc1.robot_controller",
         JMS.Learner1: "jms_kapps.uc1.learner_process",
         JMS.Planner1: "jms_kapps.uc1.planner_process",
     }
@@ -86,7 +99,30 @@ def test_participants_returns_four_in_run_order_with_the_tables_commands() -> No
         assert participant.command[0] == sys.executable
         assert participant.command[1] == "-m"
         assert participant.command[2] == expected_modules[participant.resource]
-        assert participant.command[3:5] == ["--dataset", "ds"]
+        if not participant.device:
+            assert participant.command[3:5] == ["--dataset", "ds"]
+
+
+def test_the_robot_controller_is_a_device_configured_with_its_broker_and_recordings() -> (
+    None
+):
+    """The stand-in has no dataset, no service and no workflow: like the controller of a real
+    cell, it is told its broker and what it replays for each Screw, and the graph describes it."""
+    robot = next(p for p in participants("ds") if p.resource == ROBOT)
+
+    assert robot.device
+    assert robot.service is None
+    assert robot.workflows == ()
+    assert robot.name == "Robot controller"
+    assert "--dataset" not in robot.command
+    command = robot.command
+    assert command[command.index("--broker-host") + 1] == MQTT_BROKER_IP
+    assert command[command.index("--broker-port") + 1] == str(MQTT_BROKER_PORT)
+    recordings = [
+        command[i + 1] for i, part in enumerate(command) if part == "--recording"
+    ]
+    assert recordings == [f"{screw}={name}" for screw, name in RECORDING_OF.items()]
+    assert all(not p.device for p in participants("ds") if p.resource != ROBOT)
 
 
 def test_the_planner_command_has_no_product_flag() -> None:
@@ -107,12 +143,13 @@ def test_the_screwing_resource_command_has_no_recording_flag() -> None:
 
 def test_each_participant_names_its_service_class() -> None:
     """Each participant's `service` is the class its middleware registers, for the page's
-    "Middleware" row."""
+    "Service" row."""
     by_resource = {p.resource: p.service for p in participants("ds")}
 
     assert by_resource == {
         ANOMALY_DETECTOR_RESOURCE: JMS.AnomalyDetectorService,
         SCREWING_RESOURCE_RESOURCE: JMS.ScrewingResourceService,
+        ROBOT: None,
         JMS.Learner1: JMS.LearnerService,
         JMS.Planner1: JMS.PlannerService,
     }
@@ -143,13 +180,23 @@ def test_start_run_seeds_then_spawns_in_order_then_watches() -> None:
         "spawn",
         "spawn",
         "spawn",
+        "spawn",
         "watch",
     ]
     assert [call[4] for call in supervisor.calls if call[0] == "spawn"] == [
         (JMS.ClassifyWorkflow,),
         (JMS.UnscrewingWorkflow,),
         (),
+        (),
         (JMS.StartUnscrewingWorkflow,),
+    ]
+    # The stand-in is spawned as a device, the others as middleware processes with a service.
+    assert [call[5] for call in supervisor.calls if call[0] == "spawn"] == [
+        True,
+        True,
+        False,
+        True,
+        True,
     ]
     assert ("stop_all",) not in supervisor.calls
 
@@ -190,7 +237,7 @@ def test_start_run_whose_second_spawn_raises_stops_everything() -> None:
 def test_replay_by_screw_replays_the_named_recording() -> None:
     """`replay_by_screw(RECORDING_OF)` replays `missing_screw` for `SCREW_2`, as its `source`
     says."""
-    frame = replay_by_screw(RECORDING_OF)(SCREW_2)
+    frame = replay_by_screw(RECORDING_OF)(SCREW_2, M4_VALUES)
 
     assert frame.source.endswith("/missing_screw")
 
@@ -199,7 +246,7 @@ def test_replay_by_screw_raises_for_an_unknown_screw() -> None:
     """A Screw that the demo names no recording for raises `ValueError`, and the operation then
     ends `failed` with that reason."""
     with pytest.raises(ValueError):
-        replay_by_screw(RECORDING_OF)(IRI("UnknownScrew", base=JMS_NS))
+        replay_by_screw(RECORDING_OF)(IRI("UnknownScrew", base=JMS_NS), M4_VALUES)
 
 
 @pytest.mark.parametrize(
@@ -266,32 +313,75 @@ def test_main_refuses_a_live_instance_and_prints_the_force_hint(
 def test_the_seed_writes_the_resources_the_ontology_does_not_declare(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The reset gets the screwing resource, a `cfc:Resource`, and the anomaly detector, an
-    `:AnomalyDetector` (a `cfc:Resource` and a PROV agent, jms_kapps 59), each with its
-    label, and the demo is written after it."""
+    """The reset gets the screwing resource, a `:ScrewingResource` (a `cfc:Resource` that has a
+    robot), and the anomaly detector, an `:AnomalyDetector` (a `cfc:Resource` and a PROV agent),
+    each with its label, and the demo is written after it."""
     calls: list[tuple] = []
     monkeypatch.setattr(
         run_core,
         "reset_uc1",
         lambda db, *, individuals="": calls.append(("reset", individuals)),
     )
-    monkeypatch.setattr(run_core, "seed_demo", lambda ogm: calls.append(("demo",)))
+    monkeypatch.setattr(
+        run_core,
+        "seed_demo",
+        lambda ogm, *, unmeasured_screw_type: calls.append(
+            ("demo", unmeasured_screw_type)
+        ),
+    )
     monkeypatch.setattr(run_core, "OGM", lambda db: db)
 
     run_core.seed(object())
 
     assert [call[0] for call in calls] == ["reset", "demo"]
+    assert calls[1] == ("demo", False)
     graph = Graph().parse(data=calls[0][1], format="turtle")
     for resource, label, resource_class in (
         (ANOMALY_DETECTOR_RESOURCE, "Anomaly detector", JMS.AnomalyDetector),
         (
             SCREWING_RESOURCE_RESOURCE,
             "Screwing resource",
-            IRI("Resource", base=CORE_NS),
+            JMS.ScrewingResource,
         ),
     ):
         assert (URIRef(str(resource)), RDF.type, URIRef(str(resource_class))) in graph
         assert (URIRef(str(resource)), RDFS.label, Literal(label, lang="en")) in graph
+
+
+def test_the_seed_asked_for_the_unmeasured_screw_type_declares_it_and_writes_its_screw(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`jms-uc1 infeasible-operation` seeds the Screw type with no values among the reset's
+    individuals, beside the seeded resources, and the demo writes its Screw and grinder."""
+    calls: list[tuple] = []
+    monkeypatch.setattr(
+        run_core,
+        "reset_uc1",
+        lambda db, *, individuals="": calls.append(("reset", individuals)),
+    )
+    monkeypatch.setattr(
+        run_core,
+        "seed_demo",
+        lambda ogm, *, unmeasured_screw_type: calls.append(
+            ("demo", unmeasured_screw_type)
+        ),
+    )
+    monkeypatch.setattr(run_core, "OGM", lambda db: db)
+
+    run_core.seed(object(), unmeasured_screw_type=True)
+
+    assert calls[1] == ("demo", True)
+    graph = Graph().parse(data=calls[0][1], format="turtle")
+    assert (
+        URIRef(str(UNMEASURED_SCREW_TYPE)),
+        RDF.type,
+        URIRef(str(JMS.ScrewType)),
+    ) in graph
+    assert (
+        URIRef(str(SCREWING_RESOURCE_RESOURCE)),
+        RDF.type,
+        URIRef(str(JMS.ScrewingResource)),
+    ) in graph
 
 
 def test_main_seed_calls_the_seed_once_and_starts_nothing(

@@ -1,4 +1,4 @@
-"""The completion matcher of the measurement harness (jms_kapps 48): from the load's start to the
+"""The completion matcher of the measurement harness: from the load's start to the
 drain's end it reads the run's ended transports from the graph at the configuration's interval,
 and records each read, with its time and how long it took, and the end it saw of each transport.
 

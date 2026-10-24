@@ -1,11 +1,11 @@
-"""Which configuration of a spec a record belongs to (jms_kapps 105, interim names).
+"""Which configuration of a spec a record belongs to (interim names).
 
 The report (`report`) and the configurations table (`table`) both match a run to a configuration
 here. A run matches in one of two ways:
 
 - by its key, which is the configuration's key (`SpecConfiguration.key`); or
 - by the legacy key, for a record of the "before" series, which was keyed before the transit time
-  and the retry wait joined the key (jms_kapps 93). Such a record matches the configuration whose
+  and the retry wait joined the key. Such a record matches the configuration whose
   legacy key (`spec.legacy_key`) is its key, when its `run_settings` hold the configuration's
   transit time and retry wait and its sweep names the spec being read, by file name. Another
   transit time, another retry wait, no run settings or another spec: no match.

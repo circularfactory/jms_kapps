@@ -1,4 +1,4 @@
-"""The spec of a sweep of the measurement harness, iteration one (jms_kapps 78).
+"""The spec of a sweep of the measurement harness, iteration one.
 
 A spec is a TOML file of sweep blocks: each block is the cross product of its own axis values, and
 the configurations of the spec are the union of its blocks, in the listed order, with no
@@ -117,7 +117,7 @@ def test_a_block_with_no_axis_is_one_configuration_of_the_defaults(tmp_path):
 
 
 def test_the_command_s_defaults_are_real_strategies_shacl_on_no_history_no_prefill_one_repetition():
-    """And the wrapper on (jms_kapps 48): a spec's runs are observed unless it turns it off."""
+    """And the wrapper on: a spec's runs are observed unless it turns it off."""
     assert COMMAND_DEFAULTS == {
         "prefill": "none",
         "module_strategy": "real",
@@ -346,7 +346,7 @@ def test_a_selection_that_names_no_number_from_1_is_refused(text):
         numbers(text)
 
 
-# The 9 configurations near the centre (jms_kapps 56), in the order the iteration-one spec lists
+# The 9 configurations near the centre, in the order the iteration-one spec lists
 # them: (topology, prefill, module strategy, WMS strategy, SHACL, history).
 GRID_60 = "../topologies/grid-60.json"
 GRID_120 = "../topologies/grid-120.json"
@@ -402,7 +402,7 @@ def test_the_iteration_one_spec_holds_its_24_configurations_and_the_history_comp
 
 
 def test_the_iteration_one_spec_runs_each_configuration_with_the_run_task_s_timing():
-    """The run timing of KSM 271 (note of 2026-10-11): 30 boxes per minute, a warm-up of 1 minute,
+    """The run timing: 30 boxes per minute, a warm-up of 1 minute,
     a window of 5 minutes, a drain bound of 5 minutes, a matcher interval of 2 seconds, and a load
     that is not heavy."""
     for configuration in configurations(read_spec(ITERATION_ONE)):
@@ -492,7 +492,7 @@ def test_every_key_of_a_configuration_can_be_an_axis():
     assert SPEC_KEYS == (*KEYS, "repetitions")
 
 
-# The run settings of the spec (jms_kapps 93, interim names, jms_kapps 83).
+# The run settings of the spec (interim names).
 
 
 def test_the_transit_time_and_the_retry_wait_come_from_the_command_s_defaults_and_can_be_swept(

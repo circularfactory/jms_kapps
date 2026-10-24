@@ -6,7 +6,7 @@ detector's Classify capability. The detector classifies the attempt and ends the
 commit. Each party is served in the test's own process (see `_uc1_parties.py`), so every call goes
 over REST and every write goes through a middleware into the store.
 
-The values are mock (see `_uc1_mock.py`). `:M4` holds `SUCCESS_PASSING_M4_VALUES`, and each placed
+The values are example values (see `_uc1_example.py`). `:M4` holds `SUCCESS_PASSING_M4_VALUES`, and each placed
 Screw holds `RECORDING_PLACEMENT_VALUES`, so the frame replayed from `success` reaches
 ScrewIntact.
 
@@ -16,9 +16,8 @@ starts). Each test clears the dataset that `--dataset` names, and the screwing r
 writes its frames into the InfluxDB database `Tests`, whatever the dataset. InfluxDB keeps those
 frames.
 
-Changed on 2026-10-15 (jms_kapps 103), after Sören Weindel decided on 2026-10-12 that all UC1 live
-tests share one InfluxDB database, `Tests` (`_uc1_influx.py`): each test wrote its frames into a
-database of the dataset's name, which filled the five that InfluxDB 3 Core allows.
+All UC1 live tests share one InfluxDB database, `Tests` (`_uc1_influx.py`), since InfluxDB 3 Core
+allows five databases only.
 """
 
 from __future__ import annotations
@@ -28,8 +27,8 @@ import time
 import uuid
 
 import pytest
+from _uc1_example import RECORDING_PLACEMENT_VALUES, SUCCESS_PASSING_M4_VALUES
 from _uc1_influx import INFLUX_TEST_DATABASE
-from _uc1_mock import RECORDING_PLACEMENT_VALUES, SUCCESS_PASSING_M4_VALUES
 from _uc1_parties import (
     DETECTOR,
     HOST,
@@ -76,12 +75,12 @@ TEN = (*TYPE_LEVEL, *PLACEMENT)
 # What a test reads back of an operation once the detector has ended it.
 READ_BACK_SCOPE = ClassScope.from_property_chains(
     [
-        [SVC.operationStatus],
-        [SVC.executionResult],
-        [JMS.hasOutcome],
+        [SVC.hasOperationStatus],
+        [SVC.hasExecutionResult],
+        [JMS.hasDetectionResult],
         [JMS.hasMeasuredApproachEndPosition],
         [JMS.hasTimeSeriesReference],
-        *([JMS.usedValues, prop] for prop in TEN),
+        *([JMS.classifiedWith, prop] for prop in TEN),
     ]
 )
 
@@ -168,20 +167,20 @@ def read_operation(dataset: str, operation: IRI) -> dict[IRI, list]:
 
 
 def has_ended(dataset: str, operation: IRI) -> bool:
-    status = read_operation(dataset, operation).get(SVC.operationStatus)
+    status = read_operation(dataset, operation).get(SVC.hasOperationStatus)
     return status in ([OperationStatus.DONE], [OperationStatus.FAILED])
 
 
 def snapshot_values(data: dict[IRI, list]) -> dict[IRI, list]:
-    """The ten values of the one decision snapshot that the operation links to."""
-    (snapshot,) = data[JMS.usedValues]
+    """The ten values of the one parameter copy that the operation links to."""
+    (snapshot,) = data[JMS.classifiedWith]
     return {prop: (snapshot.data or {}).get(prop) for prop in TEN}
 
 
 def snapshots_in(dataset: str) -> int:
     (row,) = bindings(
         connect_store(dataset),
-        f"SELECT (COUNT(?s) AS ?n) WHERE {{ ?s a <{JMS.DecisionSnapshot}> }}",
+        f"SELECT (COUNT(?s) AS ?n) WHERE {{ ?s a <{JMS.ParameterCopy}> }}",
     )
     return int(row["n"])
 
@@ -210,8 +209,8 @@ def test_a_dispatched_attempt_ends_done_with_its_outcome_and_its_decision_snapsh
     operation = classify_dispatched(dataset, influxdb, SCREW)
 
     data = read_operation(dataset, operation)
-    assert data[SVC.operationStatus] == [OperationStatus.DONE]
-    assert [str(o.id) for o in data[JMS.hasOutcome]] == [
+    assert data[SVC.hasOperationStatus] == [OperationStatus.DONE]
+    assert [str(o.id) for o in data[JMS.hasDetectionResult]] == [
         str(IRI("ScrewIntact", base=JMS_NS))
     ]
     assert snapshot_values(data) == {
@@ -222,7 +221,7 @@ def test_a_dispatched_attempt_ends_done_with_its_outcome_and_its_decision_snapsh
         }.items()
     }
     assert JMS.hasMeasuredApproachEndPosition not in data
-    assert SVC.executionResult not in data
+    assert SVC.hasExecutionResult not in data
     assert len(data[JMS.hasTimeSeriesReference]) == 1
 
 
@@ -249,8 +248,10 @@ def test_a_threshold_changed_between_two_attempts_is_used_on_the_next(
     before, after = (read_operation(dataset, op) for op in (first, second))
     assert snapshot_values(before)[JMS.hasMinApproachAxialForce] == [0.5]
     assert snapshot_values(after)[JMS.hasMinApproachAxialForce] == [0.6]
-    assert after[SVC.operationStatus] == [OperationStatus.DONE]
-    assert [str(o.id) for o in after[JMS.hasOutcome]] == [
+    # The changed threshold gives the second attempt a failure outcome, which ends it failed.
+    assert after[SVC.hasOperationStatus] == [OperationStatus.FAILED]
+    assert [str(r) for r in after[SVC.hasExecutionResult]] == ["ANOMALY: MissingScrew"]
+    assert [str(o.id) for o in after[JMS.hasDetectionResult]] == [
         str(IRI("MissingScrew", base=JMS_NS))
     ]
     assert after[JMS.hasMeasuredApproachEndPosition] == [0.0]
@@ -258,14 +259,14 @@ def test_a_threshold_changed_between_two_attempts_is_used_on_the_next(
 
 def assert_failed_and_nothing_else(dataset: str, operation: IRI) -> str:
     """The operation is `failed` with why, and holds no outcome, no snapshot and no measured
-    position; the dataset holds no decision snapshot. Gives the why."""
+    position; the dataset holds no parameter copy. Gives the why."""
     data = read_operation(dataset, operation)
-    assert data[SVC.operationStatus] == [OperationStatus.FAILED]
-    assert JMS.hasOutcome not in data
-    assert JMS.usedValues not in data
+    assert data[SVC.hasOperationStatus] == [OperationStatus.FAILED]
+    assert JMS.hasDetectionResult not in data
+    assert JMS.classifiedWith not in data
     assert JMS.hasMeasuredApproachEndPosition not in data
     assert snapshots_in(dataset) == 0
-    (why,) = data[SVC.executionResult]
+    (why,) = data[SVC.hasExecutionResult]
     return str(why)
 
 
@@ -325,9 +326,9 @@ def test_an_operation_that_is_not_running_is_left_as_it_is(
     operation = IRI("TestEndedOperation", base=JMS_NS)
     ended = f"{NOT_REACHED}its classify workflow did not answer"
     connect_store(dataset).graph_add(
-        f"<{operation}> a <{JMS.UnscrewingOperation}> ; <{JMS.hasScrew}> <{SCREW}> ; "
-        f'<{SVC.operationStatus}> "{OperationStatus.FAILED}" ; '
-        f'<{SVC.executionResult}> "{ended}" .\n',
+        f"<{operation}> a <{JMS.UnscrewingOperation}> ; <{JMS.concernsScrew}> <{SCREW}> ; "
+        f'<{SVC.hasOperationStatus}> "{OperationStatus.FAILED}" ; '
+        f'<{SVC.hasExecutionResult}> "{ended}" .\n',
         content_type="application/x-turtle",
     )
 
@@ -335,9 +336,9 @@ def test_an_operation_that_is_not_running_is_left_as_it_is(
         call_detector(connect_store(dataset), operation)
 
     data = read_operation(dataset, operation)
-    assert data[SVC.operationStatus] == [OperationStatus.FAILED]
-    assert [str(r) for r in data[SVC.executionResult]] == [ended]
-    assert JMS.hasOutcome not in data
+    assert data[SVC.hasOperationStatus] == [OperationStatus.FAILED]
+    assert [str(r) for r in data[SVC.hasExecutionResult]] == [ended]
+    assert JMS.hasDetectionResult not in data
     assert snapshots_in(dataset) == 0
     assert left_as_it_is_record(
         DETECTOR, operation, OperationStatus.FAILED

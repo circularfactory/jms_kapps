@@ -5,8 +5,8 @@ the command line only, never from the environment, and a run that would clear on
 been told which stops before any test runs. A run that cannot reach a store needs none.
 
 This is a plugin module, not part of `conftest.py`, so that a test can load it into a small pytest
-session of its own: see `test_dataset_option.py`. (Changed on 2026-10-11, jms_kapps 62: the option
-and its fixture took the triple-store interface's name of the store's unit, the dataset.)
+session of its own: see `test_dataset_option.py`. The option and its fixture use the triple-store interface's name of
+the store's unit, the dataset.
 """
 
 from __future__ import annotations

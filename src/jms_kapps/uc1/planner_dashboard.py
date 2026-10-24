@@ -81,7 +81,13 @@ def _status(entry: ScrewEntry) -> str:
     cell = f'<span style="color: {colour}; font-weight: 600">{escape(word)}</span>'
     # The reason of a refusal, a failure or a timeout, where there is one.
     if entry.why:
-        return f'{cell} <span title="{escape(entry.why)}">ⓘ</span>'
+        cell = f'{cell} <span title="{escape(entry.why)}">ⓘ</span>'
+    # The store's answer to a refused operation, readable in the row: each rule its report
+    # names, and what the rules say.
+    for rule in entry.rules:
+        cell += f'<div class="hint">by {escape(rule)}</div>'
+    for message in entry.messages:
+        cell += f'<div class="hint">{escape(message)}</div>'
     return cell
 
 
@@ -112,7 +118,7 @@ def _press_form(screws: Sequence[ScrewOnProduct]) -> str:
     press on it is refused — so the form can only name an offered Screw."""
     if not screws:
         return hint(
-            "No Screw is offered: the graph holds no grinder with a Screw that "
+            "No Screw is offered: the knowledge graph holds no grinder with a Screw that "
             "has no operation yet. Seed the dataset with `jms-uc1 seed` or start `jms-uc1`."
         )
     options = "".join(
@@ -144,7 +150,7 @@ def render(state: PlannerState, screws: Sequence[ScrewOnProduct] = ()) -> str:
                 escape(str(len(state.screws))) if state.screws else escape(None),
             ),
             (
-                "Of them",
+                "By status",
                 escape(", ".join(f"{n} {word}" for word, n in counted.items() if n))
                 or escape(None),
             ),

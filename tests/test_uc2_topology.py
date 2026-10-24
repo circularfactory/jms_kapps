@@ -76,9 +76,8 @@ def test_the_first_iterations_cross_file_loads_as_it_is():
 @pytest.mark.parametrize("name", sorted(SEEDED_BEFORE))
 def test_each_shipped_topology_converted_writes_the_modules_it_wrote_before(name):
     """The same modules, with the same types, labels and connections, as the short topology
-    document it was converted from, but for the cross's types. (Changed on 2026-10-06, jms_kapps
-    45, decided by Etienne: the shipped cross names no roles, as `shipped_as_seeded_before.json`
-    holds it since. Until then the sentence ended at "from".)"""
+    document it was converted from, but for the cross's roles: the shipped cross names the first
+    iteration's roles, as `shipped_as_seeded_before.json` holds them."""
     assert as_seeded(shipped_topology(name).graph(0)) == SEEDED_BEFORE[name]
 
 
@@ -120,20 +119,40 @@ def test_the_cross_topology_connects_the_modules_as_the_artifact_does():
 
 
 def test_the_graph_types_and_labels_every_module_and_connection():
-    """The cross names no roles: each of its modules is a FlexConveyorModule, and none is an
-    entry or an exit module. (Changed on 2026-10-06, jms_kapps 45, decided by Etienne: "in the
-    current topologies already the cross topology would make sense to have this". Until then the
-    graph typed Modules 1 and 2 as entry modules and Modules 4 and 5 as exit modules.)"""
+    """The cross names the first iteration's roles: Modules 1 and 2 are entry modules, Modules 4
+    and 5 exit modules, and Module 3 is a FlexConveyorModule with no role."""
     graph = load_topology("cross").graph(0)
 
     assert {
         m.fragment for m in graph.subjects(RDF.type, URIRef(FC.FlexConveyorModule))
-    } == {"Module1", "Module2", "Module3", "Module4", "Module5"}
-    assert not set(graph.subjects(RDF.type, URIRef(FC.EntryModule)))
-    assert not set(graph.subjects(RDF.type, URIRef(FC.ExitModule)))
+    } == {"Module3"}
+    assert {m.fragment for m in graph.subjects(RDF.type, URIRef(FC.EntryModule))} == {
+        "Module1",
+        "Module2",
+    }
+    assert {m.fragment for m in graph.subjects(RDF.type, URIRef(FC.ExitModule))} == {
+        "Module4",
+        "Module5",
+    }
     assert graph.value(URIRef(module_iri(3)), RDFS.label) == Literal("Module 3")
     for _, connection in graph.subject_objects(URIRef(FC.hasConnection)):
         assert (connection, RDF.type, URIRef(FC.Connection)) in graph
+
+
+def test_a_box_of_the_cross_starts_on_module_1_or_2_and_ends_on_module_4_or_5_never_on_module_3():
+    """The four ordered pairs the role rule gives the shipped cross, as the WMS's form offers them,
+    and the roles of the first iteration's cross it was copied from."""
+    for topology in (
+        shipped_topology("cross"),
+        load_topology(str(FIRST_ITERATIONS_CROSS)),
+    ):
+        entries, exits = entries_and_exits(
+            {m.resource: m.types for m in topology.modules}
+        )
+
+        assert entries == [module_iri(1), module_iri(2)]
+        assert exits == [module_iri(4), module_iri(5)]
+        assert module_iri(3) not in entries + exits
 
 
 def test_the_cross_is_placed_on_a_grid_by_its_directions():
@@ -189,7 +208,7 @@ def test_the_shipped_topologies_are_listed():
 # The first iteration's other samples, on its `paper` branch: `modules_preview_minimal.json` (two
 # modules), `modules_preview.json` (four) and `modules_30.json` (thirty), in their shapes. There,
 # every link ran both ways; here each runs one way, so that no two boxes can wait for each other
-# forever (Etienne, 2026-10-04).
+# forever.
 SAMPLES = {
     # name: (modules, columns, rows)
     "pair": (2, 1, 2),
@@ -201,7 +220,37 @@ _STEP = {"North": (0, -1), "East": (1, 0), "South": (0, 1), "West": (-1, 0)}
 
 
 def test_the_first_iterations_samples_ship_beside_the_cross():
-    assert topology_names() == ["cross", "grid", "merge-fault-demo", "pair", "tee"]
+    assert topology_names() == [
+        "cross",
+        "grid",
+        "line",
+        "merge-fault-demo",
+        "pair",
+        "tee",
+    ]
+
+
+def test_the_line_is_four_modules_one_after_another_from_its_entry_to_its_exit():
+    """Module1 is its entry, Module4 its exit, and each module hands boxes East to the next, one
+    way: the topology of `jms-uc2 trace-box`."""
+    topology = shipped_topology("line")
+
+    assert [(m.id, m.types) for m in topology.modules] == [
+        ("Module1", ["EntryModule"]),
+        ("Module2", ["FlexConveyorModule"]),
+        ("Module3", ["FlexConveyorModule"]),
+        ("Module4", ["ExitModule"]),
+    ]
+    assert [
+        (m.id, c.direction, c.to, c.port)
+        for m in topology.modules
+        for c in m.connections
+    ] == [
+        ("Module1", "East", "Module2", 0),
+        ("Module2", "East", "Module3", 0),
+        ("Module3", "East", "Module4", 0),
+    ]
+    assert topology.places() == {f"Module{n}": (n - 1, 0) for n in range(1, 5)}
 
 
 @pytest.mark.parametrize("name", sorted(SAMPLES))
@@ -233,9 +282,7 @@ def test_each_sample_runs_one_way(name):
 @pytest.mark.parametrize("name", topology_names())
 def test_a_box_from_every_entry_reaches_every_exit(name):
     """A topology that names no entry (exit) module counts every module as one, so on the cross
-    a box from every module reaches every other. (Changed on 2026-10-06, jms_kapps 45, decided by
-    Etienne: roles are optional. Until then the entries and the exits were the modules of those
-    types, and each shipped topology had both.)"""
+    a box from every module reaches every other."""
     topology = shipped_topology(name)
     connections = [
         (m.resource, IRI(c.to, base=FCI_NS))
@@ -273,7 +320,7 @@ def test_the_grid_enters_on_its_top_row_and_exits_on_its_bottom_row():
 
 def test_the_grid_flows_down_every_column_and_along_its_rows_by_turns_below_its_top_row():
     """The top row, of the entry modules, passes boxes only downwards, so no box arrives on an
-    entry module from a neighbour (Etienne, 2026-10-05). Row 2 runs to the West, row 3 to the
+    entry module from a neighbour. Row 2 runs to the West, row 3 to the
     East, and so on; Module n is in row (n - 1) // 6, counted from 0."""
     links = {
         (m.id, c.direction, c.to)
@@ -328,7 +375,7 @@ def test_the_merge_fault_demo_downloaded_and_uploaded_gives_the_same_module_list
     tmp_path,
 ):
     """The editor's download is `module_list()`, its upload is `parse_topology`: the shipped merge
-    of two streams survives both (jms_kapps 46)."""
+    of two streams survives both."""
     topology = shipped_topology("merge-fault-demo")
 
     assert parse_topology(topology.module_list()) == topology
@@ -422,7 +469,7 @@ def line_of_three() -> list[dict]:
 def test_the_first_iterations_two_way_grid_is_refused_naming_a_pure_corridor(tmp_path):
     """Its corner, Module 1, links both ways to Module 2 and to Module 7 and to nothing else: a
     box from Module 2 bound for Module 7 and one from Module 7 bound for Module 2 could meet
-    head-on there (Etienne, 2026-10-06, jms_kapps 43)."""
+    head-on there."""
     path = tmp_path / "grid.json"
     path.write_text(json.dumps(sources_grid()))
 
@@ -435,9 +482,7 @@ def test_the_first_iterations_two_way_grid_is_refused_naming_a_pure_corridor(tmp
 @pytest.mark.parametrize("name", ["tee", "pair"])
 def test_the_first_iterations_two_way_tee_and_pair_load(tmp_path, name):
     """Two-way connections and no pure corridor: the tee's middle module has three connections,
-    and no module of the pair has two. (Changed on 2026-10-06, jms_kapps 43, decided by Etienne:
-    "any other routed cycle loads". Until then both were refused, naming the cycle Module1 →
-    Module2 → Module1.)"""
+    and no module of the pair has two."""
     path = tmp_path / f"{name}.json"
     path.write_text(json.dumps(two_way(name)))
 
@@ -475,7 +520,7 @@ def test_jms_uc2_refuses_such_a_topology_before_it_connects_to_the_store(
     assert "Module2 is a pure two-way corridor" in capsys.readouterr().err
 
 
-# -- At least one module, checked when a topology is loaded (jms_kapps 69) ------------------- #
+# -- At least one module, checked when a topology is loaded ------------------- #
 
 NO_MODULE = "a topology needs at least one module"
 
@@ -739,7 +784,7 @@ def test_a_topology_that_cannot_be_seeded_is_refused_naming_why(modules, reason)
 
 def test_a_module_may_take_the_monitors_resource_which_only_the_launcher_reserves():
     """A run without the demo Launcher starts no monitor, so the topology model leaves its
-    resource free; the Launcher refuses it itself (jms_kapps 31)."""
+    resource free; the Launcher refuses it itself."""
     topology = parse_topology([module_entry("Monitor1")])
 
     assert [m.resource for m in topology.modules] == [MONITOR]
@@ -914,29 +959,24 @@ def test_a_topology_written_as_a_module_list_reads_back_as_it_was(name):
 
 
 def test_the_first_iterations_cross_runs_as_the_shipped_cross_without_its_labels():
-    """The shipped cross names no roles, where the first iteration's names two entry and two
-    exit modules. (Changed on 2026-10-06, jms_kapps 45, decided by Etienne: the shipped cross
-    names no roles. Until then the two differed only in the labels.)"""
+    """The shipped cross names the first iteration's roles, and is otherwise the first iteration's
+    cross with its labels."""
     first = load_topology(str(FIRST_ITERATIONS_CROSS))
     shipped = shipped_topology("cross")
-    its_roles = [
+
+    assert [m.types for m in shipped.modules] == [
         ["EntryModule"],
         ["EntryModule"],
         ["FlexConveyorModule"],
         ["ExitModule"],
         ["ExitModule"],
     ]
-
-    assert [m.types for m in shipped.modules] == [["FlexConveyorModule"]] * 5
     assert first == Topology(
-        modules=[
-            m.model_copy(update={"label": None, "types": types})
-            for m, types in zip(shipped.modules, its_roles, strict=True)
-        ]
+        modules=[m.model_copy(update={"label": None}) for m in shipped.modules]
     )
 
 
-# -- The transit time of a module (jms_kapps 8) ------------------------------------------------- #
+# -- The transit time of a module ------------------------------------------------- #
 
 
 def test_a_module_list_may_give_a_module_its_own_transit_time_and_writes_it_back():

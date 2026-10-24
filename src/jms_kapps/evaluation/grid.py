@@ -1,8 +1,6 @@
 """The grid script of the measurement harness: a topology file of W columns and H rows, in the
 pattern of the shipped 30-module grid (`uc2/topologies/grid.json`, 6 columns and 5 rows).
-(Added on 2026-10-12, jms_kapps 94, decided by Sören on jms_kapps 85: "a script makes grids of W x H
-in the pattern of the shipped 30-module grid". Until then the 60- and 120-module grids of iteration
-one were a human task in the Launcher's grid editor.) Interim name (jms_kapps 83).
+A script makes grids of W x H in the pattern of the shipped 30-module grid. Interim name.
 
 **The pattern.** Modules are numbered along the rows, from `Module1` at the top left:
 

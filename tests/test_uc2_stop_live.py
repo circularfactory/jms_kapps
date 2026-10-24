@@ -59,7 +59,7 @@ STARTED_WITHIN_SECONDS = 60.0
 
 # The move of a giver whose process the test ends during it: long enough that it ends there. It is
 # the giver's transit time in the graph, and so T, the longest of the station, which the receiver
-# adds to the bound of its reservation (jms_kapps 8).
+# adds to the bound of its reservation.
 GIVER_MOVE_SECONDS = 10.0
 GIVER_BOUND_SECONDS = ARRIVAL_BOUND_SECONDS + GIVER_MOVE_SECONDS
 
@@ -110,13 +110,10 @@ def test_a_module_whose_next_module_crashed_fails_the_transport_with_why(
     its Reserve, and the call of it is refused. Module 1 leaves Module 2 out, has no other way
     on, keeps the box, ends the transport failed with no live route left, tells the WMS, and logs
     two warnings: why it left Module 2 out, and that the box stays; no error, no traceback.
-    (Changed on 2026-10-11, jms_kapps 77, decided by Etienne: a crash is routed around, and a
-    transport fails only with no live route left. Until then the reason started "Module2 is not
-    reachable: ", and the module logged that in one warning.) (Changed on
-    2026-10-06, jms_kapps 43, decided by Etienne: the origin of a spawn looks ahead, so the WMS
+    A crash is routed around, and a transport fails only with no live route left. The origin of a
+    spawn looks ahead, so the WMS
     spawns no box onto Module 1 while Module 2 is gone. Box 1 is on Module 1 from the seed, and
-    the WMS notifies Module 1 of its transport, as after a spawn. Until then a spawn put it
-    there.)"""
+    the WMS notifies Module 1 of its transport, as after a spawn."""
     caplog.set_level(logging.INFO)
     with participants(dataset, before_start=box_on_module_1) as party:
         crashed = party.served[M2]
@@ -352,11 +349,10 @@ def test_an_origin_the_wms_cannot_notify_leaves_alone_the_transport_the_wms_ende
     """The WMS creates Box 1 on Module 1 and its notification does not reach Module 1: the
     WMS ends the transport failed with why, and the spawn says so. At the bound of its
     reservation, 30 s from its answer to Reserve, Module 1 finds the box on it and the transport
-    ended: it frees its reservation and leaves the transport alone (Etienne, 2026-10-06,
-    jms_kapps 41). Module 1 stays live, so its bound runs: the WMS's notification fails as the
+    ended: it frees its reservation and leaves the transport alone. Module 1 stays live, so its bound runs: the WMS's notification fails as the
     middleware's does when the post to the origin's service fails. Module 2, which Module 1's
     look-ahead reserved ahead for Box 1, frees its reservation at its own bound, since Box 1 never
-    comes (added on 2026-10-06, jms_kapps 43)."""
+    comes."""
     caplog.set_level(logging.INFO)
     with participants(dataset) as party:
 
@@ -409,7 +405,7 @@ def test_an_origin_the_wms_cannot_notify_leaves_alone_the_transport_the_wms_ende
         ]
 
 
-# -- The stop: only the module a transport is assigned to writes it (jms_kapps 42) ------------- #
+# -- The stop: only the module a transport is assigned to writes it ------------- #
 
 # The reason of a transport that a stop ends.
 STOPPING = "the system is stopping"
@@ -560,7 +556,7 @@ def test_ctrl_c_between_the_wms_s_create_and_its_notification_ends_it_once_by_th
         }
         module_warnings = warnings_of(caplog, "jms_kapps.uc2.module")
         # Module 2, which Module 1's look-ahead reserved ahead for Box 1, frees its reservation
-        # at its own stop, and writes nothing (added on 2026-10-06, jms_kapps 43).
+        # at its own stop, and writes nothing.
         freed_ahead = (
             f"Module2: {box.fragment} did not come from Module1 before the stop, so it frees its "
             "reservation"

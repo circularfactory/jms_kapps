@@ -1,6 +1,6 @@
 """Fabricated records of the measurement harness, in the form part 1 and part 2 write them
 (`bench.run`, `observation.observe`), with the numbers a test chooses: for the table of a spec and
-the ramp's broken rule (jms_kapps 49), which read records and nothing else. No store, no run.
+the ramp's broken rule, which read records and nothing else. No store, no run.
 """
 
 from __future__ import annotations
@@ -148,7 +148,7 @@ def record(
     elif run_kind == "baseline":
         measures = {"window": moment} | store_measures
     if spawns_accepted is not None and measures is not None:
-        # The spawns of the window (jms_kapps 99); a record of an earlier run holds none.
+        # The spawns of the window; a record of an earlier run holds none.
         offered = spawns_accepted + spawns_refused
         measures |= {
             "spawns_offered_in_window": offered,
@@ -171,14 +171,14 @@ def record(
             "key": configuration.key,
             "repetition": repetition,
             "repetitions": configuration.repetitions,
-            # A run under the precision rule says its round (jms_kapps 111); one made before
-            # the rounds says its pass (jms_kapps 101).
+            # A run under the precision rule says its round; one made before
+            # the rounds says its pass.
             **({} if pass_number is None else {"pass": pass_number}),
             **({} if round_number is None else {"round": round_number}),
         },
         "replayed_run": None if replays is None else {"run_id": replays},
         # A record of the first iteration holds the highest box before the window; one of today
-        # holds the number of transports the WarehouseManagementSystem queued (jms_kapps 90).
+        # holds the number of transports the WarehouseManagementSystem queued.
         "transports": {
             **(
                 {"queued_by_the_wms": 0}
@@ -211,7 +211,7 @@ def record(
         "participants": PARTICIPANTS if participants is None else list(participants),
         "warm_up": None,
         "window": {"start": moment["start"], "end": moment["end"]},
-        # A record of the "before" series has no key at all (jms_kapps 91).
+        # A record of the "before" series has no key at all.
         **({} if client_load is None else {"client_load": dict(client_load)}),
     }
     if server is not None:
@@ -243,7 +243,7 @@ def sampled_load(
 
 
 def server_watch(samples: int = 3) -> dict[str, Any]:
-    """What a record of the server watch holds of the server (jms_kapps 95): the watch with
+    """What a record of the server watch holds of the server: the watch with
     `samples` samples, the counters of every repository at the start and the end, the page cache,
     the license and the statement counts. A record of the "before" series has none of it."""
     view = {"request": "GET rest/monitor/infrastructure", "status": 200}

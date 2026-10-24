@@ -1,4 +1,4 @@
-"""One UC2 run of the bench launcher, against stand-ins only (jms_kapps 47).
+"""One UC2 run of the bench launcher, against stand-ins only.
 
 The run gets a stand-in of GraphDB's REST API, a bench graph whose seed is the real one, writing
 to a stand-in client, and whose reads answer what a test gives it, the run core's real start with
@@ -34,6 +34,10 @@ from _evaluation_fakes import (
 )
 from kapps_semantic_middleware.vocabulary import OperationStatus
 from kapps_triplestore_interface import IRI
+from kapps_triplestore_interface.exceptions import (
+    AuthenticationError,
+    ShaclValidationError,
+)
 
 from jms_kapps.evaluation import client_load
 from jms_kapps.evaluation.approval import Covered, HeavyRunRefused
@@ -131,7 +135,7 @@ class Bench:
             self.spawn_rate.set = self._failing_set  # type: ignore[method-assign]
         self.graph_options = graph
         # The WarehouseManagementSystem logs each transport it opens as queued: by default those
-        # of the graph's `ends` and the one that stays open (jms_kapps 90).
+        # of the graph's `ends` and the one that stays open.
         ends: list[TransportEnd] = graph.get("ends") or []  # type: ignore[assignment]
         self.queued = (
             queued
@@ -319,7 +323,7 @@ def test_the_run_starts_the_modules_and_the_wms_on_its_own_repository_and_no_mon
         assert command[command.index("--dataset") + 1] == repository
         assert command[1:3] == ["-m", "jms_kapps.evaluation.wrapper"]
     # The run core's command lines, with every run setting at its default, each through the
-    # wrapper, which writes its spans into the run's folder (jms_kapps 48).
+    # wrapper, which writes its spans into the run's folder.
     spans = bench.folder(record) / "spans"
     assert participants_of(
         cross,
@@ -346,8 +350,7 @@ def test_the_run_starts_the_modules_and_the_wms_on_its_own_repository_and_no_mon
 
 
 def test_each_participant_s_output_is_kept_in_the_run_s_folder(tmp_path):
-    """Each line stamped with the time it arrived, the time and two spaces before it (jms_kapps
-    48)."""
+    """Each line stamped with the time it arrived, the time and two spaces before it."""
     bench = Bench(tmp_path, queued=[], wms_output=["INFO:something the WMS said"])
 
     record = bench.run()
@@ -506,7 +509,7 @@ def test_the_record_states_iteration_one_and_its_configuration_runs_again(tmp_pa
         base=tmp_path,
         **STRATEGIES,
     )
-    # The one value the run fills in: its pick seed (jms_kapps 93).
+    # The one value the run fills in: its pick seed.
     assert again == replace(CROSS, wms_pick_seed=pick_seed(DEFAULT_BASE_SEED, 1))
     beside = bench.folder(record) / "configuration.toml"
     assert beside.read_text() == record["configuration"]
@@ -518,7 +521,7 @@ def test_the_record_holds_the_facts_and_the_run_settings(tmp_path):
 
     record = bench.run()
 
-    # The transit time and the retry wait are keys of the configuration now (jms_kapps 93).
+    # The transit time and the retry wait are keys of the configuration now.
     assert "transit_seconds" not in record["run_settings"]
     assert "retry_seconds" not in record["run_settings"]
     assert record["run_settings"]["wms_pick_seed"] == pick_seed(DEFAULT_BASE_SEED, 1)
@@ -725,7 +728,7 @@ class AnsweringDB:
         return {"results": {"bindings": []}}
 
     def graph_add(self, content: str, **_: object) -> bool:
-        return False
+        raise ShaclValidationError("refused (400)", report="the report", status=400)
 
 
 def term(value: str, kind: str = "literal") -> dict:
@@ -832,7 +835,7 @@ def test_the_bench_graph_reads_the_services_still_registered():
     assert graph.registered_services() == ["Module1"]
 
 
-def test_a_prefill_the_store_does_not_load_ends_the_seed(tmp_path):
+def test_a_prefill_transaction_the_store_refuses_ends_the_seed(tmp_path):
     prefill = tmp_path / "prefill.ttl"
     prefill.write_text("<urn:a> <urn:b> <urn:c> .\n", encoding="utf-8")
     reset: list[object] = []
@@ -842,9 +845,32 @@ def test_a_prefill_the_store_does_not_load_ends_the_seed(tmp_path):
         seed_uc2=lambda *a, **k: reset.append(a),
     )
 
-    with pytest.raises(PrefillNotLoaded, match="transaction 1 of the prefill"):
+    with pytest.raises(
+        PrefillNotLoaded, match="transaction 1 of the prefill"
+    ) as caught:
         graph.seed(shipped_topology("cross"), 0, collect_history=False)
+    assert "the report" in str(caught.value)
+    assert str(prefill) in str(caught.value)
+    assert isinstance(caught.value.__cause__, ShaclValidationError)
     assert reset
+
+
+def test_another_interface_error_of_a_prefill_write_reaches_the_caller(tmp_path):
+    prefill = tmp_path / "prefill.ttl"
+    prefill.write_text("<urn:a> <urn:b> <urn:c> .\n", encoding="utf-8")
+
+    class Unauthorised(AnsweringDB):
+        def graph_add(self, content: str, **_: object) -> bool:
+            raise AuthenticationError("no login", status=401)
+
+    graph = GraphDBBenchGraph(
+        Unauthorised({}),  # type: ignore[arg-type]
+        prefill=prefill,
+        seed_uc2=lambda *a, **k: None,
+    )
+
+    with pytest.raises(AuthenticationError):
+        graph.seed(shipped_topology("cross"), 0, collect_history=False)
 
 
 @pytest.mark.posix(reason="sends SIGTERM to this process")
@@ -872,7 +898,7 @@ def test_a_stop_signal_ends_the_run_as_interrupted_and_its_repository_is_deleted
     ]
 
 
-# The warm-up (jms_kapps 78): the spawn rate is on before the measured window, which starts when
+# The warm-up: the spawn rate is on before the measured window, which starts when
 # the warm-up ends. A warm-up of 0 is the run above, unchanged.
 WARM_UP = Configuration(**(vars(CROSS) | {"warm_up_seconds": 30.0}))
 
@@ -891,7 +917,7 @@ def test_a_warm_up_sets_the_spawn_rate_at_its_start_and_the_window_starts_at_its
         ("spawn rate", 0, start + 30.0 + 60.0, SPAWN_RATE_ENDPOINT),
     ]
     during = bench.events.between(("spawn rate", 6.0), ("spawn rate", 0))
-    # The run waits through the completion matcher, which reads every 2 s (jms_kapps 48).
+    # The run waits through the completion matcher, which reads every 2 s.
     assert [e for e in during if e[0] == "sleep"] == [("sleep", 2.0)] * 45
     assert [e for e in during if e[:2] == ("read", "ended transports named")] == [
         ("read", "ended transports named", ("Transport99",))
@@ -974,7 +1000,7 @@ def test_the_seed_sets_the_shapes_only_where_the_configuration_has_shacl(
     tmp_path, shacl
 ):
     """The SHACL-off twin has no SHACL validation, and refuses shapes: its seed skips them
-    (`with_shapes`, jms_kapps 62). The run with SHACL on seeds them, as every demo does."""
+    (`with_shapes`). The run with SHACL on seeds them, as every demo does."""
     bench = Bench(tmp_path)
 
     bench.run(Configuration(**(vars(CROSS) | {"shacl": shacl})))
@@ -1065,7 +1091,7 @@ def _option(command: list[str], name: str) -> str:
 def test_the_transit_time_and_the_retry_wait_of_the_configuration_are_the_participants(
     tmp_path,
 ):
-    """jms_kapps 93: the seed of the topology takes the transit time, every module's command line
+    """The seed of the topology takes the transit time, every module's command line
     the retry wait, and the record holds both under the configuration."""
     bench = Bench(tmp_path)
     configuration = Configuration(

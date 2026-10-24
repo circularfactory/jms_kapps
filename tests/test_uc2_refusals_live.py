@@ -6,7 +6,7 @@ The WarehouseManagementSystem and the five modules of the cross are served in th
 their handover event streams as the monitor's process does, with the real reads and the real
 stream reader. Its page's JSON is read the way the page reads it. Each fault is armed on its
 module through the module's own route, `POST /faults/{name}`, at the address its service
-registered, as the vertical slice arms it.
+registered.
 
 - **Fault scenario 1, `skip-reserve`.** Box A travels from Module 2 over Module 3 onto Module 4.
   While Module 4 holds it, box B is spawned onto Module 1 toward Module 4 too, with the fault armed
@@ -14,11 +14,9 @@ registered, as the vertical slice arms it.
   store refuses the handover's entry before any move; Module 3 emits `commit_refused`, asks
   Module 4's Reserve, and waits its turn; B still reaches its exit. Module 4 holds A
   deterministically: Module 3's move of A takes 1 s and then waits until the test lets it end, and
-  Module 4 possesses A from the handover's entry, for as long as the move lasts. (Changed on
-  2026-10-06, jms_kapps 43, decided by Etienne: the origin of a spawn looks ahead, so the WMS
+  Module 4 possesses A from the handover's entry, for as long as the move lasts. The origin of a spawn looks ahead, so the WMS
   spawns no box onto Module 1 while Module 3 holds one, and the fault skips the look-ahead of the
-  module it is armed on. Until then the fault was armed on Module 1, which handed B to Module 3
-  while Module 3 held A.)
+  module it is armed on.
 - **Fault scenario 2, `complete-without-releasing`.** A box goes to Module 4 with the fault armed
   there. Module 4 commits its transport `done` before it gives the box back; the store refuses
   that, Module 4 emits `commit_refused`, then gives the box back with the last handover.
@@ -47,6 +45,7 @@ import httpx
 import pytest
 from _html import rows
 from _participants import HOST, M1, M2, Participants, participants
+from _uc2_run import POSSESSION_PATH, set_fault
 from _wait import eventually
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -76,7 +75,6 @@ from jms_kapps.uc2.process import STEP_TIMEOUT_SECONDS
 from jms_kapps.uc2.seed import place_box
 from jms_kapps.uc2.topology import Connection, Module, Topology, shipped_topology
 from jms_kapps.uc2.transport import boxes, operation_status
-from jms_kapps.uc2.vertical_slice import POSSESSION_PATH, set_fault
 from jms_kapps.uc2.vocabulary import FC, WMS, box_iri, module_iri, transport_iri
 from jms_kapps.uc2.wms import taken_back_record
 
@@ -104,8 +102,7 @@ ARRIVES_WITHIN_SECONDS = 90.0
 
 # How long Module 3's move of A may wait for the test. Module 4's reservation for A has a bound of
 # 31 s, the transit time included, from its answer to Reserve: A arrives well within it, after
-# Module 3's commit, its move of 1 s and this wait. (Changed on 2026-10-06, jms_kapps 43: until
-# then Module 2's move of A waited, within Module 3's reservation.)
+# Module 3's commit, its move of 1 s and this wait.
 HELD_AT_MOST_SECONDS = 22.0
 
 
@@ -401,8 +398,7 @@ def test_skip_reserve_onto_a_free_module_conveys_and_the_receiver_carries_on(
             "as skip-reserve is armed"
         ) in log
         # Module 2 accepted one Reserve of Module 1: the plain one of Module 1's look-ahead at
-        # the spawn, which the WMS's Reserve always gets. The hop itself asked none (changed on
-        # 2026-10-06, jms_kapps 43, decided by Etienne; until then no Reserve was accepted).
+        # the spawn, which the WMS's Reserve always gets. The hop itself asked none.
         assert log.count(acceptance_record(M2, FC.ReserveWorkflow, box, M1)) == 1
         assert acceptance_record(M2, FC.ReceiveWorkflow, box, M1) in log
         assert operation_status(party.db, transport) == OperationStatus.DONE
@@ -447,10 +443,10 @@ def test_a_spawn_onto_an_origin_a_skip_reserve_neighbour_filled_is_refused_by_th
     holds Box 1 meanwhile. The WMS's create of Box 2 on Module 1 is refused by the store: nothing
     is written, and "Last spawns" on the WMS's dashboard shows the store's reason, which the
     monitor shows too. Box 1 then goes on, and Module 1's reservation for Box 2 lapses at its
-    bound (Etienne, 2026-10-06, jms_kapps 41). Deterministic: the WMS's call of Reserve waits,
+    bound. Deterministic: the WMS's call of Reserve waits,
     after the answer, until Module 1 holds Box 1. "Box 2" is the box the WMS spawns, named by a
-    UUID as it names every box (jms_kapps 92): the test learns its name from the WMS's Reserve.
-    (Changed on 2026-10-12. Until then the WMS numbered it Box 2, after Box 1 in the graph.)"""
+    UUID as it names every box: the test learns its name from the WMS's Reserve.
+    """
     box_1, transport_1 = box_iri(1), transport_iri(box_iri(1))
     box_1_may_go_on = threading.Event()
     served: list[Participants] = []

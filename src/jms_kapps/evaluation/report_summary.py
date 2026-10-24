@@ -17,7 +17,7 @@ the median and the highest CPU use and the highest memory use of the samples in 
 there are none). Since format 4 it also holds the report points of the run (`points`: the hour of
 its window, other activity on the server, the page cache's deltas, the deadlock alarms and the dead
 heartbeats, `report_points`). Since format 5 the requests that timed out and those whose connection
-dropped are two counts, and each unanswered request says its `outcome` (jms_kapps 109): a request
+dropped are two counts, and each unanswered request says its `outcome`: a request
 that a record written before says "timed out" is classified by its error
 (`store_requests.outcome_of`).
 
@@ -29,9 +29,7 @@ read is made again, too. A record that cannot be read has no summary.
 summary of format 1 is made again from its record and its spans. Format 3 added `unanswered` and
 `client_load`, and a summary of format 2 is made again. Format 4 added `points`, and a summary of
 format 3 is made again. Format 5 counted the dropped connections apart, and a summary of format 4,
-which counted them as timed out, is made again. (Added on 2026-10-12, jms_kapps 86; format 2 on
-2026-10-12, jms_kapps 87; format 3 on 2026-10-12, jms_kapps 91; format 4 on 2026-10-12, jms_kapps
-97; format 5 on 2026-10-14, jms_kapps 109; interim, jms_kapps 83.)
+which counted them as timed out, is made again (interim).
 """
 
 from __future__ import annotations
@@ -76,7 +74,7 @@ class RunFigures:
     accepted requests of the window that are neither (logins left out). `steps` are the steps of a
     run that counts and has spans (`report_steps`), else None. `unanswered` lists each store
     request that got no answer, in the window and outside it, in the order of their times, each
-    with its `outcome` (timed out or connection dropped, jms_kapps 109), its `at`, its real wait
+    with its `outcome` (timed out or connection dropped), its `at`, its real wait
     `seconds`, its `reason`, its `kind`, its `participant` and whether it was in the `window`;
     None for a run without store
     requests. `client_load` is the client host's load in the window (`client_load_of`). `points` is

@@ -19,18 +19,14 @@ So a running use case 2 reads nothing in the file as work in flight: no box is o
 transport is `queued` or `running`, and there is no reservation, which lives in a module's memory
 and never in the graph. Neither the WarehouseManagementSystem nor a module reads every box in it
 either: the WarehouseManagementSystem names a new box by a new UUID, and asks about a box that
-comes back in one `ASK`. The header gives the number of boxes beside the size. (Changed on 2026-10-12, jms_kapps 92, decided by Sören on
-jms_kapps 85: "past boxes get UUIDs from the seeded generator". Until then each box was "numbered
-from 1", and this paragraph ended: "It reads every box, though: the WarehouseManagementSystem
-numbers the next box after the highest-numbered box in the graph, so the header gives the number of
-boxes beside the size.")
+comes back in one `ASK`. The header gives the number of boxes beside the size.
 
 **When it is loaded.** After the seed, which writes the modules and the WarehouseManagementSystem
 that the file names, and before any participant starts, as the seed is: it stands in for a factory
 that has run, and is no participant's write. The store validates it against use case 2's shapes
 like any other write. A box, its possession and its transport need each other there, so
 `transactions` splits the file between boxes, each whole with its transport. A module's BoxTransportCapability comes into
-the graph when the module registers its workflows, after the load; until then a transport names
+the graph when the module registers its workflows, after the load; before it a transport names
 one that is not there yet, and nothing reads it.
 
 **The size** counts the statements in the file, before inference: 10 for each box with its
@@ -77,7 +73,7 @@ GENERATOR = "jms_kapps.evaluation.prefill"
 
 PREFILL_VERSION = 2
 """The generator's version, in the header. It changes whenever the file for one topology, size
-and seed changes. Version 2 names each box by a UUID from the seeded generator (jms_kapps 92);
+and seed changes. Version 2 names each box by a UUID from the seeded generator;
 version 1 numbered the boxes from 1."""
 
 BOX_TRANSPORT_WORKFLOW = "box_transport"
@@ -219,10 +215,7 @@ def journeys(prefill: Prefill) -> Iterator[tuple[IRI, IRI, IRI]]:
     """The box, the origin and the destination of each journey of `prefill`, in the file's order:
     an origin picked among the candidates, then a destination among its own, as `real` picks them
     while every origin is free; then the box, named by a UUID of version 4 made of the next 128
-    bits of the same seeded generator. (Changed on 2026-10-12, jms_kapps 92, decided by Sören on
-    jms_kapps 85: "past boxes get UUIDs from the seeded generator". Until then it was
-    `origins_and_destinations`, "The origin and the destination of each box of `prefill`, from Box 1
-    on", and the file numbered the boxes.)"""
+    bits of the same seeded generator."""
     picks = random.Random(prefill.seed)
     origins = list(prefill.candidates)
     for _ in range(prefill.boxes):
@@ -265,7 +258,7 @@ def _write(out: TextIO, prefill: Prefill) -> None:
         "    " + _name(FC.hasBox) + " {box} ;\n"
         "    " + _name(FC.hasOrigin) + " {origin} ;\n"
         "    " + _name(FC.hasDestination) + " {destination} ;\n"
-        "    " + _name(SVC.operationStatus) + f' "{OperationStatus.DONE}" ;\n'
+        "    " + _name(SVC.hasOperationStatus) + f' "{OperationStatus.DONE}" ;\n'
         "    " + _name(CFC.executedOn) + " {destination} ;\n"
         "    " + _name(CFC.implementsCapability) + " {capability} .\n\n"
     )

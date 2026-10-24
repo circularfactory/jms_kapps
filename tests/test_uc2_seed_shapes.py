@@ -5,7 +5,7 @@ A dataset without SHACL validation refuses `shapes_set` as not supported: shapes
 would validate nothing. So the seed's default refuses such a dataset, before it loads anything,
 and only a seed that the caller asks to skip the shapes, `with_shapes=False`, as a run of the
 measurement harness on its SHACL-off twin does, seeds it, with no shapes. Without a store: a
-stand-in records every request of the seed. (Added on 2026-10-11, jms_kapps 62.)
+stand-in records every request of the seed.
 """
 
 from __future__ import annotations
@@ -25,6 +25,9 @@ from jms_kapps.uc2.topology import load_topology
 
 UC2_ONTOLOGY = read_asset("jms_kapps.uc2", "ontology", "flexconveyor_usecase.ttl")
 UC2_SHAPES = read_asset("jms_kapps.uc2", "shapes", "flexconveyor_usecase_shapes.ttl")
+UC2_SPARQL_SHAPES = read_asset(
+    "jms_kapps.uc2", "shapes", "flexconveyor_usecase_sparql_shapes.ttl"
+)
 
 
 @dataclass
@@ -72,10 +75,24 @@ def test_a_seed_sets_use_case_2_s_shapes_after_the_clear_and_before_the_ontology
 
     seed(store)
 
-    assert store.sent.count(("shapes", UC2_SHAPES)) == 1
-    shapes = store.sent.index(("shapes", UC2_SHAPES))
+    (shapes,) = [i for i, (kind, _) in enumerate(store.sent) if kind == "shapes"]
+    assert UC2_SHAPES in store.sent[shapes][1]
     assert store.kinds()[0] == "clear"
     assert shapes < store.sent.index(("import", UC2_ONTOLOGY))
+
+
+def test_a_seed_sends_the_sparql_shapes_file_only_when_asked_to():
+    default, asked = StandIn(), StandIn()
+
+    seed(default)
+    seed(asked, sparql_shapes=True)
+
+    (core_only,) = [data for kind, data in default.sent if kind == "shapes"]
+    (both,) = [data for kind, data in asked.sent if kind == "shapes"]
+    assert UC2_SHAPES in core_only
+    assert UC2_SHAPES in both
+    assert UC2_SPARQL_SHAPES in both
+    assert UC2_SPARQL_SHAPES not in core_only
 
 
 def test_a_seed_refuses_a_dataset_without_shapes_validation_before_it_loads_anything():

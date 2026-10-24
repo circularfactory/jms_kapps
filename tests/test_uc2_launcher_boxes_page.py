@@ -1,9 +1,8 @@
-"""The Launcher page's list of the boxes on the station, in a headless browser, as a person uses it
-(jms_kapps 23).
+"""The Launcher page's list of the boxes on the station, in a headless browser, as a person uses it.
 
 The page is the real one, served by the Launcher's real app, whose background read sends the list's
 one query to the stand-in store of `_station_boxes.py`: it answers Box 1 on Module 1 and a box
-named by a UUID on Module 3 (Box 3 until 2026-10-12, jms_kapps 92), and keeps each query text it
+named by a UUID on Module 3, and keeps each query text it
 receives, so a test compares what the page shows and copies with what the store received. Nothing
 reaches a real store.
 """
@@ -64,7 +63,7 @@ def test_the_page_lists_each_box_with_the_module_that_possesses_it(opened: Page)
     expect(station(page).locator("tbody tr")).to_have_count(2)
     assert box_rows(page) == [
         ["Box1", "Module1", "Transport7", "running"],
-        # A box named by a UUID, whole (jms_kapps 92).
+        # A box named by a UUID, whole.
         ["Box-5b0e1c52-9d37-4c8e-a1f4-2f6c3a7d9e10", "Module3", "Transport9", "queued"],
     ]
 

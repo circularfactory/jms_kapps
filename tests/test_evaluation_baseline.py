@@ -1,4 +1,4 @@
-"""The store-only baseline of a recorded UC2 run (jms_kapps 81), against stand-ins only.
+"""The store-only baseline of a recorded UC2 run, against stand-ins only.
 
 Each recorded run here is made by part 1 and part 2 of the harness against their stand-ins
 (`test_evaluation_bench.Bench`): a UC2 run whose participants' wrappers write the spans that a test
@@ -1021,7 +1021,7 @@ def test_the_guard_refuses_a_repository_that_is_not_a_run_s_own():
     assert retargeted("rest/repositories/Tests", "eval-1") == "rest/repositories/eval-1"
 
 
-# The server watch (jms_kapps 95): the baseline gets the same watch as a UC2 run, from the
+# The server watch: the baseline gets the same watch as a UC2 run, from the
 # window's start to the drain's end.
 
 
@@ -1111,7 +1111,7 @@ def _transit_of_the_store_preparation(baseline: Baseline) -> float:
 
 
 def test_the_baseline_reads_the_transit_time_from_the_recorded_configuration(tmp_path):
-    """jms_kapps 93: a run of the "after" series holds its transit time in its configuration."""
+    """A run of the "after" series holds its transit time in its configuration."""
     configuration = Configuration(**(vars(WARM_UP) | {"transit_seconds": 2.5}))
     recorded = recorded_run(
         tmp_path, lambda clock: [read(clock, 31.0, "SELECT ?x")], configuration

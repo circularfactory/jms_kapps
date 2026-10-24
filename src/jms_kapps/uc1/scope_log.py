@@ -5,8 +5,8 @@ and no others. Each participant uses small scopes of its own, one for each thing
 a person who watches a run sees which scope is used where, and what it is for, every read or write
 with a scope prints one INFO line, in this form:
 
-    Screwing resource reads UnscrewingOperation_1a2b with OPERATION_SCOPE = [[hasScrew],
-    [operationStatus]]: it wants the Screw it names (hasScrew) and its status (operationStatus)
+    Planner reads UnscrewingOperation_1a2b with OUTCOME_SCOPE = [[hasDetectionResult]]: it wants the
+    outcome that the detector committed (hasDetectionResult)
 
 The scope is written out as its property chains, each chain in brackets: `[[a], [b, c]]` reads
 the property `a`, and `c` of what `b` links to. An empty scope is `[]`: it reads nothing.

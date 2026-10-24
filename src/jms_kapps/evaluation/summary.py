@@ -8,7 +8,7 @@ it is invalid. A run that a check found invalid, a run that failed, and a run th
 ended are left out, and the table lists each with why.
 
 **The run kinds.** A run of use case 2 is of the run kind `uc2`, with the wrapper, or
-`uc2-unwrapped`, without it. A store-only baseline (jms_kapps 81) is of the run kind `baseline`:
+`uc2-unwrapped`, without it. A store-only baseline is of the run kind `baseline`:
 it replays the store requests of one recorded run of use case 2, so it belongs to that run's
 configuration. Its record names the run it replays in its field `replayed_run`, by that run's
 `run_id`.
@@ -18,7 +18,7 @@ record's measures hold it: the latencies of the commits the store admitted; the 
 store requests that the store accepted, logins left out, since a baseline replays none; the
 completed writes per minute and the transports ended per minute; and the store requests, those
 refused, those that timed out and those whose connection dropped, and the three together (refused
-or unanswered). A request that a record written before jms_kapps 109 says "timed out" is
+or unanswered). A request that a record written before the rename says "timed out" is
 classified by its error (`store_requests.outcome_of`), so a dropped connection of such a record
 counts as connection dropped; no record file is changed. The refusals for want of heap count under
 the load: in the warm-up, the
@@ -30,8 +30,6 @@ None: a run without the wrapper has no commit and no store request, and a baseli
 transport. Then each box still waiting after the drain (stuck), each failed box, each with its
 place and reason, each spawn the WarehouseManagementSystem refused, with its reason and where it
 was known, and the completion matcher's reads.
-
-(Added on 2026-10-12, jms_kapps 49.)
 """
 
 from __future__ import annotations
@@ -63,20 +61,19 @@ class RunSummary:
     configuration: int | None = None
     repetition: int | None = None
     # The pass of the precision rule that made the run, as a record made before the rounds says
-    # (jms_kapps 101, interim name), or None.
+    # (interim name), or None.
     pass_number: int | None = None
-    # The round of the precision rule that made the run, as its record says (jms_kapps 111,
-    # interim name), or None for a run of fixed repetitions and a record made before the rounds.
+    # The round of the precision rule that made the run, as its record says (interim name), or None for a run of fixed repetitions and a record made before the rounds.
     round_number: int | None = None
     replays: str | None = None
     # The file name of the spec the sweep named, and the transit time and the retry wait that the
     # record's `run_settings` hold, or None where it says none: a record of the "before" series
-    # holds them there and not in its key (jms_kapps 105, interim names).
+    # holds them there and not in its key (interim names).
     spec_file: str | None = None
     transit_seconds: float | None = None
     retry_seconds: float | None = None
     # The numbers of a baseline's replay level (`replay_levels.level_record`), or None for a run
-    # of use case 2 and for a baseline of an earlier record (jms_kapps 98, interim name).
+    # of use case 2 and for a baseline of an earlier record (interim name).
     replay_level: Mapping[str, Any] | None = None
     commit_latencies: Sequence[float] | None = None
     store_request_latencies: Sequence[float] | None = None
@@ -84,22 +81,22 @@ class RunSummary:
     transports_ended_per_minute: float | None = None
     store_requests_in_window: int | None = None
     # The store requests of the window that the store refused, that timed out and whose
-    # connection dropped, and the three together (jms_kapps 109, interim names; until then one
+    # connection dropped, and the three together (interim names; a record written before holds one
     # count, `refused_or_timed_out_in_window`, for the same sum).
     refused_in_window: int | None = None
     timed_out_in_window: int | None = None
     connection_dropped_in_window: int | None = None
     refused_or_unanswered_in_window: int | None = None
     # The spawns offered and accepted in the window, from the WarehouseManagementSystem's time-
-    # stamped lines (jms_kapps 99, interim names), and the window's length, or None in a record
+    # stamped lines (interim names), and the window's length, or None in a record
     # made before.
     spawns_offered_in_window: int | None = None
     spawns_accepted_in_window: int | None = None
     window_minutes: float | None = None
     heap_refusals_under_load: int | None = None
     # The CPU cores that the server's license view gives (`maxCpuCores`), as the record keeps the
-    # view, or None where it has none, the read failed or the answer names no maximum (jms_kapps
-    # 108, interim name).
+    # view, or None where it has none, the read failed or the answer names no maximum (interim
+    # name).
     licensed_cores: int | None = None
     stuck: Sequence[Mapping[str, Any]] | None = None
     failed: Sequence[Mapping[str, Any]] | None = None
@@ -196,7 +193,7 @@ def summary_of(record: Mapping[str, Any]) -> RunSummary:
 
 def repetition_of(summary: RunSummary) -> int:
     """The repetition that the record of `summary` names, the first where it names none: a record
-    made before the repetitions of a ramp or a replay (jms_kapps 114, interim name)."""
+    made before the repetitions of a ramp or a replay (interim name)."""
     return summary.repetition or 1
 
 
@@ -208,7 +205,7 @@ def repetitions_made(
 ) -> set[int]:
     """The repetitions (`repetition_of`) that the records among `summaries` of `run_kind`, and of a
     key among `keys` where it is given, show made: a record that a stop signal ended is none
-    (jms_kapps 114, interim name)."""
+    (interim name)."""
     return {
         repetition_of(summary)
         for summary in summaries
@@ -259,7 +256,7 @@ def _heap_refusals_under_load(
 
 def _window_counts(measures: Mapping[str, Any]) -> tuple[int, int, int] | None:
     """The store requests of the window that the store refused, that timed out and whose
-    connection dropped (jms_kapps 109), as the measures count them; None where they hold no
+    connection dropped, as the measures count them; None where they hold no
     count. A record written before counts a dropped connection as timed out and holds no
     `connection_dropped_in_window`: of its timeouts, those that its store requests show to be a
     dropped connection by their error (`store_requests.outcome_of`) count as connection dropped,
@@ -286,7 +283,7 @@ def _replay_level(
     record: Mapping[str, Any], counts: tuple[int, int, int] | None
 ) -> Mapping[str, Any] | None:
     """The replay level that a baseline's record holds, or None. A reader takes it as the record
-    would say it now (jms_kapps 109): the timeouts and the dropped connections of its window
+    would say it now: the timeouts and the dropped connections of its window
     apart, from `counts`, and each signal by its name now (`ramp.signal_name`); the record file
     keeps what it holds."""
     # Imported here: `ramp` reads the summaries of this module.
@@ -312,8 +309,7 @@ def _replay_level(
 def _licensed_cores(record: Mapping[str, Any]) -> int | None:
     """The licensed CPU cores of the server's license view that `record` keeps whole
     (`server.license`, read once per run by the server watch): the answer's `maxCpuCores`. None
-    where the record has no view, the read failed, or the answer names no maximum (jms_kapps
-    108)."""
+    where the record has no view, the read failed, or the answer names no maximum."""
     server = record.get("server")
     view = server.get("license") if isinstance(server, Mapping) else None
     if not isinstance(view, Mapping) or view.get("status") != 200:

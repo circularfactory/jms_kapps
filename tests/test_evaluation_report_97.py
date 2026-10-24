@@ -1,5 +1,5 @@
 """The run report groups the runs by hour, marks overlapping activity, counts the deadlock alarms
-apart and shows each dead heartbeat (jms_kapps 97, Sören's decisions of 2026-10-12, jms_kapps 85).
+apart and shows each dead heartbeat.
 
 The seam is `jms-eval-report` on a runs folder made from fabricated records (`_evaluation_records`)
 and from a committed synthetic fixture of spans (`tests/reports/dead-heartbeat`, shaped like the
@@ -168,7 +168,7 @@ def test_a_table_groups_the_valid_runs_of_each_configuration_by_the_utc_hour_of_
     report = made(spec_path, runs)
 
     hours = csv(report, "hours.csv")
-    # The CSV keeps the number and gains the spec's series (jms_kapps 110).
+    # The CSV keeps the number and gains the spec's series.
     assert list(hours.columns) == [
         "configuration",
         "series",
@@ -726,7 +726,7 @@ def test_a_heartbeat_within_the_age_is_alive_and_a_run_without_spans_has_no_data
     write_spans(
         runs,
         "a1",
-        store_span("Module1", "INSERT lastHeartbeat", 0, 0.1, kind="write"),
+        store_span("Module1", "INSERT hasLastHeartbeat", 0, 0.1, kind="write"),
         store_span("Module1", "SELECT ?x", 89, 0.1, kind="read"),
     )
 
@@ -746,9 +746,14 @@ def test_a_heartbeat_refused_by_the_store_is_not_a_heartbeat_write(
     write_spans(
         runs,
         "a1",
-        store_span("Module1", "INSERT lastHeartbeat", 0, 0.1, kind="write"),
+        store_span("Module1", "INSERT hasLastHeartbeat", 0, 0.1, kind="write"),
         store_span(
-            "Module1", "INSERT lastHeartbeat", 100, 0.1, kind="write", outcome="refused"
+            "Module1",
+            "INSERT hasLastHeartbeat",
+            100,
+            0.1,
+            kind="write",
+            outcome="refused",
         ),
         store_span("Module1", "SELECT ?x", 200, 0.1, kind="read"),
     )

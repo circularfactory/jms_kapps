@@ -9,13 +9,13 @@ configuration (`stats.median_and_iqr`, as the table of a spec reads it).
 and, for each family of configurations that differ only in the size of their prefill, the
 throughput and the commit p95 against that size, on a log scale.
 
-The steps chart (`steps_chart`, jms_kapps 87) compares the configurations of one family step by
+The steps chart (`steps_chart`) compares the configurations of one family step by
 step: a dot at the median and a tick at the p95 of each step, on a log time scale.
 
-The by-hour chart (`hours_chart`, jms_kapps 97) shows, for one configuration, four measures against
+The by-hour chart (`hours_chart`) shows, for one configuration, four measures against
 the hour of day (UTC) of the window's start.
 
-(Added on 2026-10-12, jms_kapps 86; interim, jms_kapps 83.)
+(Interim.)
 """
 
 from __future__ import annotations
@@ -103,7 +103,7 @@ def _categories(
     ax: Axes, runs: pd.DataFrame, column: str, title: str, unit: str
 ) -> None:
     """One column of dots for each label (a configuration with its series, and its run kind
-    unless `uc2`, jms_kapps 110)."""
+    unless `uc2`)."""
     plotted = _plotted(runs, column)
     labels = list(dict.fromkeys(plotted["label"]))
     for place, name in enumerate(labels):
@@ -234,7 +234,7 @@ def steps_chart(
     """Draw, for one family of configurations, the steps table `steps` (`report_steps`): a row for
     each role and step, and for each configuration a dot at the median seconds and a tick at the p95
     seconds, on a log time scale. `labels` names each configuration's prefill, and `names` shows
-    its number, with the spec's series (jms_kapps 110): the number alone where it has none."""
+    its number, with the spec's series: the number alone where it has none."""
     names = names or {}
     rows = list(dict.fromkeys(zip(steps["role"], steps["step"], strict=True)))
     numbers = sorted(set(steps["configuration"]))

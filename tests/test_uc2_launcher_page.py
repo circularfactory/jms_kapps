@@ -13,6 +13,7 @@ import html
 import json
 import sys
 from collections.abc import Collection, Iterator
+from datetime import UTC, datetime
 
 import pytest
 from _services import live_services
@@ -52,16 +53,21 @@ def stand_in() -> FastAPI:
 
 
 class Graph:
-    """Says that each resource of `resources` is live at `address`, and seeds nothing."""
+    """Says that each resource of `resources` is live at `address`, and seeds nothing. The one
+    service of a resource that is not live any more is `left`, each one's that the test sets."""
 
     def __init__(self, resources: set[IRI], address: str) -> None:
         self.resources = resources
         self.address = address
+        self.left: dict[IRI, Service] = {}
 
     def seed(
         self, topology: object, transit_seconds: float, *, collect_history: bool = False
     ) -> None:
         pass
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return [self.left[resource]] if resource in self.left else []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return live_services(
@@ -112,12 +118,19 @@ def faults() -> FaultSwitches:
 
 
 @pytest.fixture
-def launcher(process_address, faults) -> Iterator[Launcher]:
-    """A Launcher that runs the pair, every process of it live, every fault off."""
+def graph(process_address) -> Graph:
+    """The pair's graph: every process of it live at the stand-in's address."""
     pair = load_topology("pair")
     resources = {module.resource for module in pair.modules} | {WMS, MONITOR}
+    return Graph(resources, process_address)
+
+
+@pytest.fixture
+def launcher(graph, faults) -> Iterator[Launcher]:
+    """A Launcher that runs the pair, every process of it live, every fault off."""
+    pair = load_topology("pair")
     launcher = Launcher(
-        graph=Graph(resources, process_address),
+        graph=graph,
         dataset="test-dataset",
         module_command=lambda resource: RUNS,
         wms_command=RUNS,
@@ -227,6 +240,25 @@ def test_a_click_on_a_fault_switch_is_taken_while_the_page_polls(
         (process_address, "skip-reserve", True),
     ]
     assert removed.json_value() == []
+
+
+def test_a_failed_process_says_why_where_a_killed_one_does(
+    page: Page, launcher_url, graph
+):
+    """A module whose service deregistered while its process runs turns `failed`, and its state
+    says why to a person who points at it, as a killed one's says why it was killed."""
+    page.goto(launcher_url)
+    state = process_row(page, "Module 1").get_by_role("cell").nth(1)
+    expect(state).to_contain_text("live")
+    module_1 = load_topology("pair").modules[0].resource
+
+    graph.left[module_1] = Service(
+        IRI(f"{module_1}_service"), module_1, None, datetime.now(UTC), {}
+    )
+    graph.resources.discard(module_1)
+
+    expect(state).to_contain_text("failed")
+    expect(state).to_have_attribute("title", "Its service has no address.")
 
 
 def test_behind_a_forwarded_port_every_link_stays_on_that_port_under_its_path(
@@ -367,8 +399,7 @@ def test_the_header_opens_the_monitor_and_the_wms_where_the_state_says_and_nowhe
 ):
     """The link to the monitor is a field of the Launcher's state, `monitor`, and the link to the
     WMS's dashboard is one too, `wms`: the page shows each as the state gives it, and builds no
-    link of its own. Here the state's answer is changed on its way to the page. (Added on
-    2026-10-11, jms_kapps 33.)"""
+    link of its own. Here the state's answer is altered on its way to the page."""
     page.route("**/api/state", elsewhere)
     try:
         page.goto(launcher_url)

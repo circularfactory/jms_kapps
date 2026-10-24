@@ -15,14 +15,7 @@ person edits. Anything but a module list, such as the short topology document th
 before, fails the check with a reason that names the format. Either launch meets the same guards,
 and the page has no way to force one. A topology file of one's own opens in the page's editor,
 which launches it as an edited topology, or goes in at the command line, `jms-uc2 --topology
-<path>`, where the person starting the run supplies it. (Changed on 2026-10-06, jms_kapps 44,
-decided by Etienne. Until then the third sentence read: "An edited one comes whole, as a topology
-document, the format of the shipped topologies; the server runs the load check on it again and
-launches it only if it passes, because the page's own result is never taken as the check.")
-(Changed on 2026-10-06, jms_kapps 29, decided by Etienne: "a simple format to exchange topologies
-between machines running uc2". Until then the last sentence before the notes read: "A topology file
-of one's own is still `jms-uc2 --topology <path>`, at the command line, where the person starting
-the run supplies it.")
+<path>`, where the person starting the run supplies it.
 
 **The page's editor reads and writes a topology through these routes.** It starts from a shipped
 topology, which `GET /api/topologies/<name>` gives as its module list, from an empty grid, or from
@@ -33,8 +26,8 @@ what the editor holds as a topology file itself: a module list it writes, as bel
 the one layout rule, `Topology.places`; `GET /api/topology/format` gives the namespaces and keys a
 module list is written with, those of `topology.py`; and the load check above decides what may
 launch. So the page carries no reader of the format, no layout rule and no load check of its own.
-Once a topology is open, the editor keeps each module on its cell, and a module added on the cell
-clicked: laying out again on each change would move a module that is not connected yet to a row
+Once a topology is open, the editor keeps each module on its cell, and puts a module it adds on the
+cell clicked: laying out again on each change would move a module that is not connected yet to a row
 below, away from where a person put it. A launch of an edited topology names the topology its
 editor started from, and the page calls the running topology by it: `cross (edited)`
 (`edited_name`).
@@ -46,8 +39,7 @@ that does not take a fault switch (`NotReachable`), a topology that loading refu
 strategy that the Launcher did not find (`UnknownStrategy`), and a launch or a clear that the
 live-instance guard refuses (`LiveInstanceError`) or that fails (`LaunchFailed`, `ClearFailed`).
 Any other error goes through the route as it is, and the server answers it as the fault it is: a
-bug's `KeyError` or `ValueError` is not taken for a refusal that names a wrong cause. (Added on
-2026-10-11, jms_kapps 33.)
+bug's `KeyError` or `ValueError` is not taken for a refusal that names a wrong cause.
 """
 
 from __future__ import annotations
@@ -65,6 +57,7 @@ from kapps_triplestore_interface import IRI
 from kapps_triplestore_interface.exceptions import InvalidIRIError
 from pydantic import BaseModel
 
+from jms_kapps.common.passthrough import Passthrough
 from jms_kapps.common.supervision import LaunchFailed, LiveInstanceError
 from jms_kapps.common.triplestore import ClearFailed
 from jms_kapps.uc2.launcher.backend import (
@@ -76,7 +69,6 @@ from jms_kapps.uc2.launcher.backend import (
     StrategyChoices,
     launchable,
 )
-from jms_kapps.uc2.launcher.passthrough import Passthrough
 from jms_kapps.uc2.module import Fault
 from jms_kapps.uc2.strategies import REAL, UnknownStrategy
 from jms_kapps.uc2.topology import (
@@ -109,13 +101,13 @@ class LaunchCommand(BaseModel):
     module that has none of its own, taken as any JSON so that `transit_time_of`, not FastAPI's
     validation, says what is wrong with it; the Launcher's default if it is left out.
     `module_strategy` and `wms_strategy` name the strategies the modules and the
-    WarehouseManagementSystem run with, `real` if they are left out (added on 2026-10-10,
-    jms_kapps 52, decided by Etienne on 2026-10-07). `collect_history` is whether the launch's
-    reset turns on the store's history collection, off if it is left out (added on 2026-10-10,
-    jms_kapps 22, decided by Etienne on 2026-10-07). `deadlock_alarm_seconds` is how long a box a
-    module holds may wait for a Reserve before the module raises the deadlock alarm for it, taken
-    as any JSON as `transit_time` is, the Launcher's default if it is left out (added on
-    2026-10-11, jms_kapps 77, decided by Etienne)."""
+    WarehouseManagementSystem run with, `real` if they are left out. `collect_history` is whether
+    the launch's reset turns on the store's history collection, off if it is left out.
+    `deadlock_alarm_seconds` is how long a box a module holds may wait for a Reserve before the
+    module raises the deadlock alarm for it, taken as any JSON as `transit_time` is, the Launcher's
+    default if it is left out. `collect_refusals` is whether the launch's monitor starts in "graph +
+    streams" and collects the refusals from the participants' handover event streams, off if it is
+    left out: the monitor then starts in "graph only"."""
 
     name: str
     transit_time: Any = None
@@ -123,6 +115,7 @@ class LaunchCommand(BaseModel):
     wms_strategy: str = REAL
     collect_history: bool = False
     deadlock_alarm_seconds: Any = None
+    collect_refusals: bool = False
 
 
 # A module list in a request's body, taken as any JSON, so that the load check, not FastAPI's own
@@ -188,11 +181,7 @@ def _resource(value: str) -> IRI:
 def edited_name(base: str | None) -> str:
     """What the page calls a running topology that was edited on it: the topology its editor
     started from, `base`, marked as edited, such as `cross (edited)`; or `edited` alone where the
-    request names none. (Changed on 2026-10-06, jms_kapps 28, decided by Etienne: "A running edited
-    topology is labelled `<base> (edited)`, for example `running: cross (edited)`; the editor
-    remembers the shipped or uploaded topology it started from." Until then a constant took this
-    function's place, `EDITED = "edited"`, under the comment "What the page shows as the name of a
-    running topology that was edited on it.")"""
+    request names none. The editor remembers the shipped or uploaded topology it started from."""
     base = (base or "").strip()
     return f"{base} (edited)" if base else "edited"
 
@@ -225,8 +214,7 @@ def transit_time_of(value: object) -> float | None:
 
 def deadlock_alarm_of(value: object) -> float | None:
     """The launch's deadlock alarm time that a request carries: None where it carries none, else
-    a number of seconds above 0. A string is read as a number, as a query parameter is one. (Added
-    on 2026-10-11, jms_kapps 77, decided by Etienne.)
+    a number of seconds above 0. A string is read as a number, as a query parameter is one.
 
     Raises:
         HTTPException: 422, with a reason a person reads, if it is no number or is not above 0.
@@ -271,6 +259,7 @@ def _launch(
     wms_strategy: str,
     collect_history: bool,
     deadlock_alarm_seconds: float | None,
+    collect_refusals: bool,
 ) -> LauncherState:
     """Launch `chosen`, which has passed the load check, under the guards of every launch from the
     page, and answer the state it leaves: see `POST /api/launch`."""
@@ -283,6 +272,7 @@ def _launch(
             wms_strategy=wms_strategy,
             collect_history=collect_history,
             deadlock_alarm_seconds=deadlock_alarm_seconds,
+            collect_refusals=collect_refusals,
         )
     except UnknownStrategy as error:
         raise HTTPException(422, str(error)) from None
@@ -300,8 +290,7 @@ def create_app(launcher: Launcher) -> FastAPI:
     every process is under `/p/<id>/`, through the Launcher's own port: see `passthrough`. While
     the app serves, the Launcher reads the boxes on the station in the background
     (`boxes.StationBoxes`), whether a page is open or not, so that `GET /api/state` answers them
-    from memory. (The last sentence added on 2026-10-10, jms_kapps 23, decided by Etienne on
-    2026-10-05.)
+    from memory.
     """
     # Looked up at each request, as every route below looks up what it calls.
     passthrough = Passthrough(lambda id: launcher.process(id))
@@ -348,8 +337,10 @@ def create_app(launcher: Launcher) -> FastAPI:
         `deadlock_alarm_seconds` is how long a box a module holds may wait for a Reserve before
         the module raises the deadlock alarm for it, a number of seconds above 0; left out, it is
         `jms-uc2 --deadlock-alarm-seconds`, 300 s by default; a value that is no number or is not
-        above 0 is refused with 422, before anything is stopped or cleared (added on 2026-10-11,
-        jms_kapps 77, decided by Etienne).
+        above 0 is refused with 422, before anything is stopped or cleared. `collect_refusals`, off
+        if left out, starts the launch's monitor in "graph + streams", which follows the
+        participants' handover event streams and so collects their refusals; without it the
+        monitor starts in "graph only".
         """
         transit_seconds = transit_time_of(command.transit_time)
         alarm_seconds = deadlock_alarm_of(command.deadlock_alarm_seconds)
@@ -362,6 +353,7 @@ def create_app(launcher: Launcher) -> FastAPI:
             command.wms_strategy,
             command.collect_history,
             alarm_seconds,
+            command.collect_refusals,
         )
 
     @app.post("/api/topology/check")
@@ -386,6 +378,7 @@ def create_app(launcher: Launcher) -> FastAPI:
         wms_strategy: str = REAL,
         collect_history: bool = False,
         deadlock_alarm_seconds: str | None = None,
+        collect_refusals: bool = False,
     ) -> LauncherState:
         """Clear the dataset, seed the module list in the body, and restart every process, as a
         launch of a shipped topology does.
@@ -396,8 +389,8 @@ def create_app(launcher: Launcher) -> FastAPI:
         `base`, a query parameter, names the topology the page's editor started from, and the
         page calls the running topology by it (`edited_name`). It names, and nothing is read
         from it: the body is the whole topology. `transit_time`, `module_strategy`,
-        `wms_strategy`, `collect_history` and `deadlock_alarm_seconds`, query parameters, are as
-        in `POST /api/launch` (`deadlock_alarm_seconds` added on 2026-10-11, jms_kapps 77).
+        `wms_strategy`, `collect_history`, `deadlock_alarm_seconds` and `collect_refusals`, query
+        parameters, are as in `POST /api/launch`.
         """
         transit_seconds = transit_time_of(transit_time)
         alarm_seconds = deadlock_alarm_of(deadlock_alarm_seconds)
@@ -414,6 +407,7 @@ def create_app(launcher: Launcher) -> FastAPI:
             wms_strategy,
             collect_history,
             alarm_seconds,
+            collect_refusals,
         )
 
     @app.post("/api/topology/layout")
@@ -468,8 +462,7 @@ def create_app(launcher: Launcher) -> FastAPI:
         Launcher left behind is live: nothing is cleared then, and this Launcher's processes stay
         stopped. The page has no way to force a clear. Refused with 502, with why, when the graph
         cannot say which services are live, and nothing is cleared; and when the store did not
-        list or clear a graph, naming it, or did not say how many statements are left. (Added on
-        2026-10-10, jms_kapps 5, decided by Etienne on 2026-10-05.)
+        list or clear a graph, naming it, or did not say how many statements are left.
         """
         try:
             return launcher.clear()
@@ -502,8 +495,7 @@ def create_app(launcher: Launcher) -> FastAPI:
     def strategies() -> StrategyChoices:
         """The strategies a launch may name, by kind: `module` and `wms`, each with its `name`
         and its `label`. The page's two pickers, "Module strategy" and "WMS strategy", list these
-        by label and nothing else. (Added on 2026-10-10, jms_kapps 52, decided by Etienne on
-        2026-10-07.)"""
+        by label and nothing else."""
         return launcher.strategies()
 
     @app.get("/api/topology/format")

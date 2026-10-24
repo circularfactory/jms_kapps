@@ -1,7 +1,6 @@
 """The run limit of the measurement harness: a run older than its limit ends as failed (over time),
-with the limit and the step at which the limit came (added on 2026-10-13, jms_kapps 106, decided by
-Sören on jms_kapps 85, note 1866296: the series must run with no person present; interim names,
-jms_kapps 83).
+with the limit and the step at which the limit came: the series must run with no person present.
+Interim names.
 
 Each step of a run has a limit of its own: a participant's start, a workflow step, each store
 request of the harness, the warm-up and the window, the drain. The run limit is the limit of the

@@ -3,13 +3,14 @@ reached at.
 
 FastAPI's docs page, at `/docs`, loads the API's description from `/openapi.json`, a path from the
 root of the server, and its "Try it out" sends each request to the root of the server too. Through
-the Launcher of use case 2, which passes each process's pages through under `/p/<id>/`, both miss
-the process. Every other page of a run asks for what it needs by a relative path, and so do the
-docs here: the page loads the description next to itself, and the description names its server
-`.`, the folder it was loaded from. At the process's own address that is its root, as before.
+the page of a run, which passes each process's pages through under `/p/<id>/` (`passthrough`),
+both miss the process. Every other page of a run asks for what it needs by a relative path, and so
+do the docs here: the page loads the description next to itself, and the description names its
+server `.`, the folder it was loaded from. At the process's own address that is its root, as
+before.
 
-Nothing needs to know the path in front: not the process, which is started before the Launcher
-serves it, and not the Launcher, which rewrites nothing that passes through.
+Nothing needs to know the path in front: not the process, which is started before the page of
+the run serves it, and not that page, which rewrites nothing that passes through.
 """
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
-"""The records of the "before" series (jms_kapps 105): their keys were made before the transit time
-and the retry wait joined a configuration's key (jms_kapps 93), so the report and the configurations
+"""The records of the "before" series: their keys were made before the transit time
+and the retry wait joined a configuration's key, so the report and the configurations
 table match them by a legacy key. The seam is the commands (`jms-eval-report`, `jms-eval-table`) on a
 runs folder made from fabricated records; the legacy key is built here by the rule, with a digest of
 its own. No store, no network, no run.

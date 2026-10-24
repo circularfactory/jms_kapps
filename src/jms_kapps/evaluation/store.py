@@ -32,7 +32,7 @@ The login is the triple-store interface's, `POST rest/login`, with the connectio
 `GRAPHDB_URL`, `GRAPHDB_USERNAME` and `GRAPHDB_PASSWORD`, which the command reads. Neither the user
 nor the password is kept anywhere a record reads.
 
-Changed on 2026-10-15, jms_kapps 121 (interim names, jms_kapps 83): the store helper
+The store helper (interim names)
 `jms-live-store` reuses the login, the guard and the config rewrite for the store chores of a
 /land live check. The guard's prefix is a parameter (`guarded`, `permit`, `repository_config`,
 `GraphDBServer(prefix=...)`), `eval-` by default, so the harness is unchanged; the helper passes
@@ -116,22 +116,19 @@ class StoreRefused(RuntimeError):
 
 # The statuses with which a gateway in front of the store answers in its place: 502 Bad Gateway,
 # 503 Service Unavailable and 504 Gateway Timeout. The KIT GraphDB is behind such a proxy. An
-# answer to a deletion with one of them is a lost answer, not a refusal (Sören's decision of
-# 2026-10-14 on jms_kapps 116; interim name, jms_kapps 83).
+# answer to a deletion with one of them is a lost answer, not a refusal (interim name).
 GATEWAY_STATUSES = frozenset({502, 503, 504})
 
 
 class AnswerLost(RuntimeError):
     """The store's answer to a request was lost: a gateway in front of it answered in its place
     (`GATEWAY_STATUSES`), so whether the store did what was asked is not known. The message says
-    the status, for a person to read. (Added on 2026-10-14, jms_kapps 116; interim name, jms_kapps
-    83.)"""
+    the status, for a person to read (interim name)."""
 
 
 def guarded(repository: str, prefix: str = REPOSITORY_PREFIX) -> str:
     """`repository`, if a caller may name it: `prefix` and an id (`eval-` and a run id for the
-    harness; the store helper `jms-live-store` passes its own, `ogm-disposable-`: jms_kapps 121,
-    interim name, jms_kapps 83).
+    harness; the store helper `jms-live-store` passes its own, `ogm-disposable-`; interim name).
 
     Raises:
         StoreRefused: If it is `jms-kapps`, `kapps-demo` or `Tests` in any spelling, or is not
@@ -619,7 +616,7 @@ class GraphDBServer:
             StoreRefused: If the guard refuses `repository`, or this server did not create it,
                 and nothing is sent; or if the store did not delete it.
             AnswerLost: If a gateway in front of the store answered 502, 503 or 504 in its place
-                (added on 2026-10-14, jms_kapps 116: until then a refusal).
+
         """
         guarded(repository, self.prefix)
         if repository not in self._created:
@@ -637,8 +634,7 @@ class GraphDBServer:
         connection dropped, or a gateway answered in the store's place, `AnswerLost`): one list
         of the server's repositories, by a request that names none, as the creation does after a
         lost answer. A repository that the store lists no more is deleted, and this server holds
-        it as created no more; one that it still lists is not. (Added on 2026-10-14, jms_kapps
-        116, decided by Sören as the product owner of the tests; interim name, jms_kapps 83.)
+        it as created no more; one that it still lists is not (interim name).
 
         Raises:
             StoreRefused: If the list gets no answer or is refused, so that whether the store

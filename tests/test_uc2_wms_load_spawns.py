@@ -1,5 +1,4 @@
-"""The WarehouseManagementSystem's spawns for the load tests (jms_kapps 51, decided by Etienne on
-2026-10-07): the spawn timer starts each spawn when it is due, on a thread of its own, whether the
+"""The WarehouseManagementSystem's spawns for the load tests: the spawn timer starts each spawn when it is due, on a thread of its own, whether the
 spawn before it has ended or not; at most as many spawns are under way as the topology has
 modules that may be an origin; and concurrent spawns pick apart.
 
@@ -54,8 +53,7 @@ class Station:
     modules that hold a box (`held`), the modules with no live Reserve (`unreachable`) or with no
     BoxTransportCapability (`no_capability`), an origin that refuses to reserve
     (`refuses_reserve`), the store's refusal of the create (`refuses_create`), a notification that
-    does not arrive (`undelivered`), an error of the store's read of the modules (`fails_with`;
-    of its read of the boxes until 2026-10-12, jms_kapps 92, when the WMS stopped reading them),
+    does not arrive (`undelivered`), an error of the store's read of the modules (`fails_with`),
     and the stop (`stopping`).
     """
 
@@ -446,12 +444,12 @@ def test_every_spawn_asked_for_ends_in_exactly_one_record_spawned_or_refused_wit
             "Module2 offers no BoxTransportCapability: it has never registered its "
             "BoxTransportWorkflow"
         ),
-        "Module1 is not reachable: the graph names no live ReserveWorkflow of it",
+        "Module1 is not reachable: the knowledge graph names no live ReserveWorkflow of it",
         "the spawn failed: the store went away",
         EVERY_ORIGIN_BUSY,
         "the system is stopping",
     }, reasons
-    # The store's refusal of a create names the box, by its UUID (jms_kapps 92).
+    # The store's refusal of a create names the box, by its UUID.
     assert [
         reason
         for reason in reasons

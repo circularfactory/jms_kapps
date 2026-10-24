@@ -1,4 +1,4 @@
-"""The monitor's graph-only mode (jms_kapps 24): a switch between "graph + streams" and "graph
+"""The monitor's graph-only mode: a switch between "graph + streams" and "graph
 only", the interval of its background graph read, and the queries it sends.
 
 In "graph only" the monitor sees what a real dashboard that sees only the knowledge graph sees: it
@@ -210,9 +210,7 @@ def test_the_streams_are_found_at_their_own_interval_whatever_the_graphs(
     reads, streams
 ):
     """The query for the streams goes as often as "Queries sent" says, every 5 s, also where the
-    graph is read less often. (Added on 2026-10-10, jms_kapps 24: the review found that a
-    discovery waited for the next read of the graph, so at a graph read of 10 s the streams were
-    found every 10 s, while the page said every 5 s.)"""
+    graph is read less often: a discovery does not wait for the next read of the graph."""
     memory = MonitorMemory(
         reads, read_stream=streams, graph_seconds=10, discover_seconds=0.2
     )
@@ -478,3 +476,32 @@ def test_a_page_poll_sends_no_query(client, reads, memory):
         client.get("/api/state")
 
     assert len(reads.made) == made
+
+
+# -- The mode the monitor starts in ------------------------------------------------------------ #
+
+
+def test_a_monitor_that_starts_in_graph_only_follows_no_stream_from_its_first_discovery(
+    reads, streams
+):
+    """The monitor process starts in "graph only" unless the Launcher is told otherwise."""
+    memory = MonitorMemory(reads, read_stream=streams, mode=GRAPH_ONLY)
+    try:
+        memory.read_graph()
+        memory.discover()
+
+        assert memory.mode == GRAPH_ONLY
+        assert memory.snapshot().mode == GRAPH_ONLY
+        assert memory.following() == {}
+        assert "streams" not in reads.made
+
+        memory.set_mode(GRAPH_AND_STREAMS)
+        memory.discover()
+
+        assert memory.following() == {M1: STREAM_1, WMS: STREAM_WMS}
+    finally:
+        memory.stop()
+
+
+def test_a_memory_made_with_no_mode_still_starts_in_graph_and_streams(memory):
+    assert memory.mode == GRAPH_AND_STREAMS

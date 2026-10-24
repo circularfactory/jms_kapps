@@ -53,8 +53,11 @@ DEPRECATED_STORE = {
     "GRAPHDB_PASSWORD": "secret",
 }
 
+# The host port of the local fallback's store, which `compose.yaml` and the script both read.
+PORT_VARIABLE = "JMS_KAPPS_GRAPHDB_PORT"
+
 # Every variable a stand-in records.
-WATCHED = sorted({**LOCAL_STORE, **DEPRECATED_STORE})
+WATCHED = sorted({*LOCAL_STORE, *DEPRECATED_STORE, PORT_VARIABLE})
 
 
 def recorded(env: dict[str, str]) -> dict[str, str | None]:
@@ -190,6 +193,33 @@ def test_without_a_configured_store_the_run_gets_the_local_stack(
     assert ups == [["compose", "up", "-d", "--wait"]]
     [run] = machine.calls("uv")
     assert run["env"] == recorded(LOCAL_STORE)
+
+
+def test_a_free_port_for_the_local_store_reaches_compose_and_the_run(
+    machine: Machine,
+) -> None:
+    """The variable is the compose file's to read; the script hands it on and points the run at
+    the same port."""
+    result = machine.run(env={PORT_VARIABLE: "7201"})
+
+    assert result.returncode == 0, result.stderr
+    [up] = [call for call in machine.calls("docker") if "up" in call["argv"]]
+    assert up["env"][PORT_VARIABLE] == "7201"
+    [run] = machine.calls("uv")
+    assert run["env"] == {
+        **recorded({**LOCAL_STORE, "TRIPLESTORE_URL": "http://localhost:7201"}),
+        PORT_VARIABLE: "7201",
+    }
+    assert "http://localhost:7201" in result.stdout
+
+
+def test_a_configured_store_ignores_the_port_variable(machine: Machine) -> None:
+    result = machine.run(env={**CONFIGURED_STORE, PORT_VARIABLE: "7201"})
+
+    assert result.returncode == 0, result.stderr
+    assert machine.calls("docker") == []
+    [run] = machine.calls("uv")
+    assert run["env"]["TRIPLESTORE_URL"] == CONFIGURED_STORE["TRIPLESTORE_URL"]
 
 
 @pytest.mark.parametrize(
@@ -359,9 +389,10 @@ while not (record / "answered").exists() and time.monotonic() < deadline:
     time.sleep(0.05)
 """
 
-# `jms-uc2` prints its Launcher page's address, as the real one does once its launch is done.
+# `jms-uc2` prints its Launcher page's address, as the real one does once its launch is done: the
+# first row of its block of page addresses.
 PRINTS_THE_ADDRESS = f"""
-print("The Launcher page is at {LAUNCHER_PAGE}", flush=True)
+print("  Launcher page     {LAUNCHER_PAGE}", flush=True)
 """
 
 

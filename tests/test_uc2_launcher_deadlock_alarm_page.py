@@ -1,5 +1,4 @@
-"""The Launcher page's field "deadlock alarm (s)", in a headless browser, as a person uses it
-(Etienne, 2026-10-11, jms_kapps 77).
+"""The Launcher page's field "deadlock alarm (s)", in a headless browser, as a person uses it.
 
 The page is the real one, served by the Launcher's real app. What stands behind the Launcher is
 fake, and nothing reaches a store: the graph records each topology it is given to seed and calls
@@ -41,6 +40,9 @@ class Graph:
         collect_history: bool = False,
     ) -> None:
         self.seeded.append(topology)
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return []
@@ -88,7 +90,7 @@ def test_the_field_starts_at_300_s_and_a_launch_sends_it(page: Page, launcher_ur
     with page.expect_request(
         lambda request: request.url.endswith("/api/launch")
     ) as launched:
-        page.get_by_role("button", name="Launch this topology").click()
+        page.get_by_role("button", name="Launch", exact=True).click()
 
     assert launched.value.post_data_json["deadlock_alarm_seconds"] == 45
     expect(page.locator("#running")).to_have_text("running: cross")
@@ -124,7 +126,7 @@ def test_an_alarm_time_that_is_not_a_positive_number_is_refused_readably_and_lau
         ),
     )
 
-    page.get_by_role("button", name="Launch this topology").click()
+    page.get_by_role("button", name="Launch", exact=True).click()
 
     expect(page.locator("#command-message")).to_have_text(
         "Not launched: the deadlock alarm time must be a number of seconds above 0, "

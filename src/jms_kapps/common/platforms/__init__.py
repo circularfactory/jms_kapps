@@ -8,9 +8,9 @@ which platform this is. Every user reads the choice from `PLATFORM`:
   forced kill, so the stop is a CTRL_BREAK, which Python receives as SIGBREAK and uvicorn takes as
   a stop. Never SIGINT: a process that stopped cleanly exits with code 0 on every OS, whichever
   signal began its stop, so SIGINT adds nothing, and on Windows it cannot be sent to one process.
-  (Changed on 2026-10-12, jms_kapps 104, decided by Sören: every process takes every stop signal
-  as one stop. Until then "Never SIGINT: after the terminal's Ctrl+C a second SIGINT makes uvicorn
-  skip its shutdown, and with it the deregistration.")
+  Every process takes every stop signal as one stop (`one_stop`), so a second one, from a second
+  Ctrl+C or a supervisor, never cuts the stop short: uvicorn's own handler forces its exit on a
+  second Ctrl+C, which skips the lifespan shutdown and with it the middleware's deregistration.
 - **The process group of a child.** On Windows each child gets one of its own, so that a
   CTRL_BREAK reaches that child alone, and never the launcher.
 - **The signals that stop a launcher as Ctrl+C does**, and SIGHUP, which a closed terminal sends
@@ -19,8 +19,8 @@ which platform this is. Every user reads the choice from `PLATFORM`:
 - **How a command line is printed**, so that it runs when pasted into the platform's shell.
 - **How another thread interrupts the main thread** as a stop signal does: on POSIX a SIGINT to
   the main thread alone, which also cuts short a call that waits there; on Windows, which cannot
-  send a signal to one thread, the handler of SIGINT run at the main thread's next step (added on
-  2026-10-13, jms_kapps 106, for the run limit of the measurement harness).
+  send a signal to one thread, the handler of SIGINT run at the main thread's next step (for the
+  run limit of the measurement harness).
 
 The pattern is the Launcher of the middleware's transferunits demo.
 """
@@ -58,7 +58,7 @@ class Platform(Protocol):
     def interrupt_main_thread(self) -> None:
         """From another thread, run this process's handler of SIGINT on the main thread, as a
         Ctrl+C does: the handler may raise there, between two steps of whatever runs there.
-        (Added on 2026-10-13, jms_kapps 106, for the run limit of the measurement harness.)"""
+        This serves the run limit of the measurement harness."""
         ...
 
 

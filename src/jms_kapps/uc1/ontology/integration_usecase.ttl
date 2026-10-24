@@ -1,12 +1,12 @@
-@prefix : <https://sfb1574.kit.edu/ontologies/JMS_Usecase_Demo#> .
-@prefix cfc: <https://w3id.org/circularfactory/Core#> .
+@prefix : <http://w3id.org/circularfactory/Unscrewing#> .
+@prefix cfc: <http://w3id.org/circularfactory/Core#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-@base <https://sfb1574.kit.edu/ontologies/JMS_Usecase_Demo> .
+@base <http://w3id.org/circularfactory/Unscrewing> .
 
 # Changed from the artifact (`turtle/integration_usecase_JMS.ttl` on `paper`, d3201180):
 #
@@ -14,40 +14,48 @@
 #   properties replace the five that the artifact declared. The five old names are gone:
 #   `hasLowerTighteningTorque`, `hasUpperDynamicLoseningTorque`, `hasLowerAxialForce`,
 #   `hasAxialForceApproach` and `hasPositionOnApproach`.
-# - A Screw type holds the default values, and a Screw can override them. There are two classes:
+# - A Screw type holds the seven type values, and a Screw holds none. There are two classes:
 #   `:ScrewType`, a kind of screw such as `:M4`, and `:Screw`, one physical screw in one product.
-#   `:hasScrewType` links them, and `:hasScrew` names one physical Screw.
+#   `:hasScrewType` links them, and `:concernsScrew` names one physical Screw.
 # - The placement values (the approach depth limit and the screw-head band) belong to a Screw
 #   only, because they depend on where the screw is, not on its type.
-# - Each of the ten is an `owl:FunctionalProperty`: a Screw type, a Screw or a decision snapshot
+# - Each of the ten is an `owl:FunctionalProperty`: a Screw type, a Screw or a parameter copy
 #   holds at most one value of it.
 # - `:screw` is renamed `:Screw`, and `:unscrewingOperation` is renamed `:UnscrewingOperation`, so
 #   that each class name starts with a capital letter.
 # - `:M4_Screw` is now `:M4`, a Screw type with no values. The four placeholder values of the
 #   artifact (0.5, 1.5, 2.0 and 0.5) are gone, because their units were unknown.
-# - Each unscrewing operation links to a `:DecisionSnapshot`: a copy of the ten values that the
+# - Each unscrewing operation links to a `:ParameterCopy`: a copy of the ten values that the
 #   detector used. A later change to the Screw or to its Screw type does not change it.
-# - The operation records the exit of the decision tree as a named `:UnscrewingOutcome`. It
+# - The operation records the exit of the decision tree as a named `:DetectionResult`. It
 #   replaces the free-text `hasSuccessStatus`. Each outcome indicates one or more Screw
 #   conditions, and each condition requires exactly one disassembly category.
 # - One reference, `:hasTimeSeriesReference`, replaces `:TimeSeriesData`,
 #   `:hasJSONEncodedTimeSeriesData` and the three `:has…TimeSeriesData` links. The curves are in
 #   InfluxDB; the operation holds where.
 # - An operation whose outcome is a failure also records the measured end position of its
-#   approach, `:hasMeasuredApproachEndPosition`, as failure information.
+#   approach, `:hasMeasuredApproachEndPosition`, as failure information. Such an operation ends
+#   `failed`, with its outcome and its parameter copy; only ScrewIntact ends it `done`.
 # - `:UnscrewingOperation` is a Core `cfc:Operation`, directly, in place of the artifact's
 #   `:Process`, which nothing declared. Core's `cfc:implementsCapability` has the domain
 #   `cfc:Operation`, and the object-graph mapper finds a property of a class only through its
 #   domain, so only this triple lets an unscrewing operation name the Capability it implements.
 #   The middleware loads Core, which declares `cfc:Operation`.
-# - `:Screw` is a Core `cfc:Workpiece`, in place of the artifact's `:Product`, which nothing
-#   declared. `cfc:Workpiece` is the common superclass of `cfc:Assembly` and `cfc:Component`, so
-#   this says what Figure 7 of the paper draws without deciding which of the two a Screw is. That
-#   decision is the second milestone of this use case, and it waits on a kapps_ogm question: a FULL
-#   load of a `cfc:Component` fails, because Core gives `cfc:hasOrigin` both a named and an
-#   anonymous range. `cfc:Workpiece` restricts only `cfc:hasPossessedWorkpiece` and `cfc:isActive`,
-#   each with one range, so it does not meet that question. `:ScrewType` has no superclass; its
-#   Core counterpart would be `cfc:ComponentType`, in the same milestone.
+# - Six terms are named to read as what they are, with no alias for an earlier name:
+#   `:ParameterCopy` (a copy of the parameter values on which the classification rests),
+#   `:classifiedWith`, `:concernsScrew` and `:concernsWorkpiece` (the operation is the order to
+#   remove the screw; it does not have it), `:hasDetectionResult` and `:DetectionResult` (the
+#   intact screw is a result too, which the anomaly detection service produced).
+# - Aligned with Core 0.9.0. `:Screw` is a Core `cfc:Component`, which is a
+#   `cfc:Workpiece`: Core's component is a workpiece that is indivisible within the modeling scope,
+#   and Core makes it disjoint from `cfc:Assembly`, which the angle grinder stays. `:ScrewType` is
+#   a `cfc:ComponentType`, Core's classification of the design of a component independent of
+#   individual instances, with no restriction. A screw type is not a `cfc:ProductType`, which is
+#   for marketable products. `:hasScrewType` is a sub-property of `cfc:hasComponentType`, so
+#   that Core reads a Screw's Screw type as its component type; the UC1 term stays.
+#   `cfc:Component` brings the kapps_ogm question about `cfc:hasOrigin` (a FULL load fails,
+#   because Core gives it both a named and an anonymous range). Nothing here reads at that level:
+#   every read and write of this use case goes through a class scope, so it is not expected to apply.
 # - `:AngleGrinder` is the product. It is a `cfc:Assembly` and a `cfc:Product`, by two direct
 #   triples, because it is both: `cfc:Assembly` carries `cfc:containsWorkpiece`, which names its
 #   Screws, and `cfc:Product` carries `cfc:hasProductType`, which names the model it is. The two
@@ -55,19 +63,24 @@
 # - Under `cfc:Assembly` the grinder does meet the kapps_ogm question above: Core gives
 #   `cfc:hasOrigin` the domain `cfc:Assembly, cfc:Component`, so a FULL specification of
 #   `:AngleGrinder` fails on its two ranges, as one of `cfc:Assembly` itself does. Nothing here
-#   reads at that level — every read of this use case goes through a class scope — so it costs
-#   nothing today. `:Screw` under `cfc:Workpiece` stays clear of it, because `cfc:Workpiece` is
-#   not in that domain.
+#   reads at that level, so it costs nothing today.
 # - The design says which Screw type a model is built with, and the record says which Screw type
 #   one physical Screw is. They are two properties, not one. `:hasExpectedScrewType` carries the
-#   design, on the `cfc:ProductType`; `:hasScrewType` carries the record, on the `:Screw`. Reusing
-#   `:hasScrewType` for both would widen its domain, and RDFS reads a domain as an inference rule:
-#   `:AG1 :hasScrewType :M4` would make a reasoner conclude `:AG1 a :Screw`. A second reason holds
-#   whatever a store entails: the object-graph mapper finds a property of a class through its
-#   `rdfs:domain`, so `:hasScrewType` on a product type would simply not be found.
+#   design, on the `cfc:AssemblyType`; `:hasScrewType` carries the record, on the `:Screw`. The
+#   design sits on the assembly type, because that is where Core puts the composition of an
+#   assembly independent of individual instances, and Core gives every assembly exactly one
+#   (`cfc:hasAssemblyType`). Reusing `:hasScrewType` for both would widen its domain, and RDFS reads
+#   a domain as an inference rule: `:AG1 :hasScrewType :M4` would make a reasoner conclude
+#   `:AG1 a :Screw`. A second reason holds whatever a store entails: the object-graph mapper finds a
+#   property of a class through its `rdfs:domain`, so `:hasScrewType` on an assembly type would
+#   simply not be found. The seed's `:AG1` is one individual that is both the product type and
+#   the assembly type of the angle grinders, an accepted compromise: Core keeps the two concepts
+#   apart without making them disjoint. Its only explicit class is the assembly type; by Core's range
+#   of `cfc:hasProductType` it is also a product type for a reasoner that applies `rdfs:range`, and
+#   the demo store's ruleset (rdfsplus-optimized) does not materialize range conclusions.
 #
-# The effective value of a property for a Screw is the value of the Screw, else the value of its
-# Screw type. The graph does not compute it; the reader of the values does.
+# The graph does not compute the effective value of a property for a Screw; the reader of the
+# values does, from the Screw type.
 #
 # Each value has a fixed unit, which the comment of its property states: force in N, torque in
 # N·m, position in mm along the y axis of the robot frame, angle in degrees.
@@ -86,32 +99,34 @@
     rdfs:subClassOf cfc:Assembly ;
     rdfs:subClassOf cfc:Product ;
     rdfs:label "Angle grinder"@en ;
-    rdfs:comment "The product that use case 1 takes apart: a recovered angle grinder lying in front of the robot. It contains its Screws with Core's cfc:containsWorkpiece, and names its model with Core's cfc:hasProductType."@en .
+    rdfs:comment "The product that use case 1 takes apart: a recovered angle grinder lying in front of the robot. It contains its Screws with Core's cfc:containsWorkpiece, and names its model with Core's cfc:hasProductType and its design with Core's cfc:hasAssemblyType."@en .
 
 #################################################################
 # Screws, Screw types and the unscrewing operation
 #################################################################
 
 :Screw a owl:Class ;
-    rdfs:subClassOf cfc:Workpiece ;
+    rdfs:subClassOf cfc:Component ;
     rdfs:label "Screw"@en ;
-    rdfs:comment "One physical screw in one product. It holds its placement values. A detection threshold or a preparation turning angle that it holds overrides the value of its Screw type."@en .
+    rdfs:comment "One physical screw in one product. It holds its placement values. It holds no detection threshold and no preparation turning angle: its Screw type holds those."@en .
 
 :ScrewType a owl:Class ;
+    rdfs:subClassOf cfc:ComponentType ;
     rdfs:label "Screw type"@en ;
-    rdfs:comment "A kind of screw, for example M4. It holds the default detection thresholds and the preparation turning angle for each Screw of this type. The learner refines these values on the Screw type, never on a Screw."@en .
+    rdfs:comment "A kind of screw, for example M4. It holds the detection thresholds and the preparation turning angle for each Screw of this type. The learner refines these values on the Screw type, never on a Screw."@en .
 
 :hasScrewType a owl:ObjectProperty ;
     rdfs:domain :Screw ;
     rdfs:range :ScrewType ;
+    rdfs:subPropertyOf cfc:hasComponentType ;
     rdfs:label "has screw type"@en ;
-    rdfs:comment "Links a Screw to its Screw type."@en .
+    rdfs:comment "Links a Screw to its Screw type. It is a kind of Core's cfc:hasComponentType, so that Core reads a Screw's Screw type as its component type."@en .
 
 :hasExpectedScrewType a owl:ObjectProperty ;
-    rdfs:domain cfc:ProductType ;
+    rdfs:domain cfc:AssemblyType ;
     rdfs:range :ScrewType ;
     rdfs:label "has expected screw type"@en ;
-    rdfs:comment "The design: a product of this type is built with this Screw type. It is what the detector compares an inspected Screw against when the Screw itself carries no record, as a recovered product may not. It is a property of its own and not :hasScrewType, whose domain is :Screw: RDFS reads a domain as an inference rule, so asserting :hasScrewType on a product type would make a reasoner conclude that the product type is a Screw."@en .
+    rdfs:comment "The design: an assembly of this assembly type is built with this Screw type. It sits on the assembly type, because Core's assembly type defines the structure and composition of an assembly independent of individual instances, and which Screw type the design expects is composition at the type level. It is what the detector compares an inspected Screw against when the Screw itself carries no record, as a recovered product may not. It is a property of its own and not :hasScrewType, whose domain is :Screw: RDFS reads a domain as an inference rule, so asserting :hasScrewType on a product type would make a reasoner conclude that the assembly type is a Screw."@en .
 
 :UnscrewingOperation a owl:Class ;
     rdfs:subClassOf cfc:Operation ;
@@ -119,24 +134,24 @@
     rdfs:comment "One attempt to remove one Screw from a product."@en .
 
 
-:hasScrew a owl:ObjectProperty ;
+:concernsScrew a owl:ObjectProperty ;
     rdfs:domain :UnscrewingOperation ;
     rdfs:range :Screw ;
-    rdfs:label "has screw"@en ;
-    rdfs:comment "Links the unscrewing operation to the one physical Screw that it removes. The Screw names its Screw type."@en .
+    rdfs:label "concerns screw"@en ;
+    rdfs:comment "Links the unscrewing operation to the one physical Screw that it is the order to remove: the operation does not have the screw, and the Screw is not a resource of it. The Screw names its Screw type."@en .
 
-:hasWorkpiece a owl:ObjectProperty ;
+:concernsWorkpiece a owl:ObjectProperty ;
     rdfs:domain :UnscrewingOperation ;
     rdfs:range cfc:Workpiece ;
-    rdfs:label "has workpiece"@en ;
-    rdfs:comment "Links the unscrewing operation to the workpiece it works on: the product the Screw sits in. Figure 7 of the paper draws it. It is the step from the operation to the product, from which cfc:hasProductType reaches the model and :hasExpectedScrewType the Screw type the design calls for."@en .
+    rdfs:label "concerns workpiece"@en ;
+    rdfs:comment "Links the unscrewing operation to the workpiece it works on: the product the Screw sits in. Figure 7 of the paper draws it. It is the step from the operation to the product, from which cfc:hasAssemblyType reaches the assembly type and :hasExpectedScrewType the Screw type the design calls for."@en .
 
 :hasOperation a owl:ObjectProperty ;
-    owl:inverseOf :hasScrew ;
+    owl:inverseOf :concernsScrew ;
     rdfs:domain :Screw ;
     rdfs:range :UnscrewingOperation ;
     rdfs:label "has operation"@en ;
-    rdfs:comment "Links a Screw back to the unscrewing operation that worked on it, so that a Screw found later names what was done to it. It is the owl:inverseOf :hasScrew: every dataset runs rdfsplus-optimized, so the store infers the back-link inside the commit that writes the operation, and the pair is never one-sided. The planner also writes it explicitly; explicit and inferred give one value. To remove the link, delete both directions, because the reasoner infers each from the other. (Changed on 2026-10-15, MR jms_kapps!113, decided by Etienne; until then: written by hand beside :hasScrew and not declared its inverse, because a dataset with a weaker ruleset would hold no back-link. An issuing call that carries the back-link in its own commit is kapps_semantic_middleware 480.)"@en .
+    rdfs:comment "Links a Screw back to the unscrewing operation that worked on it, so that a Screw found later names what was done to it. It is the owl:inverseOf :concernsScrew: every dataset runs rdfsplus-optimized, so the store infers the back-link inside the commit that writes the operation, and the pair is never one-sided. The planner also writes it explicitly, in that same commit, so that the pair stays two-sided on a store whose ruleset infers no inverse; explicit and inferred give one value. To remove the link, delete both directions, because the reasoner infers each from the other."@en .
 
 :hasTimeSeriesReference a owl:DatatypeProperty ;
     rdfs:domain :UnscrewingOperation ;
@@ -147,49 +162,49 @@
 #################################################################
 # Detection thresholds and the preparation turning angle
 #
-# A Screw type holds them, a Screw can override them, and a decision snapshot records them. Each
+# A Screw type holds them, and a parameter copy records them. A Screw holds none. Each
 # holder has at most one value of each. The node numbers are those of Figure 2 of the UC1
 # anomaly-detection paper.
 #################################################################
 
 :hasMinApproachAxialForce a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has minimum approach axial force"@en ;
     rdfs:comment "Figure 2, node 1. The minimum axial force that shows contact with the screw head during the approach. While the force stays below it, the approach continues by one more step. Unit: N."@en .
 
 :hasMinCounterTorque a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has minimum counter-torque"@en ;
     rdfs:comment "Figure 2, node 5. The minimum counter-torque G that shows the tool has engaged the screw head. Below it, the outcome is RoundedHeadOrWrongType. Unit: N·m."@en .
 
 :hasMinPreloadAxialForce a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has minimum preload axial force"@en ;
     rdfs:comment "Figure 2, node 6. The minimum axial preload force before the preparation turn. While the force stays below it, the tool continues by one more step. Unit: N."@en .
 
 :hasPreparationTurningAngle a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has preparation turning angle"@en ;
     rdfs:comment "The angle by which the tool turns the screw in the preparation turn. It is a process parameter, not a threshold. Unit: degrees."@en .
 
 :hasMaxLooseTorque a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has maximum loose torque"@en ;
     rdfs:comment "Figure 2, node 7. The maximum loose torque K_L during the preparation turn. Above it, the outcome is StuckAtBreakaway. Unit: N·m."@en .
 
 :hasMinLooseningAxialForce a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has minimum loosening axial force"@en ;
     rdfs:comment "Figure 2, node 8. The minimum axial force during loosening that shows the screw moves towards the tool. Below it, the outcome is LooseAnchor. Unit: N."@en .
 
 :hasMaxDynamicTorque a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :ScrewType :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has maximum dynamic torque"@en ;
     rdfs:comment "Figure 2, node 9. The maximum dynamic torque M_dyn during extraction. Above it, the outcome is ThreadFault. Unit: N·m."@en .
@@ -197,49 +212,49 @@
 #################################################################
 # Placement values
 #
-# A Screw holds them, and a decision snapshot records them, at most one value of each. A Screw
+# A Screw holds them, and a parameter copy records them, at most one value of each. A Screw
 # type never holds them, because they depend on where the screw is, not on its type.
 #################################################################
 
 :hasMinApproachPosition a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Screw :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has minimum approach position"@en ;
     rdfs:comment "Figure 2, node 2. The depth limit of the approach. An approach that reaches it without contact ends with the outcome MissingScrew. Unit: mm along the y axis of the robot frame."@en .
 
 :hasMinScrewHeadPosition a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Screw :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has minimum screw-head position"@en ;
     rdfs:comment "Figure 2, nodes 3 and 4. The lower end of the screw-head band, in which the position at contact must be. Below it, the outcome is MissingHead. Unit: mm along the y axis of the robot frame."@en .
 
 :hasMaxScrewHeadPosition a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:domain [ a owl:Class ; owl:unionOf ( :Screw :DecisionSnapshot ) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Screw :ParameterCopy ) ] ;
     rdfs:range xsd:double ;
     rdfs:label "has maximum screw-head position"@en ;
     rdfs:comment "Figure 2, nodes 3 and 4. The upper end of the screw-head band, in which the position at contact must be. Above it, the outcome is HeadOccluded. Unit: mm along the y axis of the robot frame."@en .
 
 #################################################################
-# The decision snapshot
+# The parameter copy
 #################################################################
 
-:DecisionSnapshot a owl:Class ;
+:ParameterCopy a owl:Class ;
     rdfs:subClassOf prov:Entity ;
-    rdfs:label "Decision snapshot"@en ;
-    rdfs:comment "The ten effective values that the detector used for one decision: the detection thresholds, the placement values and the preparation turning angle. The detector writes it when it decides, and nothing changes it after that. It is a PROV entity: it names the classification that generated it (prov:wasGeneratedBy), and the store refuses a snapshot without one."@en .
+    rdfs:label "Parameter copy"@en ;
+    rdfs:comment "The ten effective values that the detector used for one decision: the detection thresholds, the placement values and the preparation turning angle. The detector writes it when it decides, and nothing changes it after that. It is a PROV entity: it names the classification that generated it (prov:wasGeneratedBy), and the store refuses a parameter copy without one."@en .
 
-:usedValues a owl:ObjectProperty ;
+:classifiedWith a owl:ObjectProperty ;
     rdfs:domain :UnscrewingOperation ;
-    rdfs:range :DecisionSnapshot ;
-    rdfs:label "used values"@en ;
-    rdfs:comment "Links the unscrewing operation to the decision snapshot of the values that decided its outcome."@en .
+    rdfs:range :ParameterCopy ;
+    rdfs:label "classified with"@en ;
+    rdfs:comment "Links the unscrewing operation to the parameter copy of the values that decided its outcome."@en .
 
 #################################################################
 # Outcomes, Screw conditions and disassembly categories
 #################################################################
 
-:UnscrewingOutcome a owl:Class ;
-    rdfs:label "Unscrewing outcome"@en ;
+:DetectionResult a owl:Class ;
+    rdfs:label "Detection result"@en ;
     rdfs:comment "The exit of the decision tree that one unscrewing operation reached. It is what the detector observed, not a confirmed Screw condition."@en .
 
 :ScrewCondition a owl:Class ;
@@ -250,11 +265,11 @@
     rdfs:label "Disassembly category"@en ;
     rdfs:comment "How the disassembly continues for a Screw in a given condition."@en .
 
-:hasOutcome a owl:ObjectProperty ;
+:hasDetectionResult a owl:ObjectProperty ;
     rdfs:domain :UnscrewingOperation ;
-    rdfs:range :UnscrewingOutcome ;
-    rdfs:label "has outcome"@en ;
-    rdfs:comment "Links the unscrewing operation to the exit of the decision tree that it reached."@en .
+    rdfs:range :DetectionResult ;
+    rdfs:label "has detection result"@en ;
+    rdfs:comment "Links the unscrewing operation to the exit of the decision tree that it reached. The outcome ScrewIntact ends the operation done; every other outcome ends it failed, and the operation still holds it."@en .
 
 :hasMeasuredApproachEndPosition a owl:DatatypeProperty ;
     rdfs:domain :UnscrewingOperation ;
@@ -263,10 +278,10 @@
     rdfs:comment "The position at which the approach of this unscrewing operation ended, as measured. The detector writes it only when the outcome is a failure, that is, any outcome other than ScrewIntact, as failure information. An operation with the outcome ScrewIntact does not hold it. Unit: mm along the y axis of the robot frame."@en .
 
 :indicates a owl:ObjectProperty ;
-    rdfs:domain :UnscrewingOutcome ;
+    rdfs:domain :DetectionResult ;
     rdfs:range :ScrewCondition ;
     rdfs:label "indicates"@en ;
-    rdfs:comment "Links an unscrewing outcome to each Screw condition that it can mean. Each outcome indicates one or more conditions."@en .
+    rdfs:comment "Links a detection result to each Screw condition that it can mean. Each outcome indicates one or more conditions."@en .
 
 :requiresDisassembly a owl:ObjectProperty ;
     rdfs:domain :ScrewCondition ;
@@ -274,44 +289,44 @@
     rdfs:label "requires disassembly"@en ;
     rdfs:comment "Links a Screw condition to the disassembly category that it requires. Each condition requires exactly one category."@en .
 
-# The unscrewing outcomes: one for each exit of the decision tree in Figure 2.
+# The detection results: one for each exit of the decision tree in Figure 2.
 
-:ScrewIntact a :UnscrewingOutcome, owl:NamedIndividual ;
+:ScrewIntact a :DetectionResult, owl:NamedIndividual ;
     rdfs:label "Screw intact"@en ;
     rdfs:comment "Each check of the decision tree passed."@en ;
     :indicates :Intact .
 
-:MissingScrew a :UnscrewingOutcome, owl:NamedIndividual ;
+:MissingScrew a :DetectionResult, owl:NamedIndividual ;
     rdfs:label "Missing screw"@en ;
     rdfs:comment "The approach reached hasMinApproachPosition without contact."@en ;
     :indicates :MissingScrewMode .
 
-:MissingHead a :UnscrewingOutcome, owl:NamedIndividual ;
+:MissingHead a :DetectionResult, owl:NamedIndividual ;
     rdfs:label "Missing head"@en ;
     rdfs:comment "The position at contact is below hasMinScrewHeadPosition."@en ;
     :indicates :MissingHeadMode .
 
-:HeadOccluded a :UnscrewingOutcome, owl:NamedIndividual ;
+:HeadOccluded a :DetectionResult, owl:NamedIndividual ;
     rdfs:label "Head occluded"@en ;
     rdfs:comment "The position at contact is above hasMaxScrewHeadPosition."@en ;
     :indicates :HeadOccludedMode .
 
-:RoundedHeadOrWrongType a :UnscrewingOutcome, owl:NamedIndividual ;
+:RoundedHeadOrWrongType a :DetectionResult, owl:NamedIndividual ;
     rdfs:label "Rounded head or wrong type"@en ;
     rdfs:comment "The counter-torque stayed below hasMinCounterTorque. This exit cannot tell a rounded head from a screw of the wrong type."@en ;
     :indicates :RoundedHeadMode, :WrongTypeMode .
 
-:StuckAtBreakaway a :UnscrewingOutcome, owl:NamedIndividual ;
+:StuckAtBreakaway a :DetectionResult, owl:NamedIndividual ;
     rdfs:label "Stuck at breakaway"@en ;
     rdfs:comment "The loose torque went above hasMaxLooseTorque during the preparation turn."@en ;
     :indicates :StuckScrewMode .
 
-:LooseAnchor a :UnscrewingOutcome, owl:NamedIndividual ;
+:LooseAnchor a :DetectionResult, owl:NamedIndividual ;
     rdfs:label "Loose anchor"@en ;
     rdfs:comment "The axial force during loosening stayed below hasMinLooseningAxialForce."@en ;
     :indicates :LooseAnchorMode .
 
-:ThreadFault a :UnscrewingOutcome, owl:NamedIndividual ;
+:ThreadFault a :DetectionResult, owl:NamedIndividual ;
     rdfs:label "Thread fault"@en ;
     rdfs:comment "The dynamic torque went above hasMaxDynamicTorque during extraction."@en ;
     :indicates :StuckScrewMode .
@@ -367,7 +382,7 @@
 
 :M4 a :ScrewType, owl:NamedIndividual ;
     rdfs:label "M4"@en ;
-    rdfs:comment "The screw type with a nominal diameter of 4 mm. This file declares it without values, because no measured value for it exists; a seed supplies the mock ones a run decides with."@en .
+    rdfs:comment "The screw type with a nominal diameter of 4 mm. This file declares it without values, because no measured value for it exists; a seed supplies the example ones a run decides with."@en .
 
 #################################################################
 # The screwing resource, and the capability of the anomaly detector that it calls
@@ -378,12 +393,12 @@
 # screwing resource finds the anomaly detector by its ClassifyCapability.
 #################################################################
 
-@prefix svc: <https://w3id.org/circularfactory/Service#> .
+@prefix svc: <http://w3id.org/circularfactory/Service#> .
 
 :ScrewingResourceService a owl:Class ;
     rdfs:subClassOf svc:Service ;
     rdfs:label "Screwing resource service"@en ;
-    rdfs:comment "The service of the screwing resource: the middleware instance that takes its unscrewing operations."@en .
+    rdfs:comment "The service that wraps the screwing resource, hosted by its own middleware instance. It takes the resource's unscrewing operations."@en .
 
 :UnscrewingWorkflow a owl:Class ;
     rdfs:subClassOf svc:Workflow ;
@@ -411,25 +426,25 @@
 :AnomalyDetector a owl:Class ;
     rdfs:subClassOf cfc:Resource, prov:Agent ;
     rdfs:label "Anomaly detector"@en ;
-    rdfs:comment "The participant that classifies each recorded unscrewing attempt and decides its outcome. It is a PROV agent: the agent of each classification (jms_kapps 59). Its resource, AnomalyDetector1, is written by the seed."@en .
+    rdfs:comment "The participant that classifies each recorded unscrewing attempt and decides its outcome. It is a PROV agent: the agent of each classification. Its resource, AnomalyDetector1, is written by the seed."@en .
 
 :AnomalyDetectorService a owl:Class ;
     rdfs:subClassOf svc:Service ;
     rdfs:label "Anomaly detector service"@en ;
-    rdfs:comment "The service of the anomaly detector: the middleware instance that classifies the recorded unscrewing attempts."@en .
+    rdfs:comment "The service that wraps the anomaly detector, hosted by its own middleware instance. It classifies the recorded unscrewing attempts."@en .
 
 :ClassifyWorkflow a owl:Class ;
     rdfs:subClassOf svc:Workflow ;
     rdfs:label "Classify workflow"@en ;
-    rdfs:comment "The workflow of the anomaly detector that classifies one recorded unscrewing attempt. It is called with the IRI of the unscrewing operation, while the operation is running. It reads the effective values of the operation's Screw and the frame that the operation's time-series reference names, and runs the decision tree. In one commit it writes the outcome, the classification as a PROV activity with the detector as its agent and its end time, a new decision snapshot of the ten values that names that activity, after a failure outcome the measured end position of the approach, and the operation's end, done. If it cannot classify the attempt, it ends the operation failed, with why. An operation that is no longer running is left as it is. It realizes the ClassifyCapability."@en .
+    rdfs:comment "The workflow of the anomaly detector that classifies one recorded unscrewing attempt. It is called with the IRI of the unscrewing operation, while the operation is running. It reads the effective values of the operation's Screw and the frame that the operation's time-series reference names, and runs the decision tree. In one commit it writes the outcome, the classification as a PROV activity with the detector as its agent and its end time, a new parameter copy of the ten values that names that activity, after a failure outcome the measured end position of the approach, and the operation's end: done for the outcome ScrewIntact, failed for every other outcome, with an execution result that names it. If it cannot classify the attempt, it ends the operation failed, with why. An operation that is no longer running is left as it is. It realizes the ClassifyCapability."@en .
 
 #################################################################
-# Provenance of a decision (jms_kapps 59)
+# Provenance of a decision
 #
-# Added on 2026-10-16. One PROV witness, on the decision: the detector's commit also writes the
+# One PROV witness, on the decision: the detector's commit also writes the
 # classification as a prov:Activity, associated with the detector's resource and with its end
-# time, and the decision snapshot names it (prov:wasGeneratedBy). The shape in
-# `shapes/integration_usecase_shapes.ttl` makes the store refuse a snapshot without it. The terms
+# time, and the parameter copy names it (prov:wasGeneratedBy). The shape in
+# `shapes/integration_usecase_shapes.ttl` makes the store refuse a parameter copy without it. The terms
 # are those of PROV-O; only the ones that use case 1 writes are declared. Each link goes both
 # ways: the ontology declares the inverse, and the store infers the back-link.
 #
@@ -444,7 +459,7 @@ prov:Activity a owl:Class ;
 
 prov:Entity a owl:Class ;
     rdfs:label "Entity"@en ;
-    rdfs:comment "A thing with some fixed aspects (PROV-O). In use case 1: a decision snapshot."@en .
+    rdfs:comment "A thing with some fixed aspects (PROV-O). In use case 1: a parameter copy."@en .
 
 prov:Agent a owl:Class ;
     rdfs:label "Agent"@en ;
@@ -454,7 +469,7 @@ prov:wasGeneratedBy a owl:ObjectProperty, owl:FunctionalProperty ;
     rdfs:domain prov:Entity ;
     rdfs:range prov:Activity ;
     rdfs:label "was generated by"@en ;
-    rdfs:comment "The activity that generated an entity. In use case 1: the classification that generated a decision snapshot."@en .
+    rdfs:comment "The activity that generated an entity. In use case 1: the classification that generated a parameter copy."@en .
 
 prov:generated a owl:ObjectProperty ;
     owl:inverseOf prov:wasGeneratedBy ;
@@ -498,7 +513,7 @@ prov:endedAtTime a owl:DatatypeProperty, owl:FunctionalProperty ;
 :LearnerService a owl:Class ;
     rdfs:subClassOf svc:Service ;
     rdfs:label "Learner service"@en ;
-    rdfs:comment "The middleware instance that wraps the learner."@en .
+    rdfs:comment "The service that wraps the learner, hosted by its own middleware instance."@en .
 
 :Learner1 a :Learner, owl:NamedIndividual ;
     rdfs:label "Learner"@en .
@@ -522,12 +537,12 @@ prov:endedAtTime a owl:DatatypeProperty, owl:FunctionalProperty ;
 :Planner a owl:Class ;
     rdfs:subClassOf cfc:Resource ;
     rdfs:label "Planner"@en ;
-    rdfs:comment "The participant that opens the unscrewing work. For one Screw it issues one unscrewing operation naming that Screw, its back-link and the workpiece it sits in, which the middleware creates queued and delivers to the screwing resource; it then waits for that operation to end. It classifies nothing and decides no outcome, and it chooses no order: which Screw to take out is a press."@en .
+    rdfs:comment "The participant that opens the unscrewing work. For one Screw it issues one unscrewing operation naming that Screw and the workpiece it sits in, which the middleware creates queued and delivers to the screwing resource, in one commit that also carries the Screw's explicit back-link; it then waits for that operation to end. It classifies nothing and decides no outcome, and it chooses no order: which Screw to take out is a press."@en .
 
 :PlannerService a owl:Class ;
     rdfs:subClassOf svc:Service ;
     rdfs:label "Planner service"@en ;
-    rdfs:comment "The middleware instance that wraps the planner."@en .
+    rdfs:comment "The service that wraps the planner, hosted by its own middleware instance."@en .
 
 :StartUnscrewingWorkflow a owl:Class ;
     rdfs:subClassOf svc:Workflow ;
@@ -541,3 +556,220 @@ prov:endedAtTime a owl:DatatypeProperty, owl:FunctionalProperty ;
 
 :Planner1 a :Planner, owl:NamedIndividual ;
     rdfs:label "Planner"@en .
+
+#################################################################
+# The robot controller over MQTT
+#
+# The screwing resource has one robot, whose controller speaks only MQTT. Each parameter of the
+# robot is a property of `:Robot1` whose node in the graph names its topic and its broker, as for
+# any other attribute of a resource; the screwing resource's middleware instance builds its
+# connectors from that description. Each parameter property is a subproperty of
+# inf:isInterfaceAccessibleMQTTParameter and has a range with one inf:hasValue restriction: the
+# middleware binds only such a property. The setpoints are properties of their own, with the robot
+# as their domain: the type-level properties have the Screw type as their domain, and a robot is
+# not a Screw type.
+#
+# The inf: block is the one of the TransferUnit demo of kapps_semantic_middleware, with the same
+# IRIs. The middleware reads the connection metadata of a parameter node only where a range
+# declares it, and it hides from the served data model what these ranges declare.
+#################################################################
+
+@prefix inf: <http://www.sfb1574.kit.edu/ontologies/CrcInterfaces#> .
+
+inf:isInterfaceAccessibleParameter rdf:type owl:ObjectProperty ;
+    rdfs:label "is interface-accessible parameter" ;
+    rdfs:comment "Marks a property whose value is reachable over some protocol interface. Its range carries the interface content that is safe to serve northbound: the access mode and nothing else. The metadata terms named inside these restrictions (the inf: datatype properties below) carry no rdfs:domain on purpose: each is typed by the restriction it appears in. A domain would make them separately specifiable, and their missing global range would then raise." ;
+    rdfs:range [ rdf:type owl:Class ;
+        owl:intersectionOf (
+            [ rdf:type owl:Restriction ; owl:onProperty inf:accessMode ; owl:allValuesFrom xsd:string ]
+        ) ] .
+
+inf:isInterfaceAccessibleMQTTParameter rdf:type owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleParameter ;
+    rdfs:label "is interface-accessible MQTT parameter" ;
+    rdfs:comment "Marks a parameter reached over MQTT. Its range carries the MQTT connection contract, which is southbound only: a consumer merging only up to the parent property never sees it." ;
+    rdfs:range [ rdf:type owl:Class ;
+        owl:intersectionOf (
+            [ rdf:type owl:Restriction ; owl:onProperty inf:hasMQTTTopic     ; owl:allValuesFrom xsd:string ]
+            [ rdf:type owl:Restriction ; owl:onProperty inf:hasMQTTBrokerIP  ; owl:allValuesFrom xsd:string ]
+            [ rdf:type owl:Restriction ; owl:onProperty inf:hasMQTTBrokerPort ; owl:allValuesFrom xsd:integer ]
+            [ rdf:type owl:Restriction ; owl:onProperty inf:hasMQTTSetTopic  ; owl:allValuesFrom xsd:string ]
+            [ rdf:type owl:Restriction ; owl:onProperty inf:hasMQTTValuePath ; owl:allValuesFrom xsd:string ]
+        ) ] .
+
+inf:hasValue rdf:type owl:DatatypeProperty ;
+    rdfs:label "has value" ;
+    rdfs:comment "The parameter's value. Not typed globally: each parameter's restriction declares its own datatype. Under the locator pattern it is never authored in instance data." .
+
+inf:accessMode rdf:type owl:DatatypeProperty ;
+    rdfs:label "access mode" ;
+    rdfs:comment "The settability facet, \"read\" or \"readwrite\". Northbound content: it tells a peer whether it may write." .
+
+inf:hasMQTTTopic rdf:type owl:DatatypeProperty ;
+    rdfs:label "has MQTT topic" ;
+    rdfs:comment "The topic the device publishes this parameter's readings on." .
+
+inf:hasMQTTSetTopic rdf:type owl:DatatypeProperty ;
+    rdfs:label "has MQTT set topic" ;
+    rdfs:comment "The topic a setpoint is published to. Present only on a readwrite parameter." .
+
+inf:hasMQTTBrokerIP rdf:type owl:DatatypeProperty ;
+    rdfs:label "has MQTT broker IP" ;
+    rdfs:comment "Address of the broker carrying this parameter's topics." .
+
+inf:hasMQTTBrokerPort rdf:type owl:DatatypeProperty ;
+    rdfs:label "has MQTT broker port" ;
+    rdfs:comment "Port of the broker carrying this parameter's topics. Absent means 1883." .
+
+inf:hasMQTTValuePath rdf:type owl:DatatypeProperty ;
+    rdfs:label "has MQTT value path" ;
+    rdfs:comment "Dotted path to the value inside a JSON envelope, honoured symmetrically on read and write. Absent means the payload is a raw scalar." .
+
+:ScrewingResource a owl:Class ;
+    rdfs:subClassOf cfc:Resource ;
+    rdfs:label "Screwing resource"@en ;
+    rdfs:comment "The resource that makes the unscrewing attempts. It has one robot, whose controller it drives over MQTT. Its resource, ScrewingResource1, is written by the seed."@en .
+
+:Robot a owl:Class ;
+    rdfs:subClassOf cfc:Resource ;
+    rdfs:label "Robot"@en ;
+    rdfs:comment "The robot of a screwing resource. Its controller speaks only MQTT: each of its parameters is described in the graph with its topic and its broker. Its resource, Robot1, is written by the seed."@en .
+
+:hasRobot a owl:ObjectProperty ;
+    rdfs:domain :ScrewingResource ;
+    rdfs:range :Robot ;
+    rdfs:label "has robot"@en ;
+    rdfs:comment "The robot of a screwing resource."@en .
+
+:isRobotOf a owl:ObjectProperty ;
+    owl:inverseOf :hasRobot ;
+    rdfs:domain :Robot ;
+    rdfs:range :ScrewingResource ;
+    rdfs:label "is robot of"@en ;
+    rdfs:comment "The screwing resource that a robot belongs to. The inverse of hasRobot; the seed writes both."@en .
+
+# The readings: one value per sample of an attempt's curve.
+
+:hasRobotPosition a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has robot position"@en ;
+    rdfs:comment "The position of the tool along the y axis of the robot frame, one sample of an attempt's curve. Unit: mm."@en .
+
+:hasAxialForce a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has axial force"@en ;
+    rdfs:comment "The axial force on the tool, one sample of an attempt's curve. Unit: N."@en .
+
+:hasUnscrewingTorque a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has unscrewing torque"@en ;
+    rdfs:comment "The torque on the tool, one sample of an attempt's curve. Unit: N·m."@en .
+
+# The state of an attempt, and the command that starts one.
+
+:hasAttemptState a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:string ]
+        ) ] ;
+    rdfs:label "has attempt state"@en ;
+    rdfs:comment "The state of the robot's attempt: idle, running, done or failed. Read only."@en .
+
+:hasAttemptCommand a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:string ]
+        ) ] ;
+    rdfs:label "has attempt command"@en ;
+    rdfs:comment "The command that starts one attempt on the Screw it names. Its value is the IRI of the Screw."@en .
+
+# The setpoints: one for each value of the Screw type that the attempt is given.
+
+:hasRobotMinApproachAxialForce a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has robot minimum approach axial force"@en ;
+    rdfs:comment "The robot's setpoint for the value hasMinApproachAxialForce of the Screw type of the attempt's Screw. Unit: N."@en .
+
+:hasRobotMinCounterTorque a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has robot minimum counter torque"@en ;
+    rdfs:comment "The robot's setpoint for the value hasMinCounterTorque of the Screw type of the attempt's Screw. Unit: N·m."@en .
+
+:hasRobotMinPreloadAxialForce a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has robot minimum preload axial force"@en ;
+    rdfs:comment "The robot's setpoint for the value hasMinPreloadAxialForce of the Screw type of the attempt's Screw. Unit: N."@en .
+
+:hasRobotPreparationTurningAngle a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has robot preparation turning angle"@en ;
+    rdfs:comment "The robot's setpoint for the value hasPreparationTurningAngle of the Screw type of the attempt's Screw. Unit: degrees."@en .
+
+:hasRobotMaxLooseTorque a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has robot maximum loose torque"@en ;
+    rdfs:comment "The robot's setpoint for the value hasMaxLooseTorque of the Screw type of the attempt's Screw. Unit: N·m."@en .
+
+:hasRobotMinLooseningAxialForce a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has robot minimum loosening axial force"@en ;
+    rdfs:comment "The robot's setpoint for the value hasMinLooseningAxialForce of the Screw type of the attempt's Screw. Unit: N."@en .
+
+:hasRobotMaxDynamicTorque a owl:ObjectProperty ;
+    rdfs:subPropertyOf inf:isInterfaceAccessibleMQTTParameter ;
+    rdfs:domain :Robot ;
+    rdfs:range [ a owl:Class ;
+        owl:intersectionOf (
+            [ a owl:Restriction ; owl:onProperty inf:hasValue ; owl:allValuesFrom xsd:double ]
+        ) ] ;
+    rdfs:label "has robot maximum dynamic torque"@en ;
+    rdfs:comment "The robot's setpoint for the value hasMaxDynamicTorque of the Screw type of the attempt's Screw. Unit: N·m."@en .

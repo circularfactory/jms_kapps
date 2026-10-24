@@ -29,9 +29,8 @@ RUNS = [sys.executable, "-c", "import time; time.sleep(60)"]
 ONCE = 3600.0
 
 # Box 1 on Module 1, its transport running; a box the WMS spawned, named by a UUID as it names
-# every box it spawns (jms_kapps 92), on Module 3, its transport queued. What the query on a
-# seeded station answers: no box in the WMS's possession. (Changed on 2026-10-12, jms_kapps 92.
-# Until then the second box was Box 3.)
+# every box it spawns, on Module 3, its transport queued. What the query on a
+# seeded station answers: no box in the WMS's possession.
 SPAWNED = uuid_box_iri(UUID("5b0e1c52-9d37-4c8e-a1f4-2f6c3a7d9e10"))
 ROWS: list[dict[str, Any]] = [
     {
@@ -103,6 +102,9 @@ class NoServices:
         collect_history: bool = False,
     ) -> None:
         pass
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return []

@@ -1,5 +1,5 @@
 """`_ps`, the helper with which the live run of the strategies reads the command line of each
-process the Launcher started (jms_kapps 52).
+process the Launcher started.
 
 Under pytest, `ps` cuts each line at 80 columns unless it is told otherwise, so a module process's
 `--resource-iri`, `--dataset` and `--module-strategy` fell off its line, and the live run found

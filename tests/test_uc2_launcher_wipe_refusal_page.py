@@ -1,4 +1,4 @@
-"""The Launcher page shows a wipe the middleware's guard refused, readable (jms_kapps 129).
+"""The Launcher page shows a wipe the middleware's guard refused, readable.
 
 On a store whose host is neither loopback nor a container alias, such as the KIT GraphDB, the
 middleware's wipe guard refuses a seed's clear unless `TRIPLESTORE_ALLOW_DESTRUCTIVE` is `1`. The
@@ -53,6 +53,9 @@ class KitStore:
 class Graph(TripleStoreGraph):
     """The Launcher's real graph, whose seed and clear are the real ones; it reads no service
     from the store, which has none."""
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return live_services(set(), workflows)

@@ -8,8 +8,7 @@ transport is done reach the monitor, one module is stopped, a second `jms-uc2` i
 Ctrl+C stops everything. The second makes the same two stops while every activity page is open.
 The third kills a `jms-uc2`, and starts the next one over what the killed one left behind. The
 fourth sends SIGTERM, or SIGHUP, to `jms-uc2` alone, and finds no process and no service left. The
-next closes the terminal `jms-uc2` runs in, as a person closes theirs, and finds the same (added
-on 2026-10-10, jms_kapps 32). The next launches from the page, once over its own run and once
+next closes the terminal `jms-uc2` runs in, as a person closes theirs, and finds the same. The next launches from the page, once over its own run and once
 beside a module run by hand. The last spawns a box at the WMS on two modules, and follows it over
 one hop and back.
 """
@@ -38,6 +37,7 @@ from _bulk import bulk_validation_report, conforms
 from _participants import TWO_MODULES
 from _sse import hold
 from _terminal import POSIX_ONLY, Terminal
+from _uc2_run import lines_of
 from _wait import eventually
 from kapps_ogm import OGM
 from kapps_semantic_middleware.credentials import triplestore_env_present
@@ -67,7 +67,6 @@ from jms_kapps.uc2.topology import (
     load_topology,
 )
 from jms_kapps.uc2.transport import operation_status, status_record
-from jms_kapps.uc2.vertical_slice import lines_of
 from jms_kapps.uc2.vocabulary import (
     FC,
     WMS,
@@ -251,7 +250,7 @@ def test_the_launcher_runs_the_cross_and_stops_cleanly(start, jms_uc2, dataset):
             (done, FC.hasBox, box_iri(2)),
             (done, FC.hasOrigin, m1),
             (done, FC.hasDestination, m4),
-            (done, SVC.operationStatus, Literal(OperationStatus.DONE)),
+            (done, SVC.hasOperationStatus, Literal(OperationStatus.DONE)),
         ]
     )
     # The monitor reads the graph in the background, every second, so it shows them by its
@@ -408,7 +407,7 @@ def registered(db: TripleStore) -> set[IRI]:
         f"""
         SELECT DISTINCT ?resource WHERE {{
             ?service <{SVC.isServiceOf}> ?resource ;
-                     <{SVC.address}> ?address .
+                     <{SVC.hasAddress}> ?address .
         }}
         """,
     )
@@ -427,7 +426,7 @@ def test_sigterm_or_sighup_to_the_launcher_alone_leaves_no_process_and_no_servic
     start, dataset, stop
 ):
     """SIGTERM to `jms-uc2`, as `kill` sends it, stops everything, and every service deregisters.
-    SIGHUP does the same (added on 2026-10-10, jms_kapps 32).
+    SIGHUP does the same.
 
     Only the Launcher gets the signal, not its process group as with Ctrl+C in a terminal. So a
     child stops only because the Launcher stops it.
@@ -456,12 +455,11 @@ def test_sigterm_or_sighup_to_the_launcher_alone_leaves_no_process_and_no_servic
 
 @POSIX_ONLY
 def test_closing_the_terminal_leaves_no_process_and_no_service(start, dataset):
-    """The terminal `jms-uc2` runs in closes, as a person closes theirs (jms_kapps 32): every
+    """The terminal `jms-uc2` runs in closes, as a person closes theirs: every
     write to it fails from then on, and SIGHUP reaches the whole process group, as the shell of a
     closed terminal sends it. So the Launcher and every process it started get SIGHUP at once.
     Each stops as SIGTERM stops it: no process of the run is left, and no service in the graph
-    keeps its address. Until then SIGHUP ended every process on the spot, and none
-    deregistered."""
+    keeps its address."""
     db = connect(dataset)
     terminal = Terminal()
     run = start(terminal=terminal)
@@ -635,7 +633,7 @@ def test_a_box_goes_from_the_wms_over_one_hop_and_back_and_its_transport_is_done
     press_ctrl_c(run, db)
 
 
-# -- The transit time of each module, in the graph (jms_kapps 8) -------------------------------- #
+# -- The transit time of each module, in the graph -------------------------------- #
 
 
 def transit_times_in_the_graph(db: TripleStore) -> dict[str, list[Decimal]]:
@@ -658,7 +656,7 @@ def test_a_launch_gives_each_module_one_transit_time_its_own_or_the_fields_and_i
 ):
     """The cross at the field's 0.5 s, where the topology gives Module 3 its own 2 s: the seed
     writes 2 on Module 3 and 0.5 on every other module, each once, and each module's drawing box
-    shows its own (jms_kapps 8)."""
+    shows its own."""
     db = connect(dataset)
     run = start()
     await_all_live(run)
@@ -749,7 +747,7 @@ def test_a_module_whose_graph_holds_no_transit_time_does_not_start_and_the_launc
             interval=POLL_SECONDS,
         )
         output = "\n".join(module_2().output)
-        assert "Module2 has no transit time in the graph" in output, output
+        assert "Module2 has no transit time in the knowledge graph" in output, output
         assert "Traceback" not in output
     finally:
         launcher.stop_all()
@@ -899,7 +897,7 @@ def test_the_logs_link_of_each_party_opens_its_logs_tab_and_its_form_works_throu
     page = httpx.get(destination, timeout=10)
     assert page.status_code == 200, page.text[:300]
     # The Logs tab is the selected one: its radio is checked. (Its label is not highlighted
-    # until KSM 458's first item, the tab label's highlight, is fixed, so the radio is what a test can read.)
+    # while the tab label's highlight is not fixed, so the radio is what a test can read.)
     assert re.search(LOGS_TAB_CHECKED, page.text)
     received = acceptance_record(m2, FC.ReceiveWorkflow, box, m1)
     eventually(

@@ -1,45 +1,57 @@
-"""The KSM 268 loop end to end on a live GraphDB and a live InfluxDB: `jms-uc1` runs the press
+"""The loop end to end on a live GraphDB and a live InfluxDB: `jms-uc1` runs the press
 through the loop by the real processes.
 
 A press opens the operation on the planner; the screwing resource records the attempt's curves
 in InfluxDB and gives the detector the reference; the detector reads them, classifies the attempt,
-commits the outcome and the decision snapshot, and ends the operation; the planner's dashboard
+commits the outcome and the parameter copy, and ends the operation; the planner's dashboard
 shows the outcome; the learner reads the new operation's curves, commits a new `:M4` value, and
 the next snapshot holds it; Ctrl+C at the terminal stops all four processes and every service
 deregisters.
 
-**Only on a disposable dataset.** The test clears the dataset `--dataset` names, as every graphdb
-test does. Never `Tests`, which every library's live suite shares, nor `jms-kapps`, the demo's.
-The test takes the dataset by `--dataset`, needs the GraphDB connection variables, and the frames
-go into InfluxDB's database `jms-kapps`, the runtime's own, so it adds no database (jms_kapps
-103). It needs the local stack (`docker compose up -d --wait`). It runs on POSIX: it starts
+**Only on a dataset you can lose.** The test clears the dataset `--dataset` names, as every graphdb
+test does. On a shared store never `Tests`, which every library's live suite shares, nor
+`jms-kapps`. On the local stack `jms-kapps` is its only dataset: the run clears it, and the next
+demo seeds it again. The test takes the dataset by `--dataset`, needs the GraphDB connection
+variables, and the frames go into InfluxDB's database `jms-kapps`, the runtime's own, so it adds no
+database. It needs the local stack (`docker compose up -d --wait`). It runs on POSIX: it starts
 `jms-uc1` in a session of its own and stops it with Ctrl+C to that session, as a terminal does.
 """
 
 from __future__ import annotations
 
 import os
-import shutil
 import signal
-import socket
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
+from urllib.parse import urljoin
 
 import httpx
 import pytest
+from _html import rows
+from _uc1_run import (
+    OPERATION_WITHIN_SECONDS,
+    POLL_SECONDS,
+    await_all_live,
+    m4_torque,
+    operations,
+    press,
+    provenance,
+    started_uc1,
+    state,
+)
 from _wait import eventually
 from kapps_semantic_middleware.credentials import triplestore_env_present
-from kapps_semantic_middleware.vocabulary import SVC
 from kapps_triplestore_interface import IRI, TripleStore
 
 from jms_kapps.common.services import live_resources
 from jms_kapps.common.triplestore import bindings, connect
 from jms_kapps.uc1.anomaly_detector import RESOURCE as DETECTOR
-from jms_kapps.uc1.seed import SCREW, SCREW_2
+from jms_kapps.uc1.screwing_resource import RESOURCE as SCREWING_RESOURCE
+from jms_kapps.uc1.seed import M4_VALUES, SCREW, SCREW_2
 from jms_kapps.uc1.timeseries import FrameReader
 from jms_kapps.uc1.timeseries import connect as connect_influxdb
-from jms_kapps.uc1.vocabulary import JMS, PROV
+from jms_kapps.uc1.vocabulary import JMS, TYPE_LEVEL
 
 pytestmark = [
     pytest.mark.graphdb,
@@ -52,13 +64,70 @@ pytestmark = [
     ),
 ]
 
-# How long a run's four processes may take to turn live. Each check reads the page, so the test
-# asks only every half second.
-LIVE_WITHIN_SECONDS = 90.0
-POLL_SECONDS = 0.5
 
-# How long one attempt may take, from the press to its operation done.
-OPERATION_WITHIN_SECONDS = 60.0
+def _seeded_values(max_dynamic_torque: float) -> str:
+    """What the box shows of the seven values of `:M4`: the seed's, with `max_dynamic_torque`."""
+    values = {**M4_VALUES, JMS.hasMaxDynamicTorque: max_dynamic_torque}
+    return " ".join(f"{values[prop]:g}" for prop in TYPE_LEVEL)
+
+
+def _type_values_of(box_url: str, screw: IRI) -> list[str]:
+    """The cell "Type values" of each row of the box "Attempts" for `screw`."""
+    return [
+        row[5]
+        for row in rows(httpx.get(box_url, timeout=5).text)
+        if row[2] == screw.fragment
+    ]
+
+
+def _given_line(log_text: str, screw: IRI, fragment: str) -> bool:
+    """Whether one line of the log says the attempt on `screw` is given the values of `:M4` with `fragment`."""
+    return any(
+        f"on {screw.fragment} is given the values of M4" in line
+        and (f"{fragment}," in line or line.endswith(fragment))
+        for line in log_text.splitlines()
+    )
+
+
+def _lists(page_url: str) -> dict:
+    """Operations and Learned values, as the page's state gives them."""
+    answer = httpx.get(f"{page_url}api/state", timeout=5).json()
+    return {name: answer[name] for name in ("operations", "learned_values")}
+
+
+def _local(value: dict | None) -> str | None:
+    return None if value is None else value["value"].rsplit("#", 1)[-1]
+
+
+def _operation_rows(db: TripleStore, query: str) -> list[tuple]:
+    """The rows `query` answers on `db`: the operation, its Screw and its outcome by local name,
+    and its issuer, status, reason and deciding resource as the store writes them."""
+    return [
+        (
+            _local(row["operation"]),
+            _local(row.get("screw")),
+            row.get("issuer", {}).get("value"),
+            row.get("status", {}).get("value"),
+            _local(row.get("outcome")),
+            row.get("reason", {}).get("value"),
+            row.get("decidedBy", {}).get("value"),
+        )
+        for row in bindings(db, query, convert=False)
+    ]
+
+
+def _shown_operation(row: dict) -> tuple:
+    return tuple(
+        row[key]
+        for key in ("operation", "screw", "issuer", "status", "outcome", "reason", "decided_by")
+    )
+
+
+def _learned_rows(db: TripleStore, query: str) -> list[tuple[str, str]]:
+    return [
+        (_local(row["screwType"]) or "", row["maxDynamicTorque"]["value"])
+        for row in bindings(db, query, convert=False)
+    ]
 
 
 @pytest.fixture
@@ -82,117 +151,8 @@ def influxdb():
 def jms_uc1(dataset, tmp_path) -> Iterator[tuple[subprocess.Popen, Path, str]]:
     """`jms-uc1` on a free page port, learning every second, in a session of its own; stopped
     again at the end, whatever happens."""
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        port = sock.getsockname()[1]
-    command = shutil.which("jms-uc1")
-    assert command is not None, "the jms-uc1 console script is not installed"
-    log = tmp_path / "uc1.log"
-    with log.open("w") as output:
-        run = subprocess.Popen(
-            [
-                command,
-                *("--dataset", dataset),
-                *("--learn-seconds", "1"),
-                *("--page-port", str(port)),
-            ],
-            stdout=output,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
-    try:
-        yield run, log, f"http://127.0.0.1:{port}/"
-    finally:
-        if run.poll() is None:
-            os.killpg(run.pid, signal.SIGTERM)
-            run.wait(timeout=30)
-
-
-def state(page_url: str) -> list[dict]:
-    return httpx.get(f"{page_url}api/state", timeout=5).json()["processes"]
-
-
-def await_all_live(run: subprocess.Popen, log: Path, page_url: str) -> None:
-    """Wait until the run's four processes are all live. A `jms-uc1` that has exited never gets
-    there, so that fails at once, with what it printed."""
-
-    def all_live() -> bool:
-        if run.poll() is not None:
-            pytest.fail(f"jms-uc1 exited with {run.returncode}:\n{log.read_text()}")
-        states = [p["state"] for p in state(page_url)]
-        return len(states) == 4 and set(states) == {"live"}
-
-    eventually(all_live, timeout=LIVE_WITHIN_SECONDS, interval=POLL_SECONDS)
-
-
-def press(planner_address: str, screw: IRI) -> dict:
-    """Press Unscrew on the planner's dashboard and assert it started an operation."""
-    started = httpx.post(
-        f"{planner_address.rstrip('/')}/workflows/unscrew/execute",
-        json={"screw": str(screw)},
-        timeout=30,
-    )
-    assert started.status_code == 200, started.text
-    assert started.json()["started"] is True, started.text
-    return started.json()
-
-
-def operations(db: TripleStore) -> list[dict]:
-    """The operations of the run and how each ended: its status, its outcome, whether it holds a
-    time-series reference, and its snapshot's max dynamic torque."""
-    rows = bindings(
-        db,
-        f"""
-        SELECT ?op ?status ?outcome ?reference ?torque WHERE {{
-            ?op a <{JMS.UnscrewingOperation}> .
-            OPTIONAL {{ ?op <{SVC.operationStatus}> ?status }}
-            OPTIONAL {{ ?op <{JMS.hasOutcome}> ?outcome }}
-            OPTIONAL {{ ?op <{JMS.hasTimeSeriesReference}> ?reference }}
-            OPTIONAL {{
-                ?op <{JMS.usedValues}> ?snapshot .
-                ?snapshot <{JMS.hasMaxDynamicTorque}> ?torque
-            }}
-        }}
-        """,
-    )
-    return [
-        {
-            "status": str(row.get("status") or ""),
-            "outcome": str(row.get("outcome") or ""),
-            "reference": str(row.get("reference") or ""),
-            "torque": float(row["torque"]) if row.get("torque") is not None else None,
-        }
-        for row in rows
-    ]
-
-
-def m4_torque(db: TripleStore) -> float:
-    """`:M4`'s max dynamic torque, as the seed wrote it or the learner refined it."""
-    (row,) = bindings(
-        db,
-        f"SELECT ?value WHERE {{ <{JMS.M4}> <{JMS.hasMaxDynamicTorque}> ?value }}",
-    )
-    return float(row["value"])
-
-
-def provenance(db: TripleStore) -> list[dict]:
-    """The provenance of each decision snapshot of the run: the classification that generated
-    it, that classification's agent and end time, and the snapshot that the store infers back
-    from the classification (`prov:generated`). (Added on 2026-10-16, jms_kapps 59.)"""
-    rows = bindings(
-        db,
-        f"""
-        SELECT ?snapshot ?classification ?agent ?ended ?generated WHERE {{
-            ?op <{JMS.usedValues}> ?snapshot .
-            ?snapshot <{PROV.wasGeneratedBy}> ?classification .
-            ?classification a <{PROV.Activity}> ;
-                <{PROV.wasAssociatedWith}> ?agent ;
-                <{PROV.endedAtTime}> ?ended .
-            OPTIONAL {{ ?classification <{PROV.generated}> ?generated }}
-        }}
-        """,
-    )
-    return [{name: str(value) for name, value in row.items()} for row in rows]
+    with started_uc1(dataset, tmp_path) as run:
+        yield run
 
 
 def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
@@ -205,7 +165,40 @@ def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
     page = httpx.get(page_url, timeout=5)
     assert page.status_code == 200, page.text
     assert page.headers["content-type"].startswith("text/html")
-    assert page.text.count("Open dashboard</a>") == 4
+    assert page.text.count(">dashboard</a>") == 4
+    # Each link of the planner's row opens its page.
+    (planner_row,) = [p for p in state(page_url) if p["name"] == "Planner"]
+    assert [link["label"] for link in planner_row["links"]] == [
+        "API docs",
+        "activity",
+        "dashboard",
+        "logs",
+    ]
+    # Each link of every row opens its page through the page's own port, the activity page's
+    # live stream included, and so does each dashboard of the printed block. The robot controller
+    # stand-in is a device without a service: its row has no address, no links and no dashboard,
+    # so it is skipped here.
+    processes = state(page_url)
+    assert [p["name"] for p in processes if p["address"] is None] == ["Robot controller"]
+    assert all(p["links"] == [] for p in processes if p["address"] is None)
+    for process in processes:
+        if process["address"] is None:
+            continue
+        for link in process["links"]:
+            assert link["href"].startswith("p/"), link
+            href = urljoin(page_url, link["href"])
+            assert httpx.get(href, timeout=10).status_code == 200, link
+            if link["label"] == "activity":
+                stream = urljoin(href, "activity/stream")
+                with httpx.stream("GET", stream, timeout=10) as events:
+                    assert events.status_code == 200, stream
+                    assert events.headers["content-type"].startswith("text/event-stream")
+        dashboard = urljoin(page_url, process["dashboard"])
+        eventually(
+            lambda dashboard=dashboard: f"  {dashboard}\n" in log.read_text(),
+            timeout=10,
+            interval=POLL_SECONDS,
+        )
 
     # The planner's address is the address of the process named "Planner" in the state.
     planners = [p for p in state(page_url) if p["name"] == "Planner"]
@@ -227,8 +220,22 @@ def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
     assert first["reference"].startswith("influxdb:///jms-kapps/"), first
     FrameReader(influxdb).read(first["reference"])
 
+    # The attempt was given the seven values of `:M4`, and the screwing resource's dashboard and
+    # log line show them.
+    attempts = urljoin(page_url, f"p/{SCREWING_RESOURCE.fragment}/dashboard/box/attempts")
+    eventually(
+        lambda: _type_values_of(attempts, SCREW) == [_seeded_values(before)],
+        timeout=10,
+        interval=POLL_SECONDS,
+    )
+    eventually(
+        lambda: _given_line(log.read_text(), SCREW, f"MaxDynamicTorque {before:g}"),
+        timeout=10,
+        interval=POLL_SECONDS,
+    )
+
     # The decision carries its provenance: the snapshot names the detector's classification, with
-    # its agent and its end time, in the shape the store enforces (jms_kapps 59).
+    # its agent and its end time, in the shape the store enforces.
     (decided,) = provenance(db)
     assert decided["agent"] == str(DETECTOR), decided
     assert decided["generated"] == decided["snapshot"], decided
@@ -236,7 +243,7 @@ def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
 
     # The planner's box shows the outcome. The planner learns of the end from the middleware's
     # notification, which follows the commit that ended the operation, so the box may lag.
-    box = f"{planner_address.rstrip('/')}/dashboard/box/planner"
+    box = urljoin(page_url, f"p/{JMS.Planner1.fragment}/dashboard/box/planner")
     eventually(
         lambda: "ScrewIntact" in httpx.get(box, timeout=5).text,
         timeout=10,
@@ -256,17 +263,76 @@ def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
     ).json()
     assert refused["started"] is False, refused
 
-    # Screw2 replays `missing_screw`: MissingScrew, and its snapshot holds the learner's value.
+    # Screw2 replays `missing_screw`: MissingScrew, a failure outcome, which ends its operation
+    # failed and names it. Its snapshot holds the learner's value.
     press(planner_address, SCREW_2)
     eventually(
-        lambda: len([o for o in operations(db) if o["status"] == "done"]) == 2,
+        lambda: len([o for o in operations(db) if o["status"] == "failed"]) == 1,
         timeout=OPERATION_WITHIN_SECONDS,
         interval=POLL_SECONDS,
     )
-    done = [o for o in operations(db) if o["status"] == "done"]
-    (second,) = [o for o in done if o["outcome"].endswith("MissingScrew")] or [None]
-    assert second is not None, done
+    (second,) = [o for o in operations(db) if o["status"] == "failed"]
+    assert second["outcome"].endswith("MissingScrew"), second
+    assert second["result"] == "ANOMALY: MissingScrew", second
     assert second["torque"] == after, second
+    assert len(provenance(db)) == 2
+
+    # The planner is notified of the failed end as of the done one, and its box shows the outcome
+    # and the reason of the failed press.
+    eventually(
+        lambda: 'title="ANOMALY: MissingScrew"' in httpx.get(box, timeout=5).text,
+        timeout=10,
+        interval=POLL_SECONDS,
+    )
+    assert "<td>MissingScrew</td>" in httpx.get(box, timeout=5).text
+
+    # The next attempt on a Screw of the type is given the refined value (Screw1 has its operation
+    # already, so Screw2 is that attempt).
+    assert after != before
+    eventually(
+        lambda: _type_values_of(attempts, SCREW_2) == [_seeded_values(after)],
+        timeout=10,
+        interval=POLL_SECONDS,
+    )
+    eventually(
+        lambda: _given_line(log.read_text(), SCREW_2, f"MaxDynamicTorque {after:g}"),
+        timeout=10,
+        interval=POLL_SECONDS,
+    )
+
+    # The page lists both operations, each with the anomaly detector as its deciding service, linked to
+    # the detector's dashboard; and M4's value at the start and the one the learner committed.
+    # Its background read runs every second, so the lists may lag.
+    detector_dashboard = f"p/{DETECTOR.fragment}/dashboard"
+    eventually(
+        lambda: [r["outcome"] for r in _lists(page_url)["operations"]["rows"]]
+        == ["ScrewIntact", "MissingScrew"],
+        timeout=10,
+        interval=POLL_SECONDS,
+    )
+    shown = _lists(page_url)
+    for row in shown["operations"]["rows"]:
+        assert row["decided_by"] == str(DETECTOR), row
+        assert row["decided_by_name"] == "Anomaly detector", row
+        assert row["decided_by_dashboard"] == detector_dashboard, row
+        assert row["issuer_name"] == "Planner", row
+    assert [(r["screw"], r["status"]) for r in shown["operations"]["rows"]] == [
+        (SCREW.fragment, "done"),
+        (SCREW_2.fragment, "failed"),
+    ]
+    assert shown["operations"]["rows"][1]["reason"] == "ANOMALY: MissingScrew"
+    (m4,) = shown["learned_values"]["rows"]
+    assert m4["screw_type"] == "M4"
+    assert float(m4["at_start"]) == before
+    assert float(m4["now"]) == after
+    # Each query the page shows, run on the dataset as it is shown, gives the rows the page shows
+    # (Learned values: the value at the latest read; the one at the start is the page's memory).
+    assert _operation_rows(db, shown["operations"]["query"]) == [
+        _shown_operation(row) for row in shown["operations"]["rows"]
+    ]
+    assert _learned_rows(db, shown["learned_values"]["query"]) == [
+        (row["screw_type"], row["now"]) for row in shown["learned_values"]["rows"]
+    ]
 
     # Ctrl+C stops everything, and every service deregisters.
     os.killpg(run.pid, signal.SIGINT)

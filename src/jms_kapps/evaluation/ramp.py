@@ -1,12 +1,9 @@
-"""The broken rule of the measurement harness, and how far a ramp went (iteration one; decided by
-Etienne on 2026-10-11, the numbers decision, jms_kapps 56; the stop rule and the judgement changed
-on 2026-10-12, jms_kapps 99, decided by Sören Weindel as the product owner of the tests,
-jms_kapps 85).
+"""The broken rule of the measurement harness, and how far a ramp went (iteration one).
 
 **A ramp** is a sweep block marked as a ramp (`ramp = true`), whose only axis is its rising box
 rates (`spec`). Each rate is one **load level**, made by one run. Its runs are heavy, so a ramp
 runs only under an approval that covers its spec for the period (`approval`; any person may
-approve, jms_kapps 96). The sweep runs a ramp one
+approve). The sweep runs a ramp one
 rate per run, in rising order, judges each level with the broken rule after its run, and stops
 the ramp at the first level it ends at (`sweep`).
 
@@ -16,8 +13,8 @@ case 2 with the wrapper (`uc2`), each over its measured window but the first:
 - a refusal for want of heap (`heap refusal`), under the load: in the warm-up, the window and
   the drain (`summary`);
 - more than 1 % of the store requests refused or unanswered, timed out or with their connection
-  dropped (`refused or unanswered`; until 2026-10-14 named `refused or timed out`, the same sum,
-  jms_kapps 109);
+  dropped (`refused or unanswered`; a record written before the rename names it `refused or timed
+  out`, the same sum);
 - a p95 commit latency more than 10 times its value at the ramp's lowest rate, the lowest box
   rate of the same configuration (`p95 commit latency`).
 
@@ -42,7 +39,7 @@ run but no run that counts (a run that failed, or one that a check found invalid
 cannot be judged, and the ramp sends no higher rate to the store. A level whose only run a stop
 signal ended has not run yet, and runs again. A ramp none of whose levels broke has no scale yet:
 it was not broken up to its highest rate. Each repetition of a ramp, a repetition on request in a
-spec with the precision rule (`heavy_parts`, jms_kapps 114), is judged apart, from its own runs.
+spec with the precision rule (`heavy_parts`), is judged apart, from its own runs.
 
 **The judgement of a ramp** is one of three. *UC2-limited at level X* when the first UC2-limited
 level comes before the first broken level, or when no level broke. *Broken at level Y (signal)*
@@ -51,13 +48,9 @@ plateau, or the top level reached, or no spawn counts in the records), or both h
 same level. The table compares a UC2-limited ramp with the replay of the same configuration
 (`ramp_comparison`).
 
-(Added on 2026-10-12, jms_kapps 49.)
-
-(Changed on 2026-10-12, jms_kapps 99, decided by Sören Weindel as the product owner of the tests,
-jms_kapps 85. Until then a level was broken on four signals, a plateau of the completed writes
-among them, and the ramp stopped at its first broken level, so a UC2-limited level, which usually
-plateaus, stopped the ramp and its plateau said nothing about the store or KAPPS. The plateau is
-now only shown; the judgement and the accepted share are new.)
+A plateau of the completed writes breaks no level and is only shown: a UC2-limited level usually
+plateaus, and its plateau says nothing about the store or KAPPS, so the judgement and the accepted
+share decide.
 """
 
 from __future__ import annotations
@@ -73,19 +66,18 @@ from jms_kapps.evaluation.stats import quantile
 from jms_kapps.evaluation.summary import RunSummary, repetition_of, repetitions_made
 
 # The four store-side signals of the broken rule. `refused or unanswered` counts the requests that
-# the store refused, that timed out and whose connection dropped; until 2026-10-14 it was named
-# `refused or timed out`, for the same sum (jms_kapps 109, decided by Sören on jms_kapps 85, note
-# 1866296, decision 2; interim names).
+# the store refused, that timed out and whose connection dropped; a record written before the
+# rename names it `refused or timed out`, for the same sum (interim names).
 HEAP_REFUSAL = "heap refusal"
 REFUSED_OR_UNANSWERED = "refused or unanswered"
 P95_COMMIT_LATENCY = "p95 commit latency"
 PLATEAU = "plateau"
 SIGNALS = (HEAP_REFUSAL, REFUSED_OR_UNANSWERED, P95_COMMIT_LATENCY, PLATEAU)
-# The signals that break a level: the plateau is found and shown, but breaks none (jms_kapps 99).
+# The signals that break a level: the plateau is found and shown, but breaks none.
 BREAKING_SIGNALS = (HEAP_REFUSAL, REFUSED_OR_UNANSWERED, P95_COMMIT_LATENCY)
 
 # The names that a record written before keeps for a signal, each with its name now: a reader
-# shows the name now (`signal_name`), and no record file is changed (jms_kapps 109).
+# shows the name now (`signal_name`), and no record file is changed.
 EARLIER_SIGNAL_NAMES = {"refused or timed out": REFUSED_OR_UNANSWERED}
 
 # Their bounds: more than 1 % refused or unanswered; a p95 commit latency more than 10 times the
@@ -94,11 +86,10 @@ REFUSED_OR_UNANSWERED_SHARE = 0.01
 P95_COMMIT_LATENCY_FACTOR = 10.0
 PLATEAU_RISE = 0.05
 
-# A level is UC2-limited when fewer than 90 % of its offered spawns are accepted (jms_kapps 99,
-# interim name): a judgement setting outside the configuration's key.
+# A level is UC2-limited when fewer than 90 % of its offered spawns are accepted (interim name): a judgement setting outside the configuration's key.
 ACCEPTED_SHARE = 0.9
 
-# The three judgements of a ramp (jms_kapps 99, interim names).
+# The three judgements of a ramp (interim names).
 UC2_LIMITED = "UC2-limited"
 BROKEN = "broken"
 CANNOT_TELL = "cannot tell"
@@ -113,7 +104,7 @@ class LevelNumbers:
     refused_or_unanswered: int
     p95_commit_latency: float | None
     completed_writes_per_minute: float | None
-    # The spawns of the window (jms_kapps 99): None where no run of the level holds a count.
+    # The spawns of the window: None where no run of the level holds a count.
     spawns_offered: int | None = None
     spawns_accepted: int | None = None
     # The store requests per minute of the window the runs pooled, or None.
@@ -195,7 +186,7 @@ def level_numbers(runs: Sequence[RunSummary]) -> LevelNumbers:
 
 def signal_name(name: str) -> str:
     """The name now of a signal of the broken rule that a record names `name`: a record written
-    before jms_kapps 109 says `refused or timed out` (`EARLIER_SIGNAL_NAMES`)."""
+    before the rename says `refused or timed out` (`EARLIER_SIGNAL_NAMES`)."""
     return EARLIER_SIGNAL_NAMES.get(name, name)
 
 
@@ -294,7 +285,7 @@ def breaks(found: Sequence[Mapping[str, Any]]) -> bool:
 
 @dataclass(frozen=True)
 class RampJudgement:
-    """The judgement of a ramp (jms_kapps 99, interim names): `UC2_LIMITED` at the box rate
+    """The judgement of a ramp (interim names): `UC2_LIMITED` at the box rate
     `level`, `BROKEN` at `level` by `signals`, or `CANNOT_TELL`."""
 
     kind: str = CANNOT_TELL
@@ -338,7 +329,7 @@ def judgement_of(
 class Judgement:
     """How far a ramp went: each level judged, in rising order, with its numbers and the signals
     it showed, and where the ramp ended, if it did. `uc2_limited_at` is the box rate of its
-    first UC2-limited level, and `judgement` the ramp's judgement (jms_kapps 99, interim)."""
+    first UC2-limited level, and `judgement` the ramp's judgement (interim)."""
 
     levels: Sequence[Mapping[str, Any]] = field(default_factory=list)
     ended: bool = False
@@ -475,7 +466,7 @@ def steps_of(
 ) -> list[Step]:
     """The steps of a ramp, its `levels` in rising order, each with the summaries of its runs
     among `summaries` that are of the ramp's repetition `repetition`: each repetition of a ramp is
-    judged apart (jms_kapps 114, interim). A run whose record names no repetition is of the
+    judged apart (interim). A run whose record names no repetition is of the
     first."""
     return [
         Step(
@@ -509,7 +500,7 @@ def ramp_repetitions(
     levels: Sequence[SpecConfiguration], summaries: Sequence[RunSummary]
 ) -> list[int]:
     """The repetitions of the ramp of `levels` that have a run among `summaries`, in rising order:
-    1 alone where none has (jms_kapps 114, interim). A run that a stop signal ended is none."""
+    1 alone where none has (interim). A run that a stop signal ended is none."""
     made = repetitions_made(
         summaries, run_kind=RUN_KIND, keys={level.key for level in levels}
     )

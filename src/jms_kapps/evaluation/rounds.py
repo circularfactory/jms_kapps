@@ -1,14 +1,11 @@
-"""The rounds of a sweep under the precision rule (jms_kapps 111, decided by Sören on 2026-10-13
-as the product owner of the tests, jms_kapps 85, note 1866296, decision 5; interim names,
-jms_kapps 83): which runs the next round makes. Pure functions over the run summaries, with no
+"""The rounds of a sweep under the precision rule (interim names): which runs the next round makes. Pure functions over the run summaries, with no
 store and no clock.
 
 **A round** makes one run of each selected configuration under the rule that is still **open**, in
 the spec's order: round k makes repetition k. A configuration is open while it does not meet the
 rule and has made fewer than the rule's maximum of runs, 20 (`is_open`, the one place that decides
-it); one whose throughput median is 0 once it has its minimum of valid runs stops there (changed
-on 2026-10-14, jms_kapps 113: until then it ran to the maximum). A round is a time window in the
-sense of the numbers decision (jms_kapps 56), so the minimum of 10 valid runs comes from at least
+it); one whose throughput median is 0 once it has its minimum of valid runs stops there. A round is a time window in the
+sense of the numbers decision, so the minimum of 10 valid runs comes from at least
 10 time windows.
 
 **The next round** is the lowest round that has a run to make: a repetition without a record of
@@ -18,9 +15,7 @@ records (the summaries): a call that stops goes on at its round in the next call
 with more records than the others is planned in the round of its next repetition, and the records
 made in the passes before the rounds count as their repetitions.
 
-(Until 2026-10-13 the passes planned the runs: pass 1 made repetitions 1 to 5 of every
-configuration, pass 2 6 to 10, each later pass one more of each configuration that did not meet
-the rule, and a call made at most one pass and exited. Sören's decision replaced them.)
+
 """
 
 from __future__ import annotations
@@ -89,8 +84,7 @@ def is_open(
 ) -> bool:
     """Whether the rounds still plan runs of `configuration` (`Verdict.stopped`): it does not
     meet the rule, has made fewer than its maximum of runs, and its throughput median is not 0 at
-    its minimum of valid runs or later (changed on 2026-10-14, jms_kapps 113: until then only the
-    rule and the maximum decided it). The one place that decides it.
+    its minimum of valid runs or later. The one place that decides it.
 
     Args:
         verdict: Its verdict, where the caller has it already (`verdict_of`).

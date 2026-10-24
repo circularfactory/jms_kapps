@@ -27,8 +27,12 @@ set -eo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null && pwd)"
 # The Launcher's one fixed address. `jms-uc2` prints it, so this script only opens it.
 launcher_page="http://127.0.0.1:8090/"
-# The local fallback's store, of `compose.yaml`.
-local_store="http://localhost:7200"
+# vendor-check: off -- the variable's name, which names the local GraphDB of the compose file
+# The local fallback's store, of `compose.yaml`, on the host port that `JMS_KAPPS_GRAPHDB_PORT`
+# names, 7200 without it. The compose file reads the same variable, which `docker compose`
+# inherits from this script's environment.
+local_store="http://localhost:${JMS_KAPPS_GRAPHDB_PORT:-7200}"
+# vendor-check: on
 
 start_local_store() {
     if docker compose version >/dev/null 2>&1; then

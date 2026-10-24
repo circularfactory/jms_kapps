@@ -3,9 +3,7 @@
 It stands for the production system level around the FlexConveyor station. It is an active
 party, with control logic and no conveyor of its own: its own middleware instance with two
 workflows, `:SpawnBoxWorkflow` and `:SetSpawnRateWorkflow`, a handler for the notifications it
-gets, and a dashboard of its own. It owns the station's entry. (Changed on 2026-10-06, jms_kapps
-41, decided by Etienne. Until then it had three workflows, the third "the `:ConveyWorkflow` that
-the origin of a spawn calls".)
+gets, and a dashboard of its own. It owns the station's entry.
 
 **Spawn.** **Roles are optional:** entry and exit are roles of a module, which a topology may
 name, and one module may have both. Unless the request names them, the WarehouseManagementSystem
@@ -18,22 +16,7 @@ take its place is refused with why, such as "Module4 is not an entry module" or,
 topology names no such role, "Module9 is not a module". If no such module is free, it spawns
 nothing and answers why: "no entry module is free", or "no module is free". A box is named by a
 new UUID (`vocabulary.new_box_iri`), so that more than one middleware can create boxes without a
-shared number, and the spawn reads no box in the graph to name it. (Changed on 2026-10-12,
-jms_kapps 92, decided by Sören on jms_kapps 85: "a new box gets a UUID, so that more than one
-middleware can create boxes without a shared number". Until then: "A box takes the number after
-the highest of the boxes in the graph and of the spawns in flight, whose boxes are in the graph
-only from their create on.") (Changed on 2026-10-06, jms_kapps 45, decided by Etienne: "in
-general entry and exit module are roles. a module can be both", and roles are optional, as the
-first iteration's WarehouseManagementSystem had them. Until then: "Unless the request names them,
-the WarehouseManagementSystem picks a random free entry module, read from the graph, as the box's
-origin, and a random exit module as its destination. A named origin must have the role of an
-entry module and a named destination that of an exit module; entry and exit are roles, and one
-module may have both. A spawn that names a module without the role is refused with why, such as
-"Module4 is not an entry module". If no entry module is free, it spawns nothing and answers why."
-The rule for a named module was the spawn-rules decision of 2026-10-05, KSM 413, 1(a). The wording
-of the reasons where the topology names no role, "Module9 is not a module", "no module is free"
-and "the graph has no module other than Module1", is the build's reading, and so is "other than
-Module1" where it names exit modules, which said "the graph has no exit module".)
+shared number, and the spawn reads no box in the graph to name it.
 
 **Only a reachable destination.** A destination is reachable from an origin where the connections
 in the graph lead from the origin to it, each one way, as listed; the WarehouseManagementSystem
@@ -45,16 +28,13 @@ Module4", or "... can reach an exit module", where free origins exist but none d
 destination that the named origin cannot reach is refused with "Module4 cannot be reached from
 Module1". The reasons name the roles as the others do: "module" where the topology names no such
 role. Where the origin has no other destination at all, the reason stays "the graph has no exit
-module other than Module1". (Added on 2026-10-07, jms_kapps 51, decided by Etienne: "the WMS picks
-only an exit that it can reach from the origin, for every topology". That the reason for no other
-destination at all stays is the build's reading.)
+module other than Module1".
 
 **A strategy picks.** The picks above are those of `real`, the default WMS strategy
 (`strategies`): where the request leaves an end to pick, the WarehouseManagementSystem's strategy
 picks one pair among the candidates, the free origins with the destinations each reaches, and a
-pair that is not a candidate refuses the spawn. (Added on 2026-10-10, jms_kapps 52, decided by
-Etienne on 2026-10-07: "a strategy is chosen at start in the Launcher, for the WMS and for the
-modules; the default is today's real behaviour".)
+pair that is not a candidate refuses the spawn. The strategy is chosen at start in the Launcher,
+for the WMS and for the modules, and `real` is the default.
 
 **Spawns at once.** Spawns run at once, each on the thread of its request or of the spawn timer,
 and the timer has no wait of its own (`spawn_rate`). At most as many spawns are under way at once,
@@ -62,8 +42,8 @@ of the spawn workflow and of the timer alike, as the topology has modules that m
 by the latest read of the modules that a spawn made; before the first read there is no cap. A
 spawn asked for at the cap does not start, and is refused with "every origin has a spawn under
 way". Concurrent spawns pick apart: the origin of a spawn under way is not free for another
-spawn's pick, as a module that holds a box is not. (Added on 2026-10-07, jms_kapps 51, decided by
-Etienne: "the WMS can spawn as fast as the hardware allows, with no wait of its own".)
+spawn's pick, as a module that holds a box is not. The WMS spawns as fast as the hardware allows,
+with no wait of its own.
 
 **The picking lock covers only the slot bookkeeping.** A spawn reads the graph outside it: the
 modules with the connections, and what each origin it may pick holds. Under it, it chooses its
@@ -72,12 +52,7 @@ itself in flight; it takes the lock again only to leave the flight. So a spawn t
 its slot without waiting for another spawn's reads, and concurrent spawns still pick apart. A read
 can be stale: when another spawn left the flight after this spawn's reads began, its origin may
 hold that spawn's box by now, so this spawn reads once more before it chooses. A Reserve that the
-origin refuses still refuses the spawn with the origin's reason. (Changed on 2026-10-12, jms_kapps
-92, decided by Sören on jms_kapps 85: "the picking lock covers only the slot bookkeeping". Until
-then: "The reads and the pick of each spawn, and the number of its box, come one spawn after the
-other; the Reserve, the create and the notification do not.", which the build of jms_kapps 51 had
-read so, to keep the picks apart and the box numbers unique. That a stale read is read once more,
-and only once, is the ticket's.)
+origin refuses still refuses the spawn with the origin's reason.
 
 **Every spawn accounted for.** Each spawn asked for ends in exactly one record at INFO: the record
 of the box spawned, or "spawn refused: <reason>", with its origin and destination where they are
@@ -85,16 +60,14 @@ known (`spawn_record`). A spawn counts at its answer, created once the store adm
 one whose origin then cannot be notified is recorded as spawned, beside its warning. A spawn that
 raises is recorded as refused with "the spawn failed: <error>", and its traceback is logged where
 it was asked: by the spawn timer, or by the middleware for the workflow. Every answer, a refusal
-at the cap included, goes into its memory. (Added on 2026-10-07, jms_kapps 51, decided by
-Etienne: "no box is lost silently: each spawn asked for is either created or logged with its
-reason".)
+at the cap included, goes into its memory. No box is lost silently: each spawn asked for is
+either created or logged with its reason.
 
 **The box is spawned directly on the origin.** The WarehouseManagementSystem asks the origin's
 Reserve for the box, and writes nothing before the origin accepts. The Reserve names the box's
 destination, and the origin accepts only once its own next module has accepted a plain Reserve for
 the box at once, so no origin fills with a box that cannot move on; a box that waits for the
-origin comes before the spawn (added on 2026-10-06, jms_kapps 43, decided by Etienne; "no origin"
-since jms_kapps 45, when roles became optional, where it said "no entry module"). An origin
+origin comes before the spawn. An origin
 that holds a box, or has reserved itself for another, refuses, and the spawn is refused with the
 origin's reason, whether the request named the origin or the WarehouseManagementSystem picked it:
 no other module is tried, and the origin is not asked again. An origin that cannot be reached refuses the spawn
@@ -108,24 +81,15 @@ the origin since its answer, nothing is written, the refusal is logged with its 
 on the WarehouseManagementSystem's handover event stream, and the answer carries the report. Then
 it notifies the origin of the transport: the origin's intake reads the transport and carries the
 box on, and the notification uses the origin's reservation up. It logs its side, at INFO: the
-origin's acceptance of its Reserve, the transport `queued`, and the spawn's one record. (Changed on
-2026-10-07, jms_kapps 51, decided by Etienne: every spawn ends in one record. Until then: "the
-origin's answer to its Reserve, a refusal with the origin's reason, the transport `queued`, and
-the spawn".) (Changed on 2026-10-06, jms_kapps 41, decided by Etienne. Until then the spawn was a
-handshake of Reserve, Convey and Receive: "Once reserved, the origin calls the
-WarehouseManagementSystem's Convey. Convey opens the transport with one `mw.create()`: the
-`:BoxTransportOperation` as `queued`, assigned to the origin, the box, and the
-WarehouseManagementSystem's first possession of it. [...] Then it hands the box to the origin with
-the middleware's handover [...] After the move, the WarehouseManagementSystem notifies the origin
-of the transport, and the origin carries the box on.")
+origin's acceptance of its Reserve, the transport `queued`, and the spawn's one record: every
+spawn ends in one record.
 
 **An origin that cannot be notified.** The box is on the origin and the transport is assigned to
 it, but nothing would start its BoxTransportWorkflow: the WarehouseManagementSystem ends the
 transport `failed` with why ("Module1 is not reachable: ..."), as a module does that cannot reach
 its next module, logs one warning, and the answer of the spawn says so. The origin leaves that
 transport alone. So the WarehouseManagementSystem writes a transport only in the create that opens
-it and when it cannot notify the origin. (Changed on 2026-10-06, jms_kapps 41, decided by Etienne.
-Until then it also ended the transport when "the origin's Receive" did not reach the origin.)
+it and when it cannot notify the origin.
 
 **A stop.** Once the stop of its process has begun, it refuses every spawn, with the reason "the
 system is stopping", and creates no box, neither for the spawn workflow nor for the spawn rate's
@@ -133,39 +97,13 @@ timer: it asks once more just before the create. A spawn already under way ends.
 notify the origin then, since every process of the run stops at once and the origin's server
 takes no new connection, it ends the transport `failed` with the stop as its reason, "the system
 is stopping", and its warning says why the origin was not told; the origin, which waits for the
-notification at its own stop, writes nothing. (Added on 2026-10-06, jms_kapps 42, decided by
-Etienne: the WarehouseManagementSystem ends the transport between its create and its
-notification at a stop; the reason is the build's reading of "a stop fails the transport with
-why".)
-
-(Changed on 2026-10-05, KSM 413, decided by Etienne, and merged on 2026-10-06 with the build of
-KSM 415, whose rules for an origin that cannot be reached and for a stop it keeps. Until then the
-WarehouseManagementSystem had two workflows, and the paragraph on the spawn and the last one but
-one read: "**Spawn.** Unless the request names them, the WarehouseManagementSystem picks a random
-free entry module, read from the graph, as the box's origin, and a random exit module as its
-destination. If no entry module is free, it spawns nothing and answers why. One `mw.create()` then
-opens the transport: the `:BoxTransportOperation` as `queued`, the box, and the
-WarehouseManagementSystem's first possession of it. If the store refuses that commit, as it refuses
-a destination that is no module, nothing is written, and the answer carries its report. Then it
-hands the box to the origin with the middleware's handover, whose entry commits the change of
-possession: the store admits it or refuses it before anything moves. If the store refuses, the
-transport ends `failed` with the store's report, the box stays in the WarehouseManagementSystem,
-and the answer carries the reason. The body is the move. After it, the WarehouseManagementSystem
-notifies the origin of the transport, which it opened assigned to the origin, and the origin
-carries the box on. If the notification does not arrive, the origin is not reachable, and nothing
-would start its BoxTransportWorkflow: the box is on the origin, and the WarehouseManagementSystem
-ends the transport `failed` with why ("Module1 is not reachable: ..."), as a module does that
-cannot reach its next module, and the answer says so." and "**The WarehouseManagementSystem calls
-no workflow of a module**, no Reserve and no Receive: the store's admission is the only check at
-the level boundary.")
+notification at its own stop, writes nothing.
 
 **The notification back.** The destination module notifies the WarehouseManagementSystem once it
 has given the box back, and a module that cannot go on notifies it once it has recorded the
 transport `failed`: the transport has ended. The WarehouseManagementSystem checks the transport it
 is handed: it accepts a box it holds whose transport is done, and logs the acceptance as its
-evidence. Whether it holds the box it asks the store in one `ASK` about that one box (changed on
-2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85; until then it read every box it
-holds).
+evidence. Whether it holds the box it asks the store in one `ASK` about that one box.
 
 **What it knows.** It keeps in memory the answers to its newest spawns, the transports it opened
 with their last known status, and the boxes it holds, from the notifications back (`wms_memory`).
@@ -176,6 +114,7 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 import threading
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
@@ -218,9 +157,7 @@ class SpawnBoxRequest(BaseModel):
     left out, or left empty, is picked: a free entry module as the origin, an exit module as the
     destination, and, for a role the topology does not name, any free module as the origin and
     any module but the origin as the destination. Empty is how a form says it: a select whose
-    choice is the WarehouseManagementSystem's posts an empty value. (Changed on 2026-10-06,
-    jms_kapps 45, decided by Etienne: roles are optional. Until then the second sentence ended at
-    "destination".)"""
+    choice is the WarehouseManagementSystem's posts an empty value."""
 
     origin: str | None = None
     destination: str | None = None
@@ -244,8 +181,7 @@ class SpawnBoxResult(StepResult):
 
 class WmsReads(Protocol):
     """What the WarehouseManagementSystem reads. `discovery.GraphView` is the real one. None of it
-    reads every box in the graph (changed on 2026-10-12, jms_kapps 92: until then it read them
-    all, `boxes`, to number the next box)."""
+    reads every box in the graph."""
 
     def boxes_held_by(self, resource: IRI) -> list[IRI]: ...
 
@@ -277,9 +213,8 @@ class WmsWrites(Protocol):
 def seeded_choice(seed: int | None) -> Choose:
     """The chooser a WarehouseManagementSystem picks its modules with: `random.choice`'s shared
     generator where `seed` is None, else the choice of a generator of its own that `seed` seeds, so
-    that the same seed and the same candidates give the same sequence of picks. (Added on
-    2026-10-12, jms_kapps 93, decided by Sören on jms_kapps 85: "the WMS's pick takes a seed, set
-    per repetition". Interim name, jms_kapps 83.) Every pick is made under the picking lock, one
+    that the same seed and the same candidates give the same sequence of picks. The seed is set per
+    repetition. Interim name. Every pick is made under the picking lock, one
     at a time; concurrent spawns that reach it in another order draw the same numbers in that
     other order."""
     return random.choice if seed is None else random.Random(seed).choice
@@ -294,8 +229,7 @@ def create_refused(box: IRI, origin: IRI) -> str:
 class _NothingToSpawn(Exception):
     """No origin or no destination for a spawn, or one the request names that may not take the
     place it is named for: a module without the role, where the topology names that role, or no
-    module. The message says why. (Changed on 2026-10-06, jms_kapps 45, decided by Etienne: roles
-    are optional. Until then "or one the request names that lacks the role it is named for".)"""
+    module. The message says why. Roles are optional."""
 
 
 @dataclass(frozen=True)
@@ -329,7 +263,7 @@ class _StationRead:
     with their types and the connections (`station`), the modules that may be its origin and its
     destination, and `empty`, each origin that it read as holding no box. It reads what an origin
     holds only where it picks the origin, and not for an origin that was in flight when the read
-    began. (Added on 2026-10-12, jms_kapps 92.)"""
+    began."""
 
     station: ModulesAndConnections
     origins: Choice[IRI]
@@ -358,9 +292,8 @@ def spawn_candidates(
     origin that reaches none is no candidate.
 
     The WarehouseManagementSystem picks its origin among these, and its destination among those of
-    the origin. (Added on 2026-10-07, jms_kapps 51, decided by Etienne: "the WMS picks only an exit
-    that it can reach from the origin, for every topology".) Its WMS strategy picks the pair, and
-    `real` picks so (added on 2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07).
+    the origin, so that it picks only an exit it can reach from the origin, for every topology.
+    Its WMS strategy picks the pair, and `real` picks so.
     """
     connections = list(connections)
     candidates: dict[IRI, list[IRI]] = {}
@@ -377,7 +310,7 @@ def _unreachable(
 ) -> str:
     """Why a spawn has no candidate (`spawn_candidates`), in the terms of the roles: the named
     origin reaches no destination, or no free origin reaches the named destination, or any.
-    (Added on 2026-10-07, jms_kapps 51, decided by Etienne.)"""
+    """
     if request.origin is not None and request.destination is not None:
         return (
             f"{local_name(request.destination)} cannot be reached from "
@@ -401,26 +334,36 @@ def taken_back_record(resource: IRI, box: IRI, operation: IRI) -> str:
     )
 
 
+TAKEN_BACK = re.compile(
+    r"(?:^|[\s:])(?P<resource>[^\s:]+): accepted (?P<box>\S+) back, and "
+    r"(?P<operation>\S+) is done$"
+)
+"""A line of a log that holds a `taken_back_record`, whatever the log's format puts in front of it:
+the WarehouseManagementSystem, the box and its transport by their fragments."""
+
+
 def spawned_record(resource: IRI, box: IRI, origin: IRI, destination: IRI) -> str:
     """What the WarehouseManagementSystem `resource` logs once the store has admitted its create
     of `box` on `origin`, for `destination`: the record of the box spawned (`spawn_record`).
-    (Changed on 2026-10-10, jms_kapps 51: a spawn counts at its answer, created when the store
-    admitted its create, so the record no longer waits for the notification. Until then it ended
-    "and notified `origin` of the box's transport".)"""
+    A spawn counts at its answer: created when the store admitted its create, so the record does
+    not wait for the notification."""
     return (
         f"{resource.fragment}: spawned {box.fragment} onto {origin.fragment}, "
         f"for {destination.fragment}"
     )
 
 
+SPAWNED = re.compile(
+    r"(?:^|[\s:])(?P<resource>[^\s:]+): spawned (?P<box>\S+) onto (?P<origin>\S+), "
+    r"for (?P<destination>\S+)$"
+)
+"""A line of a log that holds a `spawned_record`, whatever the log's format puts in front of it:
+the WarehouseManagementSystem, the box, its origin and its destination by their fragments."""
+
+
 def refused_record(resource: IRI, refused: SpawnBoxResult) -> str:
     """What the WarehouseManagementSystem `resource` logs when it answers a spawn with the refusal
     `refused`: why, and the spawn's origin and destination where they are known.
-
-    (Added on 2026-10-07, jms_kapps 51, decided by Etienne: "no box is lost silently: each spawn
-    asked for is either created or logged with its reason". It replaced the record of a Reserve
-    that the origin refused, "refused a spawn onto Module1, for Module2: <reason>". That the
-    origin and the destination follow the reason, in brackets, is the build's reading.)
     """
     known = [
         f"{end} {local_name(module)}"
@@ -441,8 +384,7 @@ def spawn_record(resource: IRI, answer: SpawnBoxResult) -> str:
     A spawn counts as created once the store admitted its create, which the answer shows by
     naming the box's transport: so a spawn whose origin then cannot be notified is recorded as
     spawned, while its answer says why it failed and a warning says that the origin was not
-    told. (Added on 2026-10-07, jms_kapps 51, decided by Etienne: "A spawn counts at its answer:
-    created when the store admitted its create".)
+    told.
     """
     if answer.operation is None:
         return refused_record(resource, answer)
@@ -463,7 +405,7 @@ class _SpawnsUnderWay:
     """How many spawns are under way, of the spawn workflow and of the spawn timer alike, and the
     cap on them: as many as the modules that may be an origin, as the latest read of the modules
     that a spawn made found them. It reads nothing of its own, so before the first read there is
-    no cap. (Added on 2026-10-07, jms_kapps 51, decided by Etienne.)"""
+    no cap."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -545,13 +487,6 @@ class WarehouseManagementSystem:
         # flight. A spawn chooses its modules under it, in memory, and enters itself in flight;
         # it never reads the store under it. The origin of a spawn in flight is not free for
         # another spawn's pick.
-        # (Changed on 2026-10-07, jms_kapps 51, decided by Etienne: "concurrent spawns pick
-        # apart". Until then the spawns in flight were kept as their boxes alone, and two that
-        # picked the same free module were "told apart by the origin's Reserve, which refuses the
-        # second".) (Changed on 2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85: "the
-        # picking lock covers only the slot bookkeeping". Until then it was "Held while a spawn
-        # reads the graph and picks its modules and its box: one spawn picks at a time", and a
-        # box was numbered after those in the graph and those in flight.)
         self._picking = threading.Lock()
         self._in_flight: dict[IRI, IRI] = {}
         self._left_flight = 0
@@ -563,15 +498,13 @@ class WarehouseManagementSystem:
         The answer is kept in its memory. So is a spawn that raised, as refused with the error as
         its reason, before the error goes on. Each answer is logged as one record at INFO
         (`spawn_record`): the box spawned, or the spawn refused with why, so that no spawn asked
-        for, of the spawn workflow or of the spawn timer, is lost silently. (Changed on
-        2026-10-07, jms_kapps 51, decided by Etienne. Until then only a spawned box, and a
-        Reserve that the origin refused, were logged.)
+        for, of the spawn workflow or of the spawn timer, is lost silently.
 
         **Spawns under way at once.** At most as many spawns are under way at once as the
         topology has modules that may be an origin, of the spawn workflow and of the spawn timer
         alike. A spawn asked for at that cap does not start, and is refused with "every origin
-        has a spawn under way". (Added on 2026-10-07, jms_kapps 51, decided by Etienne: "the WMS
-        can spawn as fast as the hardware allows, with no wait of its own".)
+        has a spawn under way". The WMS spawns as fast as the hardware allows, with no wait of its
+        own.
         """
         try:
             answer = self._spawn(request)
@@ -636,8 +569,7 @@ class WarehouseManagementSystem:
         It reads the graph outside the picking lock, then chooses under it, in memory, from what
         it read and from the spawns in flight. When another spawn left the flight after its reads
         began, its origin may hold that spawn's box by now: so it reads once more, and only
-        once, before it chooses. (Added on 2026-10-12, jms_kapps 92, decided by Sören on
-        jms_kapps 85: "the picking lock covers only the slot bookkeeping".)
+        once, before it chooses.
         """
         read_again = True
         while True:
@@ -666,8 +598,7 @@ class WarehouseManagementSystem:
 
         The Reserve names the box's destination, so the origin looks ahead: it accepts only once
         its own next module has reserved itself for the box, and this spawn's Reserve waits
-        behind every box that waits for the origin. (Added on 2026-10-06, jms_kapps 43, decided
-        by Etienne: "The WMS spawns a box only onto an origin that accepts under rule 1".)
+        behind every box that waits for the origin.
 
         A refusal of Reserve refuses the spawn with the origin's reason; an origin that cannot be
         reached, or whose answer is lost, refuses it with why, and a reservation the origin made
@@ -789,9 +720,7 @@ class WarehouseManagementSystem:
         Only a transport that is done, or in a status no notification should bring, makes the
         WarehouseManagementSystem ask the store whether it holds the transport's box, in one
         `ASK` about that one box: a failed one costs nothing beyond the middleware's read of the
-        transport. (Changed on 2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85: "when
-        a box returns, the WMS asks the store about that one box". Until then it read what it
-        holds, every box, to find this one among them.)
+        transport.
         """
         operation = transport.operation
         if transport.status == OperationStatus.FAILED:
@@ -824,7 +753,7 @@ class WarehouseManagementSystem:
         """The modules a spawn may name as its origin, and those it may name as its destination,
         read from the graph: the entry modules and the exit modules where the topology names
         them, and every module for a role it does not name. What the dashboard's form offers.
-        (Added on 2026-10-06, jms_kapps 45, decided by Etienne: roles are optional.)"""
+        Roles are optional."""
         return entries_and_exits(self.graph.modules_and_connections().types)
 
     def _read(self, request: SpawnBoxRequest, in_flight: set[IRI]) -> _StationRead:
@@ -832,8 +761,7 @@ class WarehouseManagementSystem:
         lock: the modules with the connections, in one read, and, where it picks the origin, what
         each module that may be its origin holds, but for those in `in_flight`, the origins of
         the spawns in flight when the read began. Its answers do not grow with the boxes in the
-        graph. (Added on 2026-10-12, jms_kapps 92: the reads of `_origin_and_destination`, which
-        ran under the picking lock until then.)"""
+        graph. They are the reads of `_origin_and_destination`, made outside the picking lock."""
         station = self.graph.modules_and_connections()
         origins, destinations = choices(station.types)
         self._under_way.cap_at(len(origins.modules))
@@ -851,32 +779,27 @@ class WarehouseManagementSystem:
     ) -> tuple[IRI, IRI]:
         """The modules the request names, or those picked for it, from what the spawn `read`, in
         memory: called under the picking lock. A picked origin is one it read as holding no box,
-        and not the origin of a spawn in flight now. (Changed on 2026-10-12, jms_kapps 92: until
-        then it read the graph itself, under the lock.)
+        and not the origin of a spawn in flight now. It reads nothing itself.
 
         **Roles are optional** (`topology.choices`). Where the topology names entry modules, a
         named origin must be one, and a picked one is a free one; where it names none, the origin
         is any module, and a picked one any free module. Where it names exit modules, a named
         destination must be one, and a picked one is one; where it names none, the destination
         is any module. A picked destination is never the origin, and a named one may not be. One
-        module may have both roles. (Changed on 2026-10-06, jms_kapps 45, decided by Etienne:
-        roles are optional, as the first iteration's WarehouseManagementSystem had them. Until
-        then: "A named origin must have the role of an entry module, and a named destination that
-        of an exit module; one module may have both roles.")
+        module may have both roles. Roles are optional, as the first iteration's
+        WarehouseManagementSystem had them.
 
         **Only a reachable destination** (`spawn_candidates`). A picked destination is one the
         origin reaches over the connections, and a picked origin one that reaches the named
         destination, or else some destination; a named destination that the named origin does not
-        reach is refused. (Added on 2026-10-07, jms_kapps 51, decided by Etienne: "the WMS picks
-        only an exit that it can reach from the origin, for every topology".)
+        reach is refused, for every topology.
 
         **A strategy picks** (`strategies`). Where the request leaves an end to pick, the
         WarehouseManagementSystem's strategy picks one pair among the candidates, given the
         connections as this read found them and the chooser; `real` lets the chooser pick the
         origin, then the destination, as before. A pair that is not a candidate refuses the
         spawn: "the strategy <name> chose Module1 to Module7, which is not a candidate". A
-        request that names both ends is checked as before, and no strategy is asked. (Added on
-        2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07.)
+        request that names both ends is checked as before, and no strategy is asked.
 
         Raises:
             _NothingToSpawn: If there are none, or the request names one that may not take the
@@ -912,7 +835,7 @@ class WarehouseManagementSystem:
             allowed = destinations.modules
             if request.origin is not None and allowed == [IRI(request.origin)]:
                 raise _NothingToSpawn(
-                    f"the graph has no {destinations.name} other than "
+                    f"the knowledge graph has no {destinations.name} other than "
                     f"{local_name(request.origin)}"
                 )
         candidates = spawn_candidates(station.connections, free, allowed)
@@ -933,9 +856,7 @@ class WarehouseManagementSystem:
     def _chooser(self, request: SpawnBoxRequest) -> Choose:
         """The chooser the strategy picks with for a spawn of `request`: this party's, except
         that a module the request names is no pick. Given it alone, it answers it, and this
-        party's chooser is not asked, as it was not asked before the strategies. (Added on
-        2026-10-10, jms_kapps 52, the build's reading of "the chooser picks the origin among the
-        candidate origins, then the destination among that origin's destinations, as today".)"""
+        party's chooser is not asked."""
         named = {IRI(m) for m in (request.origin, request.destination) if m is not None}
 
         def choose(options: Sequence[IRI]) -> IRI:

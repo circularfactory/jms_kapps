@@ -10,19 +10,18 @@ itself, and `table.md`, the same for a person to read. It needs no store and run
 **The rows.** One row for each configuration of the spec at its box rate, its load level: the
 configurations that differ only in the wrapper are one row, since the run kind tells them apart.
 A row has columns for each run kind: `uc2`, with the wrapper; `uc2-unwrapped`, without it; and
-`baseline`, the store-only baseline that replays a run of the row (jms_kapps 81). A run kind with
+`baseline`, the store-only baseline that replays a run of the row. A run kind with
 no run that counts leaves its columns empty.
 
 **The statistics,** for each row and each run kind, over the runs that count, from the measured
-window alone, which is all that a baseline measures (decided by Etienne on 2026-10-11, the numbers
-decision, jms_kapps 56):
+window alone, which is all that a baseline measures:
 
 - the commit latency and the store-request latency, each as the pooled p50, p95 and p99 with a
   bootstrap 95 % interval that resamples whole repetitions, from the recorded seed (`stats`);
 - the completed writes per minute and the transports ended per minute, each as the median and the
   interquartile range of the runs;
 - the store requests that the store refused, those that timed out and those whose connection
-  dropped, apart, and the share of the three together, refused or unanswered (jms_kapps 109; a
+  dropped, apart, and the share of the three together, refused or unanswered (a
   request that a record written before says "timed out" is classified by its error, `summary`),
   and the refusals for want of heap, which count under the load: in the warm-up, the window and
   the drain (`summary`);
@@ -38,42 +37,38 @@ wrapper, the transports ended per minute and the refused spawns, which give the 
 overhead, beside the matcher's reads of both. **Each ramp** of the spec shows each level it
 judged with the broken rule, where it ended and its scale, the level before the first broken one
 (`ramp`), for each of its repetitions apart, with how many it has: a repetition on request
-(jms_kapps 114) has its own judgement, compared with the replay's first repetition. The row of a
+has its own judgement, compared with the replay's first repetition. The row of a
 ramp's level holds its first repetition only. **The runs
 left out** of the statistics are listed, each with why: invalid, with the
 checks it failed; failed; or interrupted. A baseline of a run left out is left out too.
 
-**The precision rule** (added on 2026-10-12, jms_kapps 101, interim names). For a spec with a
+**The precision rule** (interim names). For a spec with a
 `[precision]` table each row has a `precision` entry per run kind of the configurations that run
 under the rule: the runs made, the valid runs, the rounds they were made in (as their records say;
-a record made before the rounds, jms_kapps 111, says its pass, which the table shows as it is),
+a record made before the rounds, says its pass, which the table shows as it is),
 and the rule's status (`precision`): `met`, `pending (n runs)`, `precision not reached (n
 runs)` where the maximum is made without it, or `stopped: throughput median 0` where the median
-of the transports ended per minute is 0 at the minimum of valid runs or later (added on
-2026-10-14, jms_kapps 113). The verdict is made on the row's own numbers;
+of the transports ended per minute is 0 at the minimum of valid runs or later. The verdict is made on the row's own numbers;
 `rule_numbers` makes the same ones for the sweep's rounds, without the other bootstraps of a cell.
 
-**The series** (added on 2026-10-14, jms_kapps 110, interim names). The text shows each
+**The series** (interim names). The text shows each
 configuration number with the spec's series (`spec.Spec.series`), such as "before 7" or "after 1,
 2" for a row of two configurations, so that the numbers of two specs cannot be confused; the JSON
 keeps the numbers and gains `series`, beside them in each row and at the top.
 
-**The replay levels** (added on 2026-10-12, jms_kapps 98, interim names, jms_kapps 83). A baseline
+**The replay levels** (interim names). A baseline
 replays a run compressed in time by a factor (`replay_levels`), and the table keeps the levels
 apart. The factor-1 baseline, and a baseline of an earlier record, which says no factor, stay the
 row's `baseline` columns, as they were. Each factor above 1 has columns of its own, `baseline x2`,
 `baseline x4`, and so on, in `replays` of the row, with the statistics of the other run kinds; and
 the section "Replay levels" holds, for every baseline that says its level, the repetition of the
 replay, the factor, the offered and the achieved rate per minute, the refusals, the timeouts and the
-dropped connections, and the signals that broke it, each by its name now (a record written before
-jms_kapps 109 says `refused or timed out`; the table shows `refused or unanswered`): the first
+dropped connections, and the signals that broke it, each by its name now (a record written before the
+rename says `refused or timed out`; the table shows `refused or unanswered`): the first
 broken level of a row is where its store broke under the
 replay. The `baseline` and `baseline x2` columns hold the first repetition of a replay only, the
-one the ramp comparison uses, as Sören ruled on 2026-10-14; the later repetitions are kept apart
-in the section, which says how many each replay has (jms_kapps 114; interim names). (Changed on
-2026-10-14, jms_kapps 114: until then those columns pooled every repetition of a replay.)
-
-(Added on 2026-10-12, jms_kapps 49.)
+one the ramp comparison uses; the later repetitions are kept apart
+in the section, which says how many each replay has (interim names).
 """
 
 from __future__ import annotations
@@ -154,7 +149,7 @@ class _Row:
     # The baselines of a replay compressed by a factor above 1, by the factor.
     replays: dict[float, list[RunSummary]] = field(default_factory=dict)
     # The runs of a ramp's level and the replay levels of a later repetition, which no cell pools:
-    # the cells show the first repetition (jms_kapps 114).
+    # the cells show the first repetition.
     later: list[RunSummary] = field(default_factory=list)
 
     @property
@@ -246,7 +241,7 @@ def make_table(
         table_rows.append(
             {
                 "configurations": row.numbers,
-                # The spec's series, which the text shows with each number (jms_kapps 110).
+                # The spec's series, which the text shows with each number.
                 "series": spec.series,
                 "values": row.values,
                 "ramp": row.configurations[0].ramp,
@@ -300,7 +295,7 @@ def _ramps(
     summaries: Sequence[RunSummary],
     table_rows: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Each repetition of each ramp (jms_kapps 114), judged apart, with how many repetitions the
+    """Each repetition of each ramp, judged apart, with how many repetitions the
     ramp has and its comparison with the replay's first repetition (`ramp_comparison`)."""
     ramps: list[dict[str, Any]] = []
     for block, levels in ramps_of(found).items():
@@ -333,7 +328,7 @@ def _baselines(row: _Row) -> list[RunSummary]:
 
 def _replay_levels(row: _Row) -> list[dict[str, Any]]:
     """The replay levels of a row: for each baseline that counts and says its level, whatever its
-    factor, the repetition of the replay (jms_kapps 114: 1 for a record that names none), the
+    factor, the repetition of the replay (1 for a record that names none), the
     factor, its run, the rates, the refusals, the timeouts and the dropped connections, and the
     signals that broke it, by
     repetition in rising order of the factor."""
@@ -355,7 +350,7 @@ def _replay_levels(row: _Row) -> list[dict[str, Any]]:
                 "signals",
             )
         }
-        # The licensed cores of the server, from the record's license view (jms_kapps 108).
+        # The licensed cores of the server, from the record's license view.
         | {"licensed_cores": run.licensed_cores}
         for run in _baselines(row)
         if run.counts and run.replay_level is not None
@@ -368,7 +363,7 @@ def _replay_levels(row: _Row) -> list[dict[str, Any]]:
 
 def _replay_repetitions(row: _Row) -> int:
     """How many repetitions the replay of a row has: those of its baselines that say their level
-    and that a stop signal did not end, whether they count or not (jms_kapps 114)."""
+    and that a stop signal did not end, whether they count or not."""
     return len(
         repetitions_made(
             (run for run in _baselines(row) if run.replay_level is not None),
@@ -496,7 +491,7 @@ def _precision(
     """How each configuration of the row that runs under the precision rule stands against it, by
     run kind: the verdict (`precision.judge`) on the row's own cell, so on the table's own
     numbers, with the runs made and the rounds they were made in (as their records say), and the
-    passes of the records made before the rounds (jms_kapps 111)."""
+    passes of the records made before the rounds."""
     standing: dict[str, Any] = {}
     for configuration in row.configurations:
         if not configuration.ruled:
@@ -553,8 +548,7 @@ def rule_numbers(
     runs of `summaries` that are its own and count: the table's own functions and defaults
     (`_latency`, `stats.median_and_iqr`), over the same runs, so they equal the table's cell for
     it. Only the commit latency and the transports ended per minute, without the other
-    bootstraps of a cell. None where no run counts. (Added on 2026-10-12, jms_kapps 101, interim
-    name.)"""
+    bootstraps of a cell. None where no run counts."""
     kind = RUN_KIND if configuration.values[_WRAPPER] else UNWRAPPED_RUN_KIND
     row = _row_key({k: v for k, v in configuration.values.items() if k != _WRAPPER})
     counting = [
@@ -1144,7 +1138,7 @@ def _numbers(row: Mapping[str, Any]) -> str:
 
 
 def _named(series: str | None, numbers: Sequence[int]) -> str:
-    """Configuration numbers with their series, such as `before 7` (jms_kapps 110): the numbers
+    """Configuration numbers with their series, such as `before 7`: the numbers
     alone where the table names no series."""
     shown = ", ".join(map(str, numbers))
     return f"{series} {shown}" if series else shown

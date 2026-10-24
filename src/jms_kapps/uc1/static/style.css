@@ -1,0 +1,148 @@
+/* The look of the pages of use cases 1 and 2: SFB 1574's colours, read off its logo. Every page
+   carries this block with the same names and values, each in its own stylesheet, because separate
+   processes serve them. The colours that carry meaning, the process states, keep their own
+   variables. */
+:root {
+  --teal: #1b7a86;
+  --petrol: #0a3249;
+  --indigo: #151a4c;
+  /* Only for signals and errors. */
+  --signal: #d0443a;
+  --ink: #231f20;
+  --muted: #5d6a72;
+  --line: #dde4e7;
+  --paper: #fff;
+  --ground: #fff;
+  --tint: #f2f7f8;
+  --live: #2e7d32;
+  --starting: #b26a00;
+  --failed: #c62828;
+  --stopped: #8a8a8a;
+  --killed: #7b1fa2;
+  --link: #14646f;
+  /* The green frame of a module drawn from above, as on a real FlexConveyor module. */
+  --frame: #3fae49;
+  /* A live module that holds a box: neither red, which means failed, nor the orange of a box. */
+  --holds: #dbe9f8;
+}
+
+* { box-sizing: border-box; }
+
+/* What the page hides stays hidden, whatever display a class gives it. */
+[hidden] { display: none !important; }
+
+body {
+  font: 15px/1.5 system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--ground);
+  margin: 0;
+  padding: 0 20px 24px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  max-width: 1180px;
+  margin: 0 auto 20px;
+  padding: 14px 0 12px;
+  border-bottom: 2px solid var(--teal);
+}
+
+header img.logo { height: 40px; width: auto; display: block; }
+h1 { font-size: 18px; font-weight: 600; margin: 0; color: var(--indigo); }
+h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; color: var(--petrol); }
+main { max-width: 1180px; margin: 0 auto; }
+
+section {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.muted { color: var(--muted); font-size: 13px; }
+.mono { font-family: ui-monospace, monospace; font-size: 12px; }
+.spacer { flex: 1; }
+
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font-weight: 600; color: var(--petrol); font-size: 12px; letter-spacing: .02em; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+thead th { border-bottom: 2px solid var(--line); }
+tbody tr:hover td { background: var(--tint); }
+
+button, .button, select, input {
+  font: 13px system-ui, sans-serif;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 3px 10px;
+}
+button, .button { cursor: pointer; text-decoration: none; display: inline-block; }
+button:hover, .button:hover { background: var(--tint); border-color: var(--teal); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary, .button.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+button.primary:hover, .button.primary:hover { background: var(--petrol); border-color: var(--petrol); }
+button:focus-visible, .button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+button.link { border: 0; background: none; padding: 0; color: var(--link); font-size: 14px; }
+button.link:hover { text-decoration: underline; background: none; }
+
+a { color: var(--link); }
+td.links a { margin-right: 10px; font-size: 13px; }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+tr.live .dot { background: var(--live); }
+tr.starting .dot { background: var(--starting); }
+tr.failed .dot { background: var(--failed); }
+tr.stopped .dot { background: var(--stopped); }
+tr.killed .dot { background: var(--killed); }
+tr.failed td:nth-child(2) { color: var(--failed); font-weight: 600; }
+tr.killed td:nth-child(2) { color: var(--killed); font-weight: 600; }
+/* A state the supervisor could not confirm against the graph lately: shown as last read. */
+tr.unconfirmed .dot { opacity: .35; }
+tr.unconfirmed td:nth-child(2) { font-style: italic; }
+/* The page's server does not answer: everything shown is from its last answer. */
+body.unanswered #processes { opacity: .55; }
+
+tr.output td { background: var(--tint); }
+tr.output pre {
+  margin: 4px 0 0;
+  font: 12px/1.5 ui-monospace, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.message { padding: 6px 10px; border-radius: 6px; white-space: pre-wrap; font-size: 13px; }
+.message.warning { background: #fff4e0; color: #7a4a00; margin: 0 0 16px; }
+.message.error { background: #fde8e8; color: var(--failed); }
+
+/* Operations and Learned values: the line on the latest read, the query's head on one line, and
+   its text below, as use case 2's Launcher shows its query of the boxes. */
+#operations-read, #learned-values-read { margin: 6px 0 0; }
+.query-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 10px; }
+.query-head .copy { margin-left: auto; }
+pre.query-text { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 24em; overflow: auto; background: var(--tint); padding: 6px 8px; border-radius: 4px; }
+body.unanswered #operations, body.unanswered #learned-values { opacity: .55; }
+
+/* What to do: two steps, always open. */
+#what-to-do ol { margin: 8px 0 0; padding-left: 22px; }
+#what-to-do li { margin-bottom: 8px; }
+#what-to-do .result { display: block; color: var(--muted); font-size: 13px; }
+
+details { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+summary { cursor: pointer; color: var(--link); }
+details p { margin: 6px 0 0; }
+
+/* A phone: the header stacks, and a section keeps its tables inside it, scrolling on its own. */
+@media (max-width: 640px) {
+  body { padding: 0 12px 16px; }
+  header img.logo { height: 32px; }
+  h1 { font-size: 16px; flex-basis: 100%; }
+  section { padding: 12px; }
+}

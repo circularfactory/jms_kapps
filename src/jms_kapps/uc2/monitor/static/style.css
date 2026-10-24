@@ -1,19 +1,32 @@
+/* The look of the Launcher and the monitor: SFB 1574's colours, read off its logo. Both pages carry
+   this block with the same names and values, each in its own stylesheet, because two processes
+   serve them. The colours that carry meaning (the process states, and the module drawing of the
+   monitor) keep their own variables. */
 :root {
-  --ink: #1c1c1c;
-  --muted: #6b6b6b;
-  --line: #d5d5d2;
+  --teal: #1b7a86;
+  --petrol: #0a3249;
+  --indigo: #151a4c;
+  /* Only for signals and errors. */
+  --signal: #d0443a;
+  --ink: #231f20;
+  --muted: #5d6a72;
+  --line: #dde4e7;
   --paper: #fff;
-  --ground: #f7f7f5;
+  --ground: #fff;
+  --tint: #f2f7f8;
   --live: #2e7d32;
   --starting: #b26a00;
   --failed: #c62828;
   --stopped: #8a8a8a;
-  --link: #0b5cad;
-  --accent: #1f4e8c;
+  --killed: #7b1fa2;
+  --link: #14646f;
   /* The green frame of a module drawn from above, as on a real FlexConveyor module. */
   --frame: #3fae49;
   /* A live module that holds a box: neither red, which means failed, nor the orange of a box. */
   --holds: #dbe9f8;
+}
+
+:root {
   /* The page's width at most: what a window of 1400 px leaves, so that the Boxes table beside
      the topology shows every column without scrolling. The topology keeps about its size there,
      672 px against the 698 px of a page 1180 px wide; in a narrower window it shrinks. */
@@ -27,27 +40,30 @@ body {
   color: var(--ink);
   background: var(--ground);
   margin: 0;
-  padding: 16px;
+  padding: 0 20px 24px;
 }
 
 header {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px 14px;
   max-width: var(--page);
-  margin: 0 auto 8px;
+  margin: 0 auto 20px;
+  padding: 14px 0 12px;
+  border-bottom: 2px solid var(--teal);
 }
 
-h1 { font-size: 20px; margin: 0; }
-h2 { font-size: 16px; margin: 0 0 4px; }
+header img.logo { height: 40px; width: auto; display: block; }
+h1 { font-size: 18px; font-weight: 600; margin: 0; color: var(--indigo); }
+h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; color: var(--petrol); }
 main { max-width: var(--page); margin: 0 auto; }
 
 section {
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 14px 16px;
+  border-radius: 10px;
+  padding: 16px 18px;
   margin-bottom: 16px;
   overflow-x: auto;
 }
@@ -57,8 +73,10 @@ section {
 .spacer { flex: 1; }
 
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
-th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; }
-th, td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { text-align: left; font-weight: 600; color: var(--petrol); font-size: 12px; letter-spacing: .02em; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+thead th { border-bottom: 2px solid var(--line); }
+tbody tr:hover td { background: var(--tint); }
 
 button, .button, select, input {
   font: 13px system-ui, sans-serif;
@@ -69,10 +87,11 @@ button, .button, select, input {
   padding: 3px 10px;
 }
 button, .button { cursor: pointer; text-decoration: none; display: inline-block; }
-button:hover, .button:hover { background: #f0f0ee; }
+button:hover, .button:hover { background: var(--tint); border-color: var(--teal); }
 button:disabled { opacity: .45; cursor: default; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-button.primary:hover { background: #173c6c; }
+button.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+button.primary:hover { background: var(--petrol); border-color: var(--petrol); }
+button:focus-visible, .button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
 button.link { border: 0; background: none; padding: 0; color: var(--link); font-size: 14px; }
 button.link:hover { text-decoration: underline; background: none; }
 
@@ -88,7 +107,7 @@ tr.failed .dot { background: var(--failed); }
 tr.stopped .dot { background: var(--stopped); }
 tr.failed td:nth-child(2) { color: var(--failed); font-weight: 600; }
 
-tr.output td { background: #fafaf8; }
+tr.output td { background: var(--tint); }
 tr.output pre {
   margin: 4px 0 0;
   font: 12px/1.5 ui-monospace, monospace;
@@ -99,9 +118,9 @@ tr.output pre {
 }
 
 .message { padding: 6px 10px; border-radius: 6px; white-space: pre-wrap; font-size: 13px; }
-.message.info { background: #eef3fa; }
+.message.info { background: var(--tint); }
 .message.ok { background: #edf6ee; }
-.message.error { background: #fdeeee; color: var(--failed); }
+.message.error { background: #fdeceb; color: var(--signal); }
 
 .switch { font-size: 13px; white-space: nowrap; }
 
@@ -113,8 +132,7 @@ tr.output pre {
 /* A column of sections may shrink below its tables' width: each section scrolls its own. */
 .layout > div { min-width: 0; }
 svg.topology { width: 100%; height: auto; display: block; margin: 0 auto; }
-/* A connection is a grey line, with a head where it leads. (Changed on 2026-10-10, jms_kapps 24:
-   the strong arrows of the hops went, and with them the class "hop".) */
+/* A connection is a grey line, with a head where it leads. */
 svg.topology .wire { stroke: #c2c2bc; stroke-width: 2; }
 svg.topology .wire-head path { fill: #9d9d96; }
 /* A module is drawn from above: a green frame round dark ground, and in monitor.js its silver
@@ -128,8 +146,7 @@ svg.topology .module .belt { fill: #353535; }
 svg.topology .module .belt-pad { fill: #8f969b; }
 svg.topology .module.offline .interior { opacity: .45; filter: grayscale(1); }
 /* The disc with a box's label on its destination, the first four characters of its UUID, in the
-   colour of the box's outline: 8px, so that the four stand inside the disc (11px until 2026-10-12,
-   jms_kapps 92, when the label was the box's number). */
+   colour of the box's outline: 8px, so that the four stand inside the disc. */
 svg.topology .destination circle { stroke: var(--paper); stroke-width: 2; }
 svg.topology .destination text { font: bold 8px ui-monospace, monospace; fill: var(--paper); stroke: none; }
 /* The names stand on the rollers: a light halo keeps them readable. */
@@ -138,15 +155,14 @@ svg.topology .name text.kind { font-size: 10px; fill: var(--ink); stroke-width: 
 svg.topology .box rect { fill: #e8a33d; stroke: #9a6414; stroke-width: 2.5; }
 svg.topology .box text { font: 10px ui-monospace, monospace; fill: var(--ink); }
 .metrics { display: flex; gap: 20px; margin: 6px 0 10px; }
-.metric b { display: block; font-size: 22px; }
+.metric b { display: block; font-size: 22px; color: var(--teal); }
 td.live { color: var(--live); font-weight: 600; }
 td.offline { color: var(--stopped); }
 pre.report { white-space: pre-wrap; word-break: break-all; max-height: 16em; overflow: auto; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
 .scroll { max-height: 22em; overflow-y: auto; }
 
-/* How the monitor reads: the switch of its mode and the interval of its graph read. */
-.modes { display: inline-flex; gap: 14px; }
+/* How the monitor reads: the interval of its graph read. */
 #graph-seconds { width: 5em; }
 
 /* Queries sent: one card per query, its head on one line, its text below. */
@@ -154,7 +170,7 @@ pre.report { white-space: pre-wrap; word-break: break-all; max-height: 16em; ove
 .query-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
 .query-head .copy { margin-left: auto; }
 .query .last.failed { color: var(--failed); }
-pre.query-text { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 16em; overflow: auto; background: #fafaf8; padding: 6px 8px; border-radius: 4px; }
+pre.query-text { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 16em; overflow: auto; background: var(--tint); padding: 6px 8px; border-radius: 4px; }
 
 /* The Refusals view: one card per refusal, one row per result of its report. */
 .refusal { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
@@ -180,6 +196,16 @@ li.result p { margin: 0; }
   flex: none; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
   border-radius: 4px; padding: 1px 6px; margin-top: 2px; background: #eee; color: var(--ink);
 }
-.badge.violation { background: #fdeeee; color: var(--failed); }
+.badge.violation { background: #fdeceb; color: var(--signal); }
 .badge.warning { background: #fff4d6; color: var(--starting); }
-.badge.info { background: #eef3fa; color: var(--link); }
+.badge.info { background: var(--tint); color: var(--link); }
+
+/* A phone: the header stacks, and a section keeps its tables inside it, scrolling on its own. */
+@media (max-width: 640px) {
+  body { padding: 0 12px 16px; }
+  header img.logo { height: 32px; }
+  h1 { font-size: 16px; flex-basis: 100%; }
+  section { padding: 12px; }
+  .toolbar > label { flex-basis: 100%; white-space: normal; }
+  .toolbar select { max-width: 100%; }
+}

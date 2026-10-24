@@ -3,10 +3,17 @@
 The paper's claims are the numbered rows of the acceptance checklist, read from arXiv 2605.22457v1:
 claims 1-9 are use case 2's, claims 10-14 use case 1's, and claim 15 is the object-graph mapper's,
 proved in kapps_ogm. Claim 16, the provenance of §4.2.2, is not in the checklist: it was added with
-use case 1's PROV witness (jms_kapps 59). Every test in jms_kapps that proves one carries the marker `paper_claim`, and
+use case 1's PROV witness. Claim 17, that a rule across entities is a SHACL-SPARQL shape, is not in
+the checklist either: it was added with use case 2's reachable-destination rule. Claim 18,
+that every capability belongs to exactly one resource, checked at commit, was added with the
+shape that holds it. Claim 19, that admission refuses a planned operation that the factory
+information state cannot carry out, was added with R7, use case 1's unscrewing operation shape and
+`jms-uc1 infeasible-operation`. Claim 20, that a run of use case 2 with four modules in a line reads every
+change of possession of a box back from the triple store's history, was added with the paper's
+R14 and its command `jms-uc2 trace-box`. Every test in jms_kapps that proves one carries the marker `paper_claim`, and
 its docstring names the claim's number ("Paper claim 4", "Paper claims 5 and 8"), so that one run
 by the marker, `uv run pytest -m paper_claim --dataset <name>`, runs them all. The numbering is
-internal: the reviewer guide names no claim, and tells its reader to run the marker.
+internal: the user guide names no claim, and tells its reader to run the marker.
 
 These tests read the declaration and a collection of the whole suite by the marker in a pytest of
 its own, without a store.
@@ -34,13 +41,15 @@ pytestmark = pytest.mark.skipif(
     reason="an installed copy has no repository root and no suite",
 )
 
-# The claims a jms_kapps test proves: use case 2's and use case 1's, and claim 16, use case 1's PROV
-# witness (jms_kapps 59). Claim 15 is kapps_ogm's.
-CLAIMS_OF_JMS_KAPPS = set(range(1, 15)) | {16}
+# The claims a jms_kapps test proves: use case 2's and use case 1's, claim 16, use case 1's PROV
+# witness, claim 17, the SHACL-SPARQL rule, claim 18, a capability's one resource, claim 19,
+# the refused infeasible operation, and claim 20, a box's possessions read back from the store's
+# history. Claim 15 is kapps_ogm's.
+CLAIMS_OF_JMS_KAPPS = set(range(1, 15)) | {16, 17, 18, 19, 20}
 
-# The claims that each have a marked test today: use case 2's, and claim 16. Use case 1's, 10 to
-# 14, join them with the guide's section on use case 1 (jms_kapps 84).
-CLAIMS_WITH_A_TEST = set(range(1, 10)) | {16}
+# The claims that each have a marked test: use case 2's and use case 1's (1 to 14), and claims 16 to
+# 20.
+CLAIMS_WITH_A_TEST = set(range(1, 15)) | {16, 17, 18, 19, 20}
 
 # How a claim test's docstring names its claims: "Paper claim 4", "Paper claims 5 and 8".
 NAMED = re.compile(r"Paper claims? (\d+(?:(?:, | and )\d+)*)")
@@ -119,7 +128,7 @@ def test_the_marker_is_declared():
     assert [m for m in markers if m.startswith("paper_claim:")], markers
 
 
-def test_each_claim_of_use_case_2_and_claim_16_has_a_marked_test():
+def test_each_claim_of_jms_kapps_has_a_marked_test():
     covered = set().union(*marked().values())
 
     assert CLAIMS_WITH_A_TEST <= covered, sorted(CLAIMS_WITH_A_TEST - covered)
@@ -129,6 +138,17 @@ def test_each_marked_test_names_the_claims_of_jms_kapps_it_proves():
     for test, claims in marked().items():
         assert claims, f"{test} carries the marker, and its docstring names no claim"
         assert claims <= CLAIMS_OF_JMS_KAPPS, f"{test} names {sorted(claims)}"
+
+
+def test_each_test_the_user_guide_names_exists_and_carries_the_marker():
+    assert ROOT is not None
+    guide = (ROOT / "docs" / "user-guide.md").read_text(encoding="utf-8")
+    named = set(
+        re.findall(r"`(tests/test_\w+\.py::test_\w+)`", " ".join(guide.split()))
+    )
+
+    assert named, "the guide names no test"
+    assert named <= set(marked()), sorted(named - set(marked()))
 
 
 def test_each_test_that_names_a_claim_carries_the_marker():

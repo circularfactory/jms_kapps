@@ -1,4 +1,4 @@
-"""The client host's load (jms_kapps 91): the sampler reads the operating system's own figures
+"""The client host's load: the sampler reads the operating system's own figures
 (`/proc`), keeps each sample with its time, and says "not available" on a host without them. The
 tests point the sampler at a folder that stands in for `/proc`. No store, no network, no run.
 """

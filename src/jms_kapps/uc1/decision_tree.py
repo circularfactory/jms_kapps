@@ -1,5 +1,5 @@
 """The decision tree: the recorded signals of one unscrewing attempt and the effective values in,
-one Unscrewing outcome out.
+one Detection result out.
 
 The tree is Figure 2 of the UC1 anomaly-detection paper, with its drawn exits only. It asks its
 nodes in the figure's order, and the first node that fails decides. It is a pure function: it
@@ -39,9 +39,9 @@ positions are compared as recorded.
 Each field of `EffectiveValues` is named after the property that holds the value in the use
 case's ontology, `ontology/integration_usecase.ttl`, without its `has` prefix, in snake case:
 `hasMinApproachAxialForce` is `min_approach_axial_force`. The outcomes are the ontology's
-Unscrewing outcomes, by name. `effective_values` resolves the ten values of one Screw from the
+Detection results, by name. `effective_values` resolves the ten values of one Screw from the
 graph into this same class. The preparation turning angle is a Process parameter that no node
-reads; the tree takes it so that its input is the same ten values an attempt's Decision snapshot
+reads; the tree takes it so that its input is the same ten values an attempt's Parameter copy
 records.
 """
 
@@ -52,7 +52,7 @@ from dataclasses import dataclass
 from typing import Literal, get_args
 
 # The exits of the tree, named as the use case's outcome vocabulary names its outcome individuals.
-UnscrewingOutcome = Literal[
+DetectionResult = Literal[
     "ScrewIntact",
     "MissingScrew",
     "MissingHead",
@@ -63,7 +63,43 @@ UnscrewingOutcome = Literal[
     "ThreadFault",
 ]
 
-UNSCREWING_OUTCOMES: tuple[UnscrewingOutcome, ...] = get_args(UnscrewingOutcome)
+DETECTION_RESULTS: tuple[DetectionResult, ...] = get_args(DetectionResult)
+
+# The rule of each exit: the node that decided, and what it found. Each exit has one node, so the
+# outcome names it. The detector's dashboard shows it beside the outcome.
+EXIT_RULE: dict[DetectionResult, str] = {
+    "ScrewIntact": "every node passed: no dynamic torque above its maximum in the disassembly",
+    "MissingScrew": "the approach passed its depth limit before contact",
+    "MissingHead": "contact came below the screw-head band",
+    "HeadOccluded": "contact came above the screw-head band",
+    "RoundedHeadOrWrongType": "no counter-torque reached its minimum in the form-fit",
+    "StuckAtBreakaway": "a loose torque above its maximum in the preparation turn",
+    "LooseAnchor": (
+        "no axial force reached its loosening minimum in the preparation turn"
+    ),
+    "ThreadFault": "a dynamic torque above its maximum in the disassembly",
+}
+
+_APPROACH = ("min_approach_axial_force", "min_approach_position")
+_BAND = (*_APPROACH, "min_screw_head_position", "max_screw_head_position")
+_FORM_FIT = (*_BAND, "min_counter_torque")
+_TURN = (*_FORM_FIT, "min_preload_axial_force", "max_loose_torque")
+_PREPARATION = (*_TURN, "min_loosening_axial_force")
+_DISASSEMBLY = (*_PREPARATION, "max_dynamic_torque")
+
+# The values that `classify` asks on its way to each exit, by their field names in
+# `EffectiveValues`: the thresholds an outcome was decided with. The tree reads no other value
+# on that way, so no other value could have changed the outcome.
+ASKED: dict[DetectionResult, tuple[str, ...]] = {
+    "MissingScrew": _APPROACH,
+    "MissingHead": (*_APPROACH, "min_screw_head_position"),
+    "HeadOccluded": _BAND,
+    "RoundedHeadOrWrongType": _FORM_FIT,
+    "StuckAtBreakaway": _TURN,
+    "LooseAnchor": _PREPARATION,
+    "ThreadFault": _DISASSEMBLY,
+    "ScrewIntact": _DISASSEMBLY,
+}
 
 
 @dataclass(frozen=True)
@@ -114,7 +150,7 @@ class EffectiveValues:
     max_screw_head_position: float
 
 
-def classify(signals: AttemptSignals, values: EffectiveValues) -> UnscrewingOutcome:
+def classify(signals: AttemptSignals, values: EffectiveValues) -> DetectionResult:
     """The exit of the decision tree that one unscrewing attempt reached.
 
     Raises:

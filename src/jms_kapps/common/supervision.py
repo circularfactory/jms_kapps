@@ -1,16 +1,20 @@
 """Starting, watching and stopping the processes of a use case, one per resource.
 
 A launcher spawns each child through a `Supervisor`, which keeps one handle per child, keyed by
-the child's resource IRI. The supervisor prints each child's command line, in the form of the
+the child's resource IRI. A child is a middleware process with a service in the graph, or a device
+process without one (use case 1's robot controller stand-in), whose state rests on its process
+alone. The supervisor prints each child's command line, in the form of the
 platform's shell, so the child can be run on its own, and echoes every line the child writes with
 the child's name in front. It reads each child's state from the child's service in the graph,
 through the one reader of a service (`common.services`): a child is live once its service is live
 and has registered every workflow the child registers, so that a caller can call any of them at
 once. It finds a child that exited without reading the graph, so that a read that hangs does not
 hide the exit. Its readiness gate, `wait_until_ready`, waits until every child is live. When a
-child turns `failed`, it prints one line with the child's name and why, the exit code if its
-process exited, because a launcher without a page, as the bench launcher, shows nothing else. The
-pattern is the Launcher of the middleware's transferunits demo.
+child turns `failed`, it prints one line with the child's name and why, because a launcher without
+a page, as the bench launcher, shows nothing else: the exit code if its process exited, and, if
+its service stopped being ready while it runs, which part of ready the service misses
+(`why_not_ready`), from one more read of that service, live or not, outside the lock. The pattern
+is the Launcher of the middleware's transferunits demo.
 
 A stop asks each child to stop, and the child deregisters its service in its own shutdown. A
 child that the stop kills at the stop timeout, or that exited without a stop, as a crash does,
@@ -36,6 +40,7 @@ import time
 from collections import deque
 from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Literal
 
 from kapps_triplestore_interface import IRI
@@ -43,6 +48,7 @@ from kapps_triplestore_interface import IRI
 from jms_kapps.common.platforms import PLATFORM
 from jms_kapps.common.services import (
     MAX_HEARTBEAT_AGE_SECONDS,
+    OneServiceReader,
     Service,
     ServiceReader,
 )
@@ -68,12 +74,12 @@ STOP_TIMEOUT_SECONDS = 10
 # address, and it counts as live until its last heartbeat is `MAX_HEARTBEAT_AGE_SECONDS` old. A
 # child that exits with code 0 once the stop has begun (`Supervisor.begin_stop`), before the stop
 # asks it, is `stopped` too: a stop signal that reached every process of the launcher's process
-# group ended it, as a terminal's Ctrl+C does. Any other child that had exited before a stop asked
-# it stays `failed` when the stop reaches it: its exit skipped the deregistration too. (Changed on
-# 2026-10-10, jms_kapps 70, after the orchestrator's live run of the Launcher: a Ctrl+C to the
-# process group printed a "failed" line for each process. Until then, in place of the last two
-# sentences, it read "A child that had exited before a stop asked it stays `failed` when the stop
-# reaches it: its exit skipped the deregistration too.")
+# group ended it, as a terminal's Ctrl+C does; otherwise a Ctrl+C to the process group would print
+# a "failed" line for each process. Any other child that had exited before a stop asked it stays
+# `failed` when the stop reaches it: its exit skipped the deregistration too. A child without a
+# service (`Supervisor.spawn`, `has_service=False`) is never `starting`: it is `live` from its
+# start while its process runs, and `failed` once it exits unasked; no read of the graph touches
+# it, and it never counts as one that may not have deregistered.
 State = Literal["starting", "live", "failed", "stopped", "killed"]
 
 # The states at which the readiness gate stops waiting: the child will not turn live by waiting,
@@ -89,6 +95,10 @@ UNCONFIRMED_AFTER_SECONDS = 5 * WATCH_INTERVAL_SECONDS
 
 # How often the readiness gate reads the graph while it waits.
 READY_INTERVAL_SECONDS = 0.5
+
+# Why a live child failed while it still runs, where the supervisor cannot say more: it has no
+# reader of one service, the read failed, or the service read ready again.
+NOT_READY_ANY_MORE = "its service is not ready any more"
 
 
 class LiveInstanceError(RuntimeError):
@@ -165,6 +175,34 @@ def refuse_if_live(
         raise LiveInstanceError(_live_refusal(live, dataset))
 
 
+def why_not_ready(
+    found: Iterable[Service], workflows: Collection[IRI], now: datetime
+) -> str | None:
+    """Why the newest service in `found`, every service of one resource, newest heartbeat first,
+    live or not, is not ready at `now` for a child that registers `workflows`: the part of ready
+    it misses. None if it misses none, as when it turned ready again since the read that missed it.
+
+    A deregistration removes the address and every endpoint and keeps a fresh heartbeat, so the
+    address is asked before the heartbeat, and the workflows after both.
+    """
+    service = next(iter(found), None)
+    if service is None:
+        return "its service is not in the knowledge graph"
+    if service.address is None:
+        return "its service has no address"
+    if service.heartbeat is not None:
+        beat = service.heartbeat
+        if beat.tzinfo is None:
+            beat = beat.replace(tzinfo=UTC)
+        age = (now - beat).total_seconds()
+        if age > MAX_HEARTBEAT_AGE_SECONDS:
+            return f"its last heartbeat is {age:.0f} s old"
+    missing = set(workflows) - service.workflows.keys()
+    if missing:
+        return f"its service has no {display_names(missing)} any more"
+    return None
+
+
 def _print(line: str) -> None:
     """Print `line` on stdout. A terminal that has closed takes no line: the write fails, and the
     line is dropped. The child's output is still read, so that its pipe never fills and blocks
@@ -182,6 +220,9 @@ class _Child:
     process: subprocess.Popen
     # The classes of the workflows the child registers: it is live only once its service has them.
     workflows: frozenset[IRI] = frozenset()
+    # Whether the child registers a service in the graph. A device process, such as use case 1's
+    # robot controller stand-in, registers none: its state rests on its process alone.
+    has_service: bool = True
     state: State = "starting"
     started_at: float = field(default_factory=time.monotonic)
     stopping: bool = False
@@ -194,6 +235,10 @@ class _Child:
     confirmed_at: float = field(default_factory=time.monotonic)
     # Whether its process was found to have exited unasked: its state was set then, once.
     exit_found: bool = False
+    # Why it is `failed`, as the line printed of its turn says, and how often it was failed: a why
+    # read after the turn is kept only while no later failing replaced it.
+    why_failed: str | None = None
+    fail_count: int = 0
 
     def runs(self) -> bool:
         """Whether its process has not exited."""
@@ -210,7 +255,10 @@ class _Child:
         asking it to. Either skipped the deregistration that a stop asks for. One that still runs
         has not, whatever its state says: a stop asks it, and it deregisters as it goes. Nor has
         one that exited when it was asked, nor one that is `stopped` because it exited with code 0
-        once the stop had begun (`Supervisor.begin_stop`)."""
+        once the stop had begun (`Supervisor.begin_stop`). A child without a service never has:
+        it registered none."""
+        if not self.has_service:
+            return False
         return self.state == "killed" or not (
             self.runs() or self.asked_to_stop or self.state == "stopped"
         )
@@ -230,10 +278,16 @@ class _Child:
 
     def fail(self, why: str) -> str | None:
         """Turn it `failed` for `why`, and forget its address. Returns the one line a supervisor
-        prints of the turn, with its name and why, or None if it was `failed` already."""
+        prints of the turn, with its name and why, or None if it was `failed` already. The why is
+        the latest, so a crash of one that failed already says the exit code."""
         turned = self.state != "failed"
         self.state, self.address = "failed", None
-        return f"{self.name} failed: {why}." if turned else None
+        self.why_failed, self.fail_count = why, self.fail_count + 1
+        return self.failed_line() if turned else None
+
+    def failed_line(self) -> str:
+        """The line a supervisor prints of its turn to `failed`: its name and why."""
+        return f"{self.name} failed: {self.why_failed}."
 
     def exit_reason(self) -> str:
         """Why it failed, once its process exited with no stop asking it to: its exit code."""
@@ -250,7 +304,9 @@ class ChildSnapshot:
     counts as unconfirmed. It is None while the reads succeed, and for a state this process knows
     by itself: an exit, a stop or a kill. `stoppable` is whether a stop would still ask the process
     to stop: it runs, and no stop has reached it yet. A child that has exited is not, whatever
-    its state says.
+    its state says. `why_failed` is why it is `failed`, as the line printed of the turn says, and
+    None in any other state. `has_service` is whether the child registers a service in the graph;
+    a device does not, so it never has an address, and a page shows it without links.
     """
 
     resource: IRI
@@ -262,6 +318,8 @@ class ChildSnapshot:
     address: str | None
     unconfirmed_for: float | None
     stoppable: bool
+    why_failed: str | None
+    has_service: bool = True
 
 
 class Supervisor:
@@ -270,6 +328,10 @@ class Supervisor:
     Args:
         services: Reads the live services, each with its workflows of the classes it is given:
             `common.services.reader` over the dataset the children run against.
+        service_of: Reads every service of one resource, live or not: `common.services.
+            reader_of_one` over the same dataset. A child that turns `failed` because its service
+            stopped being ready is read with it once, to say which part of ready its service
+            misses. None reads nothing, and the line says only that it is not ready any more.
         echo: Where the command lines and the children's output go. The launcher's stdout if
             None.
         stop_timeout: How long a stop waits for a child to exit before it kills the child.
@@ -280,11 +342,13 @@ class Supervisor:
         self,
         services: ServiceReader,
         *,
+        service_of: OneServiceReader | None = None,
         echo: Callable[[str], None] | None = None,
         stop_timeout: float = STOP_TIMEOUT_SECONDS,
         start_timeout: float = START_TIMEOUT_SECONDS,
     ) -> None:
         self._services = services
+        self._service_of = service_of
         self._heartbeat_error: str | None = None
         self._echo = echo if echo is not None else _print
         self._stop_timeout = stop_timeout
@@ -302,12 +366,19 @@ class Supervisor:
         command: list[str],
         *,
         workflows: Collection[IRI] = (),
+        has_service: bool = True,
     ) -> None:
         """Start `command` as the process of `resource`, shown as `name`, which is live once its
         service has registered a workflow of each class in `workflows`.
 
         A resource has one child for the life of the supervisor. A second handle under the same
         IRI would replace the first, and nothing could stop the first process any more.
+
+        Args:
+            has_service: Whether the child registers a service in the graph. A device process
+                registers none, and `workflows` is then empty: it is live from its start, as long
+                as its process runs, with no address, and it has failed once its process exits
+                without being asked. No read of the graph decides its state.
 
         Raises:
             ValueError: If a child was spawned for `resource` already. Nothing is started then.
@@ -336,6 +407,8 @@ class Supervisor:
             command=line,
             process=process,
             workflows=frozenset(IRI(w) for w in workflows),
+            has_service=has_service,
+            state="starting" if has_service else "live",
         )
         with self._lock:
             self._children[child.resource] = child
@@ -362,6 +435,8 @@ class Supervisor:
         An exit is this process's own knowledge, so it is set before the graph is read, and it
         shows while the graph is away. A read that fails leaves every other state as it was, now
         unconfirmed, and raises its error again. Each turn to `failed` is printed, one line each.
+        A child whose service stopped being ready is `failed` at once; why is read after, outside
+        the lock, by `_why_not_ready`.
         """
         self._find_exits()
         try:
@@ -372,6 +447,7 @@ class Supervisor:
             raise
         now = time.monotonic()
         turned: list[str | None] = []
+        unready: list[tuple[_Child, int]] = []
         with self._lock:
             self._heartbeat_error = None
             for child in self._children.values():
@@ -381,10 +457,14 @@ class Supervisor:
                 ready = child.ready_in(found)
                 if not child.runs():
                     turned.append(self._exited_unasked(child))
+                elif not child.has_service:
+                    # A device: live while it runs, whatever the graph holds.
+                    child.state = "live"
                 elif ready is not None:
                     child.state = "live"
                 elif child.state == "live":
-                    turned.append(child.fail("its service is not ready any more"))
+                    child.fail(NOT_READY_ANY_MORE)
+                    unready.append((child, child.fail_count))
                 elif now - child.started_at > self._start_timeout:
                     turned.append(
                         child.fail(
@@ -396,6 +476,28 @@ class Supervisor:
                 elif child.address is None and ready is not None:
                     child.address = ready.address
         self._print_failed(turned)
+        self._print_failed(self._why_not_ready(child, at) for child, at in unready)
+
+    def _why_not_ready(self, child: _Child, fail_count: int) -> str:
+        """Read why `child` failed, which turned `failed` at its `fail_count` because its service
+        stopped being ready: one read of its service, live or not, outside the lock. Keeps the why
+        unless a later failing replaced it, and returns the line to print. A read that fails, or
+        finds the service ready again, keeps `NOT_READY_ANY_MORE`."""
+        why = NOT_READY_ANY_MORE
+        if self._service_of is not None:
+            try:
+                found = list(self._service_of(child.resource, child.workflows))
+            # Whatever the reader raises: the child has failed all the same.
+            except Exception:  # noqa: BLE001
+                found = None
+            if found is not None:
+                why = why_not_ready(found, child.workflows, datetime.now(UTC)) or why
+        with self._lock:
+            if child.fail_count == fail_count:
+                child.why_failed = why
+            # Not `failed_line`: a later failing may have replaced the why, and this turn's
+            # line still says this turn's.
+            return f"{child.name} failed: {why}."
 
     def _print_failed(self, turned: Iterable[str | None]) -> None:
         """Print the line of each child that turned `failed`: a bench launcher has no page, so
@@ -512,8 +614,7 @@ class Supervisor:
         own page. A child ends on Ctrl+C with code 0, once it has deregistered its service. An exit
         with any other code still turns it `failed`.
 
-        One assignment and no lock, so it is safe in a signal handler. (Added on 2026-10-10,
-        jms_kapps 70.)
+        One assignment and no lock, so it is safe in a signal handler.
         """
         self._stop_begun = True
 
@@ -636,12 +737,15 @@ class Supervisor:
                     address=child.address,
                     unconfirmed_for=self._unconfirmed_for(child, now),
                     stoppable=child.stoppable(),
+                    why_failed=child.why_failed if child.state == "failed" else None,
+                    has_service=child.has_service,
                 )
                 for child in self._children.values()
             ]
 
     def _unconfirmed_for(self, child: _Child, now: float) -> float | None:
-        if not child.stoppable():
+        # A device's state rests on its process, which this process knows by itself.
+        if not child.stoppable() or not child.has_service:
             return None
         age = now - child.confirmed_at
         if self._heartbeat_error is None and age <= UNCONFIRMED_AFTER_SECONDS:

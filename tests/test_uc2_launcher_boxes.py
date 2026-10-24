@@ -1,4 +1,4 @@
-"""The Launcher's list of the boxes on the station, through its JSON API (jms_kapps 23).
+"""The Launcher's list of the boxes on the station, through its JSON API.
 
 The list comes from one SPARQL query, which the Launcher sends in its background read, and the
 state route answers it with the query's text exactly as the store received it. The store is the
@@ -127,7 +127,7 @@ def possessed(graph: Graph, box: IRI, possessor: IRI) -> None:
 
 
 def test_a_box_named_by_a_uuid_is_listed_by_its_whole_name_in_the_order_of_the_names():
-    """The WMS names each box it spawns `Box-<UUID>` (jms_kapps 92): the list names such a box
+    """The WMS names each box it spawns `Box-<UUID>`: the list names such a box
     whole, and orders the boxes by their IRIs, as the query's `ORDER BY ?box` does, beside a box a
     seed named by a number. No number is read from a name."""
     graph = Graph()
@@ -163,7 +163,7 @@ def test_the_query_runs_unchanged_on_another_sparql_engine_and_lists_only_the_bo
     ]:
         graph.add((URIRef(box), URIRef(FC.hasTransport), URIRef(FCI_NS + transport)))
         graph.add(
-            (URIRef(FCI_NS + transport), URIRef(SVC.operationStatus), Literal(status))
+            (URIRef(FCI_NS + transport), URIRef(SVC.hasOperationStatus), Literal(status))
         )
     boxes = StationBoxes(InMemoryStore(graph))
 

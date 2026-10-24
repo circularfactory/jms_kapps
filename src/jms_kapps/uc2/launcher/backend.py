@@ -14,23 +14,26 @@ they name others (`strategies`). The Launcher finds the strategies of each kind 
 when it is made, and refuses a launch that names one it did not find before it stops anything. The
 run core puts `--module-strategy <name>` on the command line of every module process and
 `--wms-strategy <name>` on the WarehouseManagementSystem's (`run_core.participants_of`), and each
-process loads its strategy by that name at its start. (Added on 2026-10-10, jms_kapps 52, decided
-by Etienne on 2026-10-07.)
+process loads its strategy by that name at its start.
 
 **A launch says whether it collects history**, the launch option `collect_history`, or runs with
 the Launcher's own, `jms-uc2 --collect-history`, off unless it is given. A launch with it has its
 reset turn on the store's history collection, so that past possessions can be read; one without it
 leaves the collection as it is, on where an earlier launch turned it on. The state says whether
-the launch that runs was launched with it. (Added on 2026-10-10, jms_kapps 22, with the names
-Etienne decided on 2026-10-07.)
+the launch that runs was launched with it.
+
+**A launch says whether its monitor collects the refusals**, the launch option
+`collect_refusals`, off unless it is given. The monitor then starts in "graph + streams", which
+follows each participant's handover event stream; without it the monitor starts in "graph only",
+which reads the knowledge graph and nothing else. The state says whether the launch that runs was
+launched with it, and the page's checkbox starts at that.
 
 **A launch names the deadlock alarm time of its modules**, or runs with the Launcher's own,
 `jms-uc2 --deadlock-alarm-seconds`, 300 s unless it is given: how long a box a module holds may
 wait for a Reserve before the module raises the deadlock alarm for it. The run core puts
 `--deadlock-alarm-seconds <seconds>` on the command line of every module process. The page's
 field "deadlock alarm (s)" starts at the Launcher's own; the API refuses a value that is not a
-positive number, before anything is stopped or cleared. (Added on 2026-10-11, jms_kapps 77,
-decided by Etienne.)
+positive number, before anything is stopped or cleared.
 
 **Clear stops every process, then empties the dataset, graph by graph**, and says how many
 statements the dataset holds then: 0 where it is empty. It asks the one live-instance guard as
@@ -38,20 +41,17 @@ a launch does, after this Launcher's processes have stopped, so it clears nothin
 launcher's process, or a process run on its own, is live there. A clear of the whole dataset in
 one request is refused while the store collects history, so each graph is cleared on its own
 (`triplestore.clear_graph_by_graph`). From the clear on, no topology shows as seeded, and the next
-launch loads the ontologies, the shapes and a topology again. (Added on 2026-10-10, jms_kapps 5,
-decided by Etienne on 2026-10-05, who asked for a clear button that kills every process and clears
-the whole of the store's unit, the dataset.)
+launch loads the ontologies, the shapes and a topology again.
 
 **Each refusal of the Launcher has a class of its own**: its own, `NoProcess` and
 `NotReachable`; the load check's, `TopologyRefused` (`launchable`); and those it passes on from
 the run core and the strategies, `LiveInstanceError`, `LaunchFailed`, `ClearFailed` and
 `UnknownStrategy`. Its routes catch only refusals, so any other error, as a bug's, goes through
-them as it is (`api.py`). (Added on 2026-10-11, jms_kapps 33.)
+them as it is (`api.py`).
 
 The graph and the modules' fault switches are reached through two small ports, `LauncherGraph`, the
 run core's `RunGraph` with the clear beside it, and `FaultSwitches`, so that a test can replace
-both. (Changed on 2026-10-10, jms_kapps 5: until then the graph's port was "the run core's
-`RunGraph`".)
+both.
 
 **The Launcher holds each module's two faults.** It writes each switch, and it supervises the
 processes that reset a module to off, so it knows what it set and when the value is gone. The page
@@ -66,18 +66,18 @@ watch, each with the address it keeps from the read that found its process live.
 what the supervisor last read. While the graph cannot be read, a state that rests on it is shown as
 unconfirmed, with how long ago it was last confirmed, and the page keeps answering. The list of the
 boxes on the station is read the same way, in the background, by its one SPARQL query
-(`boxes.StationBoxes`), and `state()` renders the last read with the query's text. (The last
-sentence added on 2026-10-10, jms_kapps 23, decided by Etienne on 2026-10-05.)
+(`boxes.StationBoxes`), and `state()` renders the last read with the query's text.
 """
 
 from __future__ import annotations
 
+import contextlib
 import os
 import threading
 from collections.abc import Callable, Mapping
 from dataclasses import fields
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, get_type_hints
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 
 import httpx
 from kapps_triplestore_interface import IRI, TripleStore
@@ -89,6 +89,7 @@ from pydantic import (
 )
 from typing_extensions import TypedDict
 
+from jms_kapps.common.passthrough import process_of, process_path
 from jms_kapps.common.supervision import (
     STOP_TIMEOUT_SECONDS,
     ChildSnapshot,
@@ -99,14 +100,14 @@ from jms_kapps.common.supervision import (
 from jms_kapps.common.triplestore import ClearFailed, clear_graph_by_graph
 from jms_kapps.uc2 import run_core
 from jms_kapps.uc2.launcher.boxes import BoxesOnStation, StationBoxes
-from jms_kapps.uc2.launcher.passthrough import process_id, process_path
 from jms_kapps.uc2.module import DEFAULT_DEADLOCK_ALARM_SECONDS, Fault, faults_off
+from jms_kapps.uc2.monitor.memory import GRAPH_AND_STREAMS, GRAPH_ONLY
 from jms_kapps.uc2.process import set_fault_switch
 from jms_kapps.uc2.run_core import Participant, RunGraph, participants_of, start_run
 from jms_kapps.uc2.seed import DEFAULT_TRANSIT_SECONDS
 from jms_kapps.uc2.strategies import REAL, ModuleStrategy, WmsStrategy, chosen, found
 from jms_kapps.uc2.topology import Topology, TopologyRefused
-from jms_kapps.uc2.vocabulary import MONITOR, WMS
+from jms_kapps.uc2.vocabulary import FCI_NS, MONITOR, WMS
 from jms_kapps.uc2.wms_dashboard import TAB as WMS_TAB
 
 # What the page calls the monitor's process, and the label its resource is seeded with.
@@ -125,9 +126,16 @@ def _kind_of(resource: IRI) -> Kind:
 
     This is the one place that decides a kind. What a process of each kind offers the page is in
     one table, `_OFFERS`, and the state and the page read the result: no other place compares a
-    kind with a kind's name. (Added on 2026-10-11, jms_kapps 33.)
+    kind with a kind's name.
     """
     return _KIND_BY_RESOURCE.get(resource, "module")
+
+
+def _echo_to_stdout(text: str) -> None:
+    """Print `text` on stdout, as the supervisor's echo does by default: a terminal that has
+    closed takes no line, and the launch goes on."""
+    with contextlib.suppress(OSError):
+        print(text, flush=True)
 
 
 class Link(BaseModel):
@@ -145,22 +153,19 @@ class ProcessState(BaseModel):
     """One process, as the page shows it: the supervisor's snapshot of it, `child`, and what the
     page needs besides.
 
-    The page reads one object for each process, the snapshot's fields beside the page's own, as it
-    did before the snapshot was composed here: so the snapshot's fields are written out flat, and
-    read back from flat, as FastAPI reads back every answer it sends. A snapshot's `stoppable` is
-    whether the page may offer a stop: the process still runs, and no stop has reached it. A
-    process that crashed reads `failed` and has exited, so the page may not stop it, whether or
-    not a stop came after the crash; one that reads `failed` because its service stopped being
-    live may still run, and may be stopped.
+    The page reads one object for each process, the snapshot's fields beside the page's own: so the
+    snapshot's fields are written out flat, and read back from flat, as FastAPI reads back every
+    answer it sends. A snapshot's `stoppable` is whether the page may offer a stop: the process
+    still runs, and no stop has reached it. A process that crashed reads `failed` and has exited, so
+    the page may not stop it, whether or not a stop came after the crash; one that reads `failed`
+    because its service stopped being live may still run, and may be stopped.
 
     `faults` holds each of a module's two faults, armed or not, as the Launcher commanded them,
     and is None for the WarehouseManagementSystem and the monitor, which have none. `state_note`
-    is what the page says of the state to a person who asks, and None where the state says enough
-    by itself. `fault_switchable` is whether the page may offer the fault switches: the process is
-    a module, and the supervisor holds the address of its live service, which a switch is sent to.
-    (Changed on 2026-10-10, jms_kapps 31, decided by Etienne: the snapshot is composed, not
-    copied field by field. Until then the first line read "One process, as the page shows it:
-    what the supervisor holds, and what the page needs.")
+    is what the page says of the state to a person who asks: why a killed process was killed, and
+    why a failed one failed. It is None where the state says enough by itself. `fault_switchable`
+    is whether the page may offer the fault switches: the process is a module, and the supervisor
+    holds the address of its live service, which a switch is sent to.
     """
 
     child: ChildSnapshot
@@ -190,10 +195,19 @@ class ProcessState(BaseModel):
 
 # The flat object the page reads for each process, as the Launcher's API docs show it: each field
 # of the snapshot, an IRI as the string it is sent as, beside each of the page's own. It is built
-# from the two classes, so that no field is written out twice.
+# from the two classes, so that no field is written out twice. A link stands in it as the dict
+# it already is when the serializer returns: Pydantic checks that return against this type, and
+# the class `Link` would make it warn once for each link. The dict type carries the class's name
+# and fields, so the docs show the same link.
 if TYPE_CHECKING:
     ProcessStateJSON = dict[str, Any]
 else:
+    # The fields, not `get_type_hints(Link)`: that also evaluates the annotations BaseModel itself
+    # carries, and a Pydantic release that names them only for type checkers breaks the import.
+    LinkJSON = TypedDict(
+        "Link", {name: field.annotation for name, field in Link.model_fields.items()}
+    )
+    LinkJSON.__doc__ = Link.__doc__
     ProcessStateJSON = TypedDict(
         "ProcessStateJSON",
         {
@@ -201,7 +215,7 @@ else:
             for name, hint in get_type_hints(ChildSnapshot).items()
         }
         | {
-            name: field.annotation
+            name: list[LinkJSON] if name == "links" else field.annotation
             for name, field in ProcessState.model_fields.items()
             if name != "child"
         },
@@ -212,21 +226,19 @@ else:
 class LauncherState(BaseModel):
     """Everything the Launcher page shows. `dataset` is the dataset the Launcher clears and seeds,
     and `store_url` the URL of its store, which the environment names, or "" where it names none:
-    the page shows "dataset <dataset> on <store_url>" (renamed on 2026-10-11, jms_kapps 62, from
-    the names of the store's vendor and its unit). `default_transit_time` is the value of the page's
+    the page shows "dataset <dataset> on <store_url>". `default_transit_time` is the value of
+    the page's
     transit time field before a person changes it: `jms-uc2 --transit-time`. `monitor` is the monitor's page, and `wms` the
     WarehouseManagementSystem's dashboard, where a person spawns boxes, while each has one.
     `module_strategy` and `wms_strategy` name the strategies in force: those the topology that
-    runs was launched with, or None while none was (added on 2026-10-10, jms_kapps 52, decided
-    by Etienne on 2026-10-07). `boxes` is the list of the boxes on the station as its background
-    read last found it, with the text of its query, or None for a Launcher that lists none (added
-    on 2026-10-10, jms_kapps 23, decided by Etienne on 2026-10-05). `collect_history` is whether
-    the topology that runs was launched with the option `collect_history`, so that its reset
-    turned on the store's history collection, or None while none was (added on 2026-10-10,
-    jms_kapps 22, decided by Etienne on 2026-10-07). `default_deadlock_alarm_seconds` is the value
-    of the page's field "deadlock alarm (s)" before a person changes it: `jms-uc2
-    --deadlock-alarm-seconds`, 300 s by default (added on 2026-10-11, jms_kapps 77, decided by
-    Etienne)."""
+    runs was launched with, or None while none was. `boxes` is the list of the boxes on the
+    station as its background read last found it, with the text of its query, or None for a
+    Launcher that lists none. `collect_history` is whether the topology that runs was launched
+    with the option `collect_history`, so that its reset turned on the store's history collection,
+    or None while none was. `default_deadlock_alarm_seconds` is the value of the page's field
+    "deadlock alarm (s)" before a person changes it: `jms-uc2 --deadlock-alarm-seconds`, 300 s by
+    default. `collect_refusals` is whether the topology that runs was launched with the option
+    `collect_refusals`, so that its monitor started in "graph + streams", or None while none was."""
 
     dataset: str
     store_url: str
@@ -237,6 +249,7 @@ class LauncherState(BaseModel):
     module_strategy: str | None
     wms_strategy: str | None
     collect_history: bool | None
+    collect_refusals: bool | None
     monitor: str | None
     wms: str | None
     processes: list[ProcessState]
@@ -261,8 +274,7 @@ class StrategyChoices(BaseModel):
 
 class Cleared(BaseModel):
     """What a clear left: the `dataset` it emptied, and how many `statements` it holds then, 0
-    where it is empty, as the page says it: "<dataset> is empty: 0 statements". (Added on
-    2026-10-10, jms_kapps 5.)"""
+    where it is empty, as the page says it: "<dataset> is empty: 0 statements"."""
 
     dataset: str
     statements: int
@@ -275,13 +287,12 @@ class NotReachable(RuntimeError):
 class NoProcess(LookupError):
     """A command names no process that it can act on: a stop, none of the current launch; a fault
     switch, no module of the running topology. A refusal of the Launcher's own, so that its
-    routes can tell it from any other error, as a bug's `KeyError`. (Added on 2026-10-11,
-    jms_kapps 33: until then a `KeyError`.)"""
+    routes can tell it from any other error, as a bug's `KeyError`."""
 
 
 class LauncherGraph(RunGraph, Protocol):
     """What the Launcher reads from and writes to the graph: a run's (`RunGraph`), and the clear
-    of its Clear. `TripleStoreGraph` is the real one. (Added on 2026-10-10, jms_kapps 5.)"""
+    of its Clear. `TripleStoreGraph` is the real one."""
 
     def clear(self) -> int:
         """Clear every graph of the dataset, one by one, and return how many statements it
@@ -354,15 +365,26 @@ def launchable(topology: Topology) -> Topology:
 
 # Why a killed process is not a stopped one, for the page to show beside its state.
 _KILLED = (
-    "It did not stop within the stop timeout, and was killed. A kill skips the deregistration, "
-    "so its service keeps its address in the graph. The service counts as live until its last "
+    "It did not stop within the stop timeout and was killed. A kill skips the deregistration, "
+    "so its service keeps its address in the knowledge graph and counts as live until its last "
     "heartbeat is stale."
 )
 
 
+def _state_note(child: ChildSnapshot) -> str | None:
+    """What the page says of the state of `child` to a person who asks: why a killed process is
+    not a stopped one, and why a failed one failed, as the line printed of its turn says. None
+    where the state says enough by itself."""
+    if child.state == "killed":
+        return _KILLED
+    if child.state == "failed" and child.why_failed is not None:
+        return child.why_failed[0].upper() + child.why_failed[1:] + "."
+    return None
+
+
 class _Page(NamedTuple):
     """A page of a process: the `label` the page links it by, and its `path` below the process's
-    own (`process_path`). (Added on 2026-10-11, jms_kapps 33.)"""
+    own (`process_path`)."""
 
     label: str
     path: str
@@ -370,8 +392,7 @@ class _Page(NamedTuple):
 
 class _Offers(NamedTuple):
     """What a process of one kind offers the page once its service is live: its `pages`, in the
-    order the page lists them, and whether it has the `faults` a person arms. (Added on
-    2026-10-11, jms_kapps 33.)"""
+    order the page lists them, and whether it has the `faults` a person arms."""
 
     pages: tuple[_Page, ...]
     faults: bool
@@ -415,13 +436,18 @@ _OFFERS: dict[Kind, _Offers] = {
 }
 
 
+def _href(resource: IRI, page: _Page) -> str:
+    """Where the Launcher passes `page` of the process of `resource` through, relative to the
+    Launcher page: the one place that makes the page's links and the terminal's block."""
+    return process_path(resource) + page.path
+
+
 def _links(offers: _Offers, resource: IRI, live: bool) -> list[Link]:
     """Where the page may send a person, for the process of `resource`: the pages it `offers`,
     and nowhere unless its service is `live`."""
     if not live:
         return []
-    base = process_path(resource)
-    return [Link(label=page.label, href=base + page.path) for page in offers.pages]
+    return [Link(label=page.label, href=_href(resource, page)) for page in offers.pages]
 
 
 def _process(child: ChildSnapshot, armed: dict[IRI, dict[Fault, bool]]) -> ProcessState:
@@ -435,7 +461,7 @@ def _process(child: ChildSnapshot, armed: dict[IRI, dict[Fault, bool]]) -> Proce
         faults=(
             faults_off() | armed.get(child.resource, {}) if offers.faults else None
         ),
-        state_note=_KILLED if child.state == "killed" else None,
+        state_note=_state_note(child),
         fault_switchable=offers.faults and child.address is not None,
     )
 
@@ -443,8 +469,7 @@ def _process(child: ChildSnapshot, armed: dict[IRI, dict[Fault, bool]]) -> Proce
 def _page(processes: list[ProcessState], kind: Kind, label: str) -> str | None:
     """The page that the row of the process of `kind` links by `label`, or None while it links
     none, as before its service is live: the page's header opens what that row links, so the two
-    never differ. The page is found by its label, wherever the row lists it. (Added on
-    2026-10-11, jms_kapps 33: until then the state took the monitor's first link.)"""
+    never differ. The page is found by its label, wherever the row lists it."""
     return next(
         (
             link.href
@@ -478,6 +503,8 @@ class Launcher:
             field, `jms-uc2 --transit-time`.
         faults: The modules' fault switches.
         echo: Where command lines and the children's output go. The Launcher's stdout if None.
+        page_address: The address the Launcher page is served at. Given, each launch ends by
+            echoing `address_block`; left out, none does.
         stop_timeout: How long a stop waits before it kills a process.
         module_strategies: The module strategies a launch may name, by name: those registered
             in their entry-point group if None (`strategies.found`).
@@ -504,6 +531,7 @@ class Launcher:
         transit_seconds: float = DEFAULT_TRANSIT_SECONDS,
         faults: FaultSwitches | None = None,
         echo: Callable[[str], None] | None = None,
+        page_address: str | None = None,
         stop_timeout: float = STOP_TIMEOUT_SECONDS,
         module_strategies: Mapping[str, ModuleStrategy] | None = None,
         wms_strategies: Mapping[str, WmsStrategy] | None = None,
@@ -531,6 +559,7 @@ class Launcher:
         self._transit_seconds = transit_seconds
         self._faults = faults if faults is not None else HTTPFaultSwitches()
         self._echo = echo
+        self._page_address = page_address
         self._stop_timeout = stop_timeout
         self._supervisor: Supervisor | None = None
         self._topology: Topology | None = None
@@ -539,9 +568,11 @@ class Launcher:
         self._in_force: tuple[str, str] | None = None
         # Whether the topology that runs was launched with the option `collect_history`.
         self._collecting: bool | None = None
+        # Whether the topology that runs was launched with the option `collect_refusals`.
+        self._refusals_collected: bool | None = None
         # What each module was told, by fault; a fault never switched is off.
         self._armed: dict[IRI, dict[Fault, bool]] = {}
-        # `_launching` serializes launches; `_current` guards the six fields above.
+        # `_launching` serializes launches; `_current` guards the seven fields above.
         self._launching = threading.Lock()
         self._current = threading.Lock()
 
@@ -560,6 +591,7 @@ class Launcher:
         wms_strategy: str | None = None,
         collect_history: bool | None = None,
         deadlock_alarm_seconds: float | None = None,
+        collect_refusals: bool = False,
     ) -> None:
         """Stop what runs, clear the dataset, seed `topology`, and start its processes: the
         run core's participants of `topology`, and the monitor.
@@ -591,6 +623,9 @@ class Launcher:
                 the module raises the deadlock alarm for it, `--deadlock-alarm-seconds` on every
                 module's command line: a positive number of seconds. The Launcher's default if
                 None.
+            collect_refusals: Whether the monitor starts in "graph + streams", so that it
+                collects the participants' refusals from their handover event streams, or in
+                "graph only", which reads the knowledge graph and nothing else. Off if left out.
 
         Raises:
             TopologyRefused: If a module of `topology` takes the monitor's resource
@@ -618,6 +653,7 @@ class Launcher:
             old = self._stop_then_guard(force=force)
             supervisor = Supervisor(
                 self._graph.services,
+                service_of=self._graph.service_of,
                 echo=self._echo,
                 stop_timeout=self._stop_timeout,
             )
@@ -627,6 +663,7 @@ class Launcher:
                 self._topology_name = None
                 self._in_force = None
                 self._collecting = None
+                self._refusals_collected = None
                 # New processes, each with its fault off, whatever the old ones were told.
                 self._armed.clear()
             try:
@@ -635,7 +672,11 @@ class Launcher:
                     supervisor,
                     topology,
                     self._participants(
-                        topology, module_strategy, wms_strategy, deadlock_alarm_seconds
+                        topology,
+                        module_strategy,
+                        wms_strategy,
+                        deadlock_alarm_seconds,
+                        collect_refusals,
                     ),
                     transit_seconds=(
                         self._transit_seconds
@@ -653,6 +694,46 @@ class Launcher:
                 self._topology, self._topology_name = topology, name
                 self._in_force = (module_strategy, wms_strategy)
                 self._collecting = collect_history
+                self._refusals_collected = collect_refusals
+        block = self.address_block()
+        if block is not None:
+            (self._echo or _echo_to_stdout)(block)
+
+    def address_block(self) -> str | None:
+        """The pages of the run at the addresses that stay valid, all through the Launcher's own
+        port, set apart from the processes' lines by a blank line before and after; None without
+        a `page_address`.
+
+        Each process takes a new port at each launch, so the direct address it prints stops
+        working at the next one; these do not. The paths come from the table of the page's links
+        (`_OFFERS`, `_href`), so that the block and the page never differ.
+        """
+        if self._page_address is None:
+            return None
+        base = self._page_address
+
+        def at(resource: IRI, kind: Kind, label: str) -> str:
+            page = next(p for p in _OFFERS[kind].pages if p.label == label)
+            return urljoin(base, _href(resource, page))
+
+        module_pages = ", ".join(page.path for page in _OFFERS["module"].pages)
+        rows = [
+            ("Launcher page", base),
+            ("WMS dashboard", at(WMS, "wms", _DASHBOARD)),
+            ("Monitor", at(MONITOR, "monitor", _OPEN)),
+            (
+                "A module's pages",
+                urljoin(base, process_path(IRI(FCI_NS + "ID")).replace("ID", "<id>"))
+                + f"  then one of: {module_pages}",
+            ),
+        ]
+        width = max(len(name) for name, _ in rows)
+        lines = [f"  {name.ljust(width)}  {address}" for name, address in rows]
+        return (
+            "\n"
+            + "\n".join(["Pages of the run, through the Launcher's port:", *lines])
+            + "\n"
+        )
 
     def _stop_then_guard(self, *, force: bool) -> Supervisor | None:
         """Stop this Launcher's processes, then ask the live-instance guard whether the
@@ -692,7 +773,7 @@ class Launcher:
         on, no topology shows as seeded, nor the strategies and the history option it was
         launched with, unless the store refused before it cleared any graph; the processes stay
         on the page, stopped. The next launch seeds the ontologies, the shapes and its topology
-        again. (Added on 2026-10-10, jms_kapps 5.)
+        again.
 
         Raises:
             LiveInstanceError: If another process's service is live, naming each live resource.
@@ -720,6 +801,7 @@ class Launcher:
                         self._topology, self._topology_name = None, None
                         self._in_force = None
                         self._collecting = None
+                        self._refusals_collected = None
         return Cleared(dataset=self._dataset, statements=statements)
 
     def _participants(
@@ -728,9 +810,11 @@ class Launcher:
         module_strategy: str,
         wms_strategy: str,
         deadlock_alarm_seconds: float,
+        collect_refusals: bool,
     ) -> list[Participant]:
         """The processes of a launch of `topology`: the run core's participants, then the
-        monitor, which only the Launcher starts."""
+        monitor, which only the Launcher starts, in "graph + streams" with `collect_refusals`
+        and in "graph only" without it."""
         return [
             *participants_of(
                 topology,
@@ -740,7 +824,15 @@ class Launcher:
                 wms_strategy=wms_strategy,
                 deadlock_alarm_seconds=deadlock_alarm_seconds,
             ),
-            Participant(MONITOR, MONITOR_NAME, self._monitor_command),
+            Participant(
+                MONITOR,
+                MONITOR_NAME,
+                [
+                    *self._monitor_command,
+                    "--mode",
+                    GRAPH_AND_STREAMS if collect_refusals else GRAPH_ONLY,
+                ],
+            ),
         ]
 
     def stop(self, resource: IRI) -> None:
@@ -821,12 +913,11 @@ class Launcher:
     def process(self, id: str) -> ChildSnapshot | None:
         """The process whose id in the Launcher's paths is `id` (see `process_id`), as the
         supervisor holds it now, or None where no process of the current launch has that id.
-        Like `state()`, it calls neither a process nor the graph. (Changed on 2026-10-11,
-        jms_kapps 33: until then it raised a `KeyError` where none had the id.)
+        Like `state()`, it calls neither a process nor the graph.
         """
         supervisor, _ = self._now()
         children = supervisor.snapshot() if supervisor is not None else []
-        return next((c for c in children if process_id(c.resource) == id), None)
+        return process_of(children, id)
 
     def state(self) -> LauncherState:
         """Everything the page shows.
@@ -841,6 +932,7 @@ class Launcher:
             armed, name = dict(self._armed), self._topology_name
             module_strategy, wms_strategy = self._in_force or (None, None)
             collect_history = self._collecting
+            collect_refusals = self._refusals_collected
         processes = [_process(child, armed) for child in children]
         return LauncherState(
             dataset=self._dataset,
@@ -852,6 +944,7 @@ class Launcher:
             module_strategy=module_strategy,
             wms_strategy=wms_strategy,
             collect_history=collect_history,
+            collect_refusals=collect_refusals,
             monitor=_page(processes, "monitor", _OPEN),
             wms=_page(processes, "wms", _DASHBOARD),
             processes=processes,

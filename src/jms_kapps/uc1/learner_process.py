@@ -18,9 +18,7 @@ That box shows the last run and when the next comes, how many attempts the learn
 each value it changed, and the last thing that went wrong, all from the learner's memory.
 
 The curves are read from the InfluxDB that `INFLUXDB_URL` names, and only without it from the local
-service, the fallback. Changed on 2026-10-05, after Etienne Hoffmann decided that the local stack
-is only the fallback (the ticket on jms_kapps' demos on the configured live store,
-kapps_semantic_middleware 422); this sentence ended "names, by default the local service."
+service, the fallback.
 
 Run it as `python -m jms_kapps.uc1.learner_process --dataset <name> --learn-seconds <s>`. It
 starts and serves as every participant's process does, through `common.process`.
@@ -119,6 +117,7 @@ def build(
         ogm=ogm,
         host=host,
         port=port,
+        activity_feed=True,
     )
     memory = LearnerMemory()
     learner = Learner(middleware, FrameReader(influxdb), memory)

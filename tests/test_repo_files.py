@@ -1,8 +1,7 @@
 """The files of the repository, as the tests that scan them see them: the files Git tracks in a
 checkout, and every file outside a dot-folder and the bytecode caches in an exported tree.
 
-The release's own offline tier runs the tests in a tree exported without `.git`. (Added on
-2026-10-16: a scan that asked Git for the tracked files failed there.)
+The release's own offline tier runs the tests in a tree exported without `.git`, so a scan must not ask Git for the tracked files.
 """
 
 from __future__ import annotations

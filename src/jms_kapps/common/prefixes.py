@@ -9,17 +9,15 @@ writes `ns1:Box`. With these prefixes registered and such names deleted where th
 of them, a person reads `fc:Box` and `fci:Module1` there. Only the seed changes a dataset's
 prefixes, through the store's prefix registry: `prefixes_get`, `prefix_set` and `prefix_delete`
 of the triple-store interface's contract. A store without one gets no prefixes, and the seed goes
-on: the prefixes serve only the workbench's display. (Changed on 2026-10-11, jms_kapps 62: until
-then the seed sent the store's own namespace requests past the interface, which had no call for
-them.)
+on: the prefixes serve only the workbench's display. The seed goes through the interface's prefix
+calls, never past the interface.
 
 The vocabularies use case 2 names by prefix are its `PREFIXES`. The dataset carries two more:
 the FlexConveyor's individuals, which a page names by local name, and use case 1's vocabulary.
 
-Changed on 2026-10-06, when the monitor's refusal cards moved to the middleware's reader of a
-validation report, which names every term by its local name (jms_kapps 38, decided by
-Etienne). Until then the first sentence of this paragraph read: "The vocabularies a page names by
-prefix are use case 2's `PREFIXES`, so a page and the Workbench write the same prefix for each."
+The monitor's refusal cards use the middleware's reader of a validation report, which names every
+term by its local name; so a page names no vocabulary by prefix, and the prefixes serve the
+Workbench alone.
 """
 
 from __future__ import annotations
@@ -35,7 +33,7 @@ from jms_kapps.uc2.vocabulary import PREFIXES as UC2_PREFIXES
 
 logger = logging.getLogger(__name__)
 
-PREFIXES: dict[str, str] = {**UC2_PREFIXES, "fci": FCI_NS, "jms": JMS_NS}
+PREFIXES: dict[str, str] = {**UC2_PREFIXES, "fci": FCI_NS, "uns": JMS_NS}
 
 # A name nobody chose for a namespace: the empty prefix, or `ns` followed by digits.
 _MADE_UP_PREFIX = re.compile(r"(ns[0-9]+)?")

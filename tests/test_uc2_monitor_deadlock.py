@@ -1,4 +1,4 @@
-"""The monitor's "possible deadlock" notice (Etienne, 2026-10-11, jms_kapps 77).
+"""The monitor's "possible deadlock" notice.
 
 A module that holds a box which has waited past the deadlock alarm time emits one
 `deadlock_alarm` event on its handover event stream, with the modules it asks. In "graph + streams"

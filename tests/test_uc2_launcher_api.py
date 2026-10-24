@@ -14,8 +14,10 @@ import ast
 import json
 import re
 import sys
+import warnings
 from collections.abc import Callable, Collection, Iterator
 from dataclasses import fields
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote, unquote
 
@@ -32,7 +34,7 @@ from jms_kapps.common.supervision import ChildSnapshot, Supervisor
 from jms_kapps.uc2 import topology
 from jms_kapps.uc2.launcher import api, backend
 from jms_kapps.uc2.launcher.api import STATIC, create_app
-from jms_kapps.uc2.launcher.backend import Launcher, NotReachable
+from jms_kapps.uc2.launcher.backend import Launcher, Link, NotReachable
 from jms_kapps.uc2.run_core import RunGraph
 from jms_kapps.uc2.topology import (
     Module,
@@ -63,6 +65,8 @@ class FakeGraph:
         self.refusal: str | None = None
         self.away: str | None = None
         self.reads = 0
+        # The one service of a resource that is not live any more, each one's that a test sets.
+        self.left: dict[IRI, Service] = {}
 
     def seed(
         self,
@@ -75,6 +79,9 @@ class FakeGraph:
             raise RuntimeError(self.refusal)
         self.seeded.append(topology)
         self.transit_seconds.append(transit_seconds)
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return [self.left[resource]] if resource in self.left else []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         self._read()
@@ -200,6 +207,40 @@ def test_the_page_asks_for_everything_by_a_relative_path(name):
     assert absolute_paths((STATIC / name).read_text(encoding="utf-8")) == []
 
 
+def sections(markup: str) -> list[tuple[str, str, list[str]]]:
+    """Each section of the page, as its heading, its intro (the text of its first paragraph) and
+    the summaries of its details blocks."""
+
+    def text(fragment: str) -> str:
+        return " ".join(re.sub(r"<[^>]+>", " ", fragment).split())
+
+    found = []
+    for section in re.findall(r"<section\b.*?</section>", markup, re.DOTALL):
+        heading = text(re.search(r"<h2\b.*?</h2>", section, re.DOTALL).group(0))
+        intro = text(re.search(r"<p\b.*?</p>", section, re.DOTALL).group(0))
+        summaries = [
+            text(s) for s in re.findall(r"<summary>(.*?)</summary>", section, re.DOTALL)
+        ]
+        found.append((heading, intro, summaries))
+    return found
+
+
+def test_each_section_has_an_intro_of_two_sentences_at_most_and_details_for_the_rest():
+    found = sections((STATIC / "index.html").read_text(encoding="utf-8"))
+
+    for heading, intro, _ in found:
+        sentences = [s for s in re.split(r"(?<=[.!?])\s+", intro) if s]
+        assert 1 <= len(sentences) <= 2, (heading, intro)
+    summaries = {heading: summaries for heading, _, summaries in found}
+    assert summaries["Processes"] == ["The two faults"]
+    assert summaries["Topology"] == [
+        "Build your own topology",
+        "The shipped topologies",
+        "The run settings",
+    ]
+    assert "Running now" in summaries
+
+
 def test_the_page_offers_a_stop_only_where_the_backend_says_it_may_and_names_no_state_for_it():
     """The page has no script harness, so this reads its script, until it has one: a test of the
     rendered rows would replace it. The stop button and the note on
@@ -254,7 +295,7 @@ def test_the_kind_of_a_process_is_decided_in_one_place_and_only_read_elsewhere()
     """One place decides the kind of each process, and one table says what each kind has: its
     pages and its faults. No other code of the Launcher's backend or routes compares a value with
     the name of a kind, and the page reads no kind at all: it reads what the backend made of it,
-    the links, the faults and whether they may be switched. (Added on 2026-10-11, jms_kapps 33.)"""
+    the links, the faults and whether they may be switched."""
     for module in ("backend.py", "api.py"):
         source = (STATIC.parent / module).read_text(encoding="utf-8")
         assert kind_comparisons(source) == [], module
@@ -351,10 +392,7 @@ def test_the_check_passes_a_topology_that_loading_accepts(client, graph, cross):
 
 # Three modules in a column, each linked both ways to its neighbour: Module 2's only two
 # connections both run both ways, a pure two-way corridor, and the load check refuses it with this
-# reason. (Changed on 2026-10-06, jms_kapps 43, decided by Etienne: the check refuses only a pure
-# two-way corridor. Until then the refused topology was two modules that hand boxes to each other,
-# refused as "Boxes on this topology can wait for each other forever: boxes bound for its exit
-# modules hop around Module1 → Module2 → Module1".)
+# reason: the check refuses only a pure two-way corridor.
 CORRIDOR_REASON = (
     "Module2 is a pure two-way corridor: its only two connections, to Module1 and to Module3, "
     "both run both ways. Two boxes that meet there head-on, one each way, could wait for each "
@@ -594,8 +632,7 @@ def test_every_caller_checks_a_shipped_name_once_and_refuses_an_unknown_one_in_i
     """The check of shipped names is `shipped_topology`'s, and every caller uses it: a launch by
     name, the editor's start from a shipped topology, and `jms-uc2 --topology`. Each reads the
     package's topologies once, and refuses a name that the package does not ship with the check's
-    own reason, which names the shipped topologies. (Added on 2026-10-11, jms_kapps 33: until
-    then each caller checked the name itself first, and refused it in words of its own.)"""
+    own reason, which names the shipped topologies."""
     monkeypatch.chdir(tmp_path)
     reads: list[str] = []
     shipped = topology._shipped
@@ -766,7 +803,7 @@ def test_the_launcher_refuses_a_module_on_the_monitors_resource_in_every_route_t
     client, graph, cross
 ):
     """The reservation moved from the topology model into the Launcher, which alone starts the
-    monitor (jms_kapps 31): the page still sees it in the check, the layout, a file and a launch,
+    monitor: the page still sees it in the check, the layout, a file and a launch,
     with the reason the topology model gave, and nothing is stopped or seeded."""
     client.post("/api/launch", json={"name": "cross"})
 
@@ -798,7 +835,7 @@ def test_a_launch_of_a_module_on_the_monitors_resource_is_refused_before_anythin
 
 
 def test_each_process_is_the_flat_object_the_page_reads_and_the_api_docs_show(client):
-    """The Launcher's process state composes the supervisor's snapshot (jms_kapps 31), and the
+    """The Launcher's process state composes the supervisor's snapshot, and the
     page still reads the snapshot's fields beside its own in one object, which the API docs
     describe field by field."""
     client.post("/api/launch", json={"name": "cross"})
@@ -816,6 +853,29 @@ def test_each_process_is_the_flat_object_the_page_reads_and_the_api_docs_show(cl
     assert process["resource"] == str(module_iri(1))
 
 
+def test_serializing_a_process_with_links_and_the_whole_state_emits_no_serializer_warning(
+    launcher, cross
+):
+    """The flat object is built from fields that are already dicts once the wrapped handler
+    returns: a return type that names the flat object makes Pydantic check the links a second
+    time, and warn once for each link of each live process."""
+    launcher.launch(cross, name="cross")
+    state = launcher.state()
+    linked = state.processes[0].model_copy(
+        update={"links": [Link(label="docs", href="/p/docs")]}
+    )
+    state = state.model_copy(update={"processes": [linked]})
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        linked.model_dump()
+        flat = linked.model_dump(mode="json")
+        state.model_dump()
+        state.model_dump(mode="json")
+
+    assert flat["links"] == [{"label": "docs", "href": "/p/docs"}]
+
+
 def test_an_edited_topology_is_refused_while_another_launchers_service_is_live_as_a_shipped_one(
     client, graph
 ):
@@ -828,8 +888,7 @@ def test_an_edited_topology_is_refused_while_another_launchers_service_is_live_a
 
     assert response.status_code == 409
     assert (
-        "Module7 carries a fresh heartbeat in test-dataset"
-        in response.json()["detail"]
+        "Module7 carries a fresh heartbeat in test-dataset" in response.json()["detail"]
     )
     assert graph.seeded == []
     assert client.get("/api/state").json()["processes"] == []
@@ -919,8 +978,7 @@ def test_the_state_s_monitor_is_the_page_its_row_links_as_open_wherever_the_row_
     client, graph, monkeypatch
 ):
     """The monitor's link is a field of the state, `monitor`: the page its row links as "open",
-    found by that label and not by its place among the row's links. (Added on 2026-10-11,
-    jms_kapps 33: until then the state took the row's first link.)"""
+    found by that label and not by its place among the row's links."""
     monitor = backend._OFFERS["monitor"]
     monkeypatch.setitem(
         backend._OFFERS, "monitor", monitor._replace(pages=monitor.pages[::-1])
@@ -1053,7 +1111,7 @@ def test_stopping_a_process_that_does_not_exist_is_not_found(client, cross):
 
 class Bug(KeyError, ValueError):
     """An error that no part of the Launcher raises as a refusal, as a bug raises one, of both
-    the built-in classes that a route caught until jms_kapps 33: `KeyError` and `ValueError`."""
+    the built-in classes that a route must not catch: `KeyError` and `ValueError`."""
 
 
 def raises_a_bug(*args: object, **kwargs: object) -> None:
@@ -1094,8 +1152,7 @@ def test_an_error_that_is_no_refusal_of_the_backend_goes_through_the_route_as_it
     loading refuses, a name that the package ships no topology by, and a launch or a clear that
     is refused or failed. Any other error, as a bug's `KeyError` or `ValueError`, goes through the
     route as it is, and the server answers it as the fault it is, rather than as a refusal that
-    names a wrong cause, such as "no process" or a reason why a topology does not load. (Added on
-    2026-10-11, jms_kapps 33: until then the routes caught every `KeyError` and `ValueError`.)"""
+    names a wrong cause, such as "no process" or a reason why a topology does not load."""
     owner, name = seam.split(".")
     monkeypatch.setattr({"launcher": launcher, "api": api}[owner], name, raises_a_bug)
 
@@ -1229,6 +1286,28 @@ def test_while_the_graph_is_away_the_state_answers_and_marks_what_it_cannot_conf
     assert m1["links"][0] == {"label": "docs", "href": "p/Module1/docs"}
     assert m1["address"] == "http://127.0.0.1:4001"
     assert m1["unconfirmed_for"] >= 0
+
+
+def test_a_process_whose_service_stopped_being_ready_says_why_it_failed(
+    client, graph, unwatched
+):
+    """The state answer carries why, as the line printed of the turn says, and the note the
+    page shows says it too."""
+    client.post("/api/launch", json={"name": "cross"})
+    graph.live = {M1}
+    graph.addresses = {M1: "http://127.0.0.1:4001"}
+    unwatched[-1].refresh()
+    assert process(client, M1)["state"] == "live"
+
+    graph.live = set()
+    stale = datetime.now(UTC) - timedelta(seconds=120)
+    graph.left[M1] = Service(IRI(f"{M1}_service"), M1, "http://127.0.0.1:4001", stale)
+    unwatched[-1].refresh()
+
+    m1 = process(client, M1)
+    assert m1["state"] == "failed"
+    assert m1["why_failed"] == "its last heartbeat is 120 s old"
+    assert m1["state_note"] == "Its last heartbeat is 120 s old."
 
 
 # Ignores the platform's graceful stop, SIGTERM on POSIX and CTRL_BREAK on Windows.
@@ -1544,6 +1623,9 @@ class RegisteringGraph(FakeGraph):
     def registered(self) -> set[IRI]:
         return {IRI(unquote(marker.name)) for marker in self.registry.iterdir()}
 
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
+
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return [
             *super().services(workflows),
@@ -1589,6 +1671,7 @@ def test_the_picker_is_offered_every_shipped_topology(client):
     assert client.get("/api/topologies").json() == [
         "cross",
         "grid",
+        "line",
         "merge-fault-demo",
         "pair",
         "tee",
@@ -1682,7 +1765,7 @@ def test_a_module_whose_heartbeat_went_stale_may_not_have_its_fault_switched(
     assert process(client, M1)["fault_switchable"] is False
 
 
-# -- The transit time of a launch (jms_kapps 8) ------------------------------------------------- #
+# -- The transit time of a launch ------------------------------------------------- #
 
 
 def test_the_state_gives_the_default_of_the_pages_transit_time_field(client):
@@ -1810,7 +1893,7 @@ def test_the_check_and_an_edited_launch_refuse_a_module_s_own_transit_time_that_
     assert graph.seeded == []
 
 
-# -- A topology with no module (jms_kapps 69) -------------------------------------------------- #
+# -- A topology with no module -------------------------------------------------- #
 
 NO_MODULE = "a topology needs at least one module"
 

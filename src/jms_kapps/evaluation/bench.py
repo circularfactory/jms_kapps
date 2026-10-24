@@ -8,7 +8,7 @@ A run goes through these steps, in order, and records each action it takes with 
 2. **The facts before the run.** The client's facts, the network's round trip, the software's
    versions and commits, and the server's version, repositories, resource view, license, and the
    query and transaction view of every repository, the protected ones included (`record`,
-   `store`; the counters added on 2026-10-12, jms_kapps 95). This is the run's start: the moment
+   `store`). This is the run's start: the moment
    before the harness creates its repository.
 3. **The store.** It creates its repository, `eval-` plus the run id, from jms_kapps' repository
    config, with SHACL on or as the twin, and refuses a ruleset other than `rdfsplus-optimized`
@@ -19,23 +19,21 @@ A run goes through these steps, in order, and records each action it takes with 
    history, so that the prefill is no history; then one process for each module and the
    WarehouseManagementSystem's, with the configuration's strategies, and no monitor. Between the
    prefill's load and the first process, it reads the statement counts of its repository, where
-   no participant writes (jms_kapps 95). It waits at the readiness gate. Each participant's output
+   no participant writes. It waits at the readiness gate. Each participant's output
    goes to its own file in the run's folder.
 5. **The warm-up and the window.** It reads the WarehouseManagementSystem's spawn rate workflow from
    the graph, and then sets the spawn rate through that workflow, the WarehouseManagementSystem's REST interface, at the warm-up's start,
    and to 0 at the window's end. Load enters only there. The measured window starts when the
    warm-up ends; the server's views are read just before it starts. A warm-up of 0 is a run
-   without one: the views are read, and the window starts as the rate is set (the warm-up added on
-   2026-10-11, jms_kapps 78). From the load's start the completion matcher reads the run's ended
-   transports at the configuration's interval, until the drain's end (`matcher`; added on
-   2026-10-12, jms_kapps 48). The run's transports are the ones that the WarehouseManagementSystem's
+   without one: the views are read, and the window starts as the rate is set. From the load's start the completion matcher reads the run's ended
+   transports at the configuration's interval, until the drain's end (`matcher`). The run's transports are the ones that the WarehouseManagementSystem's
    output names: right after the store admitted the create of a box, it logs that the box's
    transport is `queued`, and the harness collects those lines as the run goes on
-   (`own_transports`; changed on 2026-10-12, jms_kapps 90, from telling them by a box number above
-   the highest before the warm-up, which read every box transport of the store at every read).
+   (`own_transports`); telling them by a box number would read every box transport of the store at
+   every read.
    Every read of the harness names the transports it asks for, in steps of at most `READ_NAMES`.
    The server watch starts with the load and samples the resource view and the round trip every
-   `WATCH_INTERVAL_SECONDS` through the warm-up, the window and the drain (`watch`; jms_kapps 95).
+   `WATCH_INTERVAL_SECONDS` through the warm-up, the window and the drain (`watch`).
    The window's start also reads the global page cache.
 6. **The drain.** It reads the run's transports every `DRAIN_POLL_SECONDS` until none is open, or
    the drain bound has passed. The run's transports are those the WarehouseManagementSystem's log
@@ -52,8 +50,7 @@ A run goes through these steps, in order, and records each action it takes with 
    record (`record.write_record`). A stop signal, Ctrl+C, SIGTERM or a closing terminal's SIGHUP,
    ends the run there too, as interrupted; a stop signal while the run ends does not cut it short.
 
-**The deletion of the repository** (Sören's decision of 2026-10-14 as the product owner of the
-tests, jms_kapps 116; interim names, jms_kapps 83). The outcome says how the measurement ended, and
+**The deletion of the repository** (interim names). The outcome says how the measurement ended, and
 only that: a run whose steps completed is `completed`, and gets its observation, whatever the
 deletion did; a failed, over-time or interrupted run keeps its outcome. The deletion is a fact of
 its own in the record, `repository_deletion`: `deleted`, `why` it was not, and `answer_lost`, why
@@ -66,12 +63,9 @@ names none, says whether the store deleted it (`GraphDBServer.deleted_after_a_lo
 where that list fails too, the repository counts as not deleted, with both whys. Any other
 answer is a refusal, with no list. A repository that the store did not delete is the action "repository not deleted", with why,
 and the last line of `jms-eval-uc2` and the line that `jms-eval-sweep` prints after the run name
-it (`outcome_line`), so that a person deletes it. (Changed on 2026-10-14, jms_kapps 116: until then
-a repository that the store did not delete added "; the repository was not deleted" to the
-outcome, so a completed run had no observation, and no reader took it as completed.)
+it (`outcome_line`), so that a person deletes it.
 
-**The run limit** (added on 2026-10-13, jms_kapps 106, decided by Sören on jms_kapps 85; interim
-names, jms_kapps 83). Each step above has a limit of its own, and the whole run has one too: 30
+**The run limit** (interim names). Each step above has a limit of its own, and the whole run has one too: 30
 minutes by default (`run_limit.RUN_LIMIT_SECONDS`), a run setting outside the configuration's key,
 which the record keeps as `run_settings.run_limit_seconds`. The time counts from the run's start,
 where step 2 reads the facts, to the start of step 7: the stop of the participants and the end are
@@ -80,17 +74,16 @@ participants stop, the repository is deleted and the record is written. Its outc
 (over time)`, with the limit and the step (2 to 6) at which the limit came, by the step's name
 above, and its actions hold `run limit reached` (`run_limit`).
 
-**The observation** (added on 2026-10-12, jms_kapps 48). With the configuration's `wrapper`, each
+**The observation.** With the configuration's `wrapper`, each
 participant starts through the wrapper (`wrapper`), whose spans go into `spans/` in the run's
 folder, one file for each participant; without it, the participants start as they are, and the
 record's run kind is `uc2-unwrapped`. Either way each line of a participant's output is stamped
 with the time it arrived, so that a deadlock alarm is dated.
 
 Each run setting stays at the default of today's use case 2, and the record holds each with its
-value: none is swept (decided by Etienne on 2026-10-11), except two that are keys of the
+value: none is swept, except two that are keys of the
 configuration now, the transit time and the retry wait, and one that the configuration gives or
-the run fills in, the WarehouseManagementSystem's pick seed (added on 2026-10-12, jms_kapps 93,
-decided by Sören on jms_kapps 85; interim names, jms_kapps 83). A run takes the seed of its
+the run fills in, the WarehouseManagementSystem's pick seed (interim names). A run takes the seed of its
 configuration, or else repetition 1 of the default base seed (`configuration.pick_seed`), seeds
 the WarehouseManagementSystem's picks with it, and writes it to its record and to the saved
 configuration, so that this configuration run again makes the same picks. Everything the run reaches outside itself
@@ -119,7 +112,6 @@ from kapps_triplestore_interface import IRI, TripleStore
 from jms_kapps.common.services import (
     MAX_HEARTBEAT_AGE_SECONDS,
     Service,
-    ServiceReader,
     services,
 )
 from jms_kapps.common.supervision import (
@@ -221,7 +213,7 @@ def run_settings(
     run_limit_seconds: float = RUN_LIMIT_SECONDS,
 ) -> dict[str, Any]:
     """Each run setting of use case 2 with the value a run takes. The transit time and the retry
-    wait are no run settings any more: they are keys of the configuration (jms_kapps 93)."""
+    wait are no run settings any more: they are keys of the configuration."""
     return {
         "server_watch_interval_seconds": watch_interval_seconds,
         "deadlock_alarm_seconds": DEADLOCK_ALARM_SECONDS,
@@ -234,11 +226,11 @@ def run_settings(
         "drain_poll_seconds": DRAIN_POLL_SECONDS,
         "prefill_transaction_statements": PREFILL_TRANSACTION_STATEMENTS,
         # The seed of the generator the WarehouseManagementSystem picks an origin and a
-        # destination with: the run's, from its configuration (jms_kapps 93).
+        # destination with: the run's, from its configuration.
         "wms_pick_seed": wms_pick_seed,
-        # How often the client host's CPU and memory use is sampled (jms_kapps 91, interim).
+        # How often the client host's CPU and memory use is sampled (interim).
         "client_load_interval_seconds": CLIENT_LOAD_INTERVAL_SECONDS,
-        # The limit of the whole run (`run_limit`; jms_kapps 106, interim).
+        # The limit of the whole run (`run_limit`; interim).
         "run_limit_seconds": run_limit_seconds,
     }
 
@@ -295,8 +287,7 @@ class GraphDBBenchGraph(run_core.TripleStoreGraph):
         db: The client of the run's repository.
         prefill: The prefill file, in Turtle, or None for a run without one.
         with_shapes: Whether the reset sets use case 2's shapes: the configuration's `shacl`.
-            The SHACL-off twin has no SHACL validation, and refuses them (added on 2026-10-11,
-            jms_kapps 62).
+            The SHACL-off twin has no SHACL validation, and refuses them.
         seed_uc2: What resets the repository and seeds the topology: `seed_topology`.
     """
 
@@ -355,10 +346,10 @@ class GraphDBBenchGraph(run_core.TripleStoreGraph):
                 f"SELECT ?transport ?status ?place ?reason WHERE {{ "
                 f"VALUES ?transport {{ {listed} }} "
                 f"?transport a <{FC.BoxTransportOperation}> ; "
-                f"<{SVC.operationStatus}> ?status . "
+                f"<{SVC.hasOperationStatus}> ?status . "
                 + (f"FILTER (STR(?status) IN ({ended})) " if ended_only else "")
                 + f"OPTIONAL {{ ?transport <{CFC.executedOn}> ?place }} "
-                f"OPTIONAL {{ ?transport <{SVC.executionResult}> ?reason }} "
+                f"OPTIONAL {{ ?transport <{SVC.hasExecutionResult}> ?reason }} "
                 f"}}",
                 convert=False,
             )
@@ -456,7 +447,7 @@ class ParticipantOutputs:
 
     The supervisor writes a participant's line as its name, two spaces and the line. Its file
     holds each line stamped with the time it arrived, by `now`: the time, two spaces and the line
-    (added on 2026-10-12, jms_kapps 48, so that a deadlock alarm is dated).
+    (so that a deadlock alarm is dated).
     """
 
     def __init__(
@@ -507,7 +498,7 @@ class ParticipantOutputs:
     def new_lines_of(self, resource: IRI) -> list[str]:
         """The complete lines the participant of `resource` has written since the last call
         for it, without the stamps: the first call returns them all. The file is read from where
-        the last call stopped, so a long run does not read its start again (jms_kapps 90)."""
+        the last call stopped, so a long run does not read its start again."""
         path = self._paths.get(resource)
         if path is None or not path.is_file():
             return []
@@ -554,14 +545,14 @@ def _unstamped(raw: str) -> Stamped:
     return None, raw
 
 
-# What starts the run core's supervisor for a run: its reader of the services, and the echo of
-# its processes' output.
-SupervisorFor = Callable[[ServiceReader, Callable[[str], None]], Supervisor]
+# What starts the run core's supervisor for a run: the run's graph, whose services it reads, and
+# the echo of its processes' output.
+SupervisorFor = Callable[[run_core.RunGraph, Callable[[str], None]], Supervisor]
 
 
-def new_supervisor(services: ServiceReader, echo: Callable[[str], None]) -> Supervisor:
+def new_supervisor(graph: run_core.RunGraph, echo: Callable[[str], None]) -> Supervisor:
     """The run core's supervisor of a run."""
-    return Supervisor(services, echo=echo)
+    return Supervisor(graph.services, service_of=graph.service_of, echo=echo)
 
 
 def new_run_id(now: datetime) -> str:
@@ -724,7 +715,7 @@ def run(
             for p in participants
         ]
         outputs.add(participants)
-        supervisor = supervisor_for(graph.services, outputs.echo)
+        supervisor = supervisor_for(graph, outputs.echo)
         refuse_if_live(graph.services, dataset=repository)
         actions.add("seed began")
         start_run(
@@ -827,7 +818,7 @@ def run(
 # The keys under which a record holds the run repository's statement counts: read after the prefill
 # load and before the participants start, and after they stop and before the repository is
 # deleted, where no participant writes and no transaction is open (GDB-12163: 10.8.5 reports a
-# wrong size inside an open transaction). Interim names (jms_kapps 83).
+# wrong size inside an open transaction). Interim names.
 STATEMENTS_BEFORE_THE_PARTICIPANTS = "statements_before_the_participants"
 STATEMENTS_AFTER_THE_PARTICIPANTS = "statements_after_the_participants"
 
@@ -912,6 +903,11 @@ class _WithStatementCounts:
 
     def services(self, workflows: Collection[IRI]) -> Iterable[Service]:
         return self._graph.services(workflows)
+
+    def service_of(
+        self, resource: IRI, workflows: Collection[IRI]
+    ) -> Iterable[Service]:
+        return self._graph.service_of(resource, workflows)
 
 
 def _window(
@@ -1017,7 +1013,7 @@ def _transports(queued: Sequence[str], ends: Sequence[TransportEnd]) -> dict[str
 
     The warm-up's transports are the run's too. Telling the warm-up's from the window's is the
     measures' work, by the warm-up's end in the record. The record no longer holds the highest
-    box before the window (`highest_box_before_the_window`, jms_kapps 90): the records of the
+    box before the window (`highest_box_before_the_window`): the records of the
     first iteration do, and the report still reads them."""
     return {
         "queued_by_the_wms": len(queued),
@@ -1095,14 +1091,9 @@ def delete_run_repository(
 
     The deletion is a fact of its own in the record, `repository_deletion`: `deleted`, `why` it
     was not, and `answer_lost`, why the deletion got no usable answer, where it got none: the
-    request did not reach the store, no answer came, or an answer came that could not be read
-    (changed on 2026-10-15 after a review: until then this docstring said that
-    `answer_lost` is why the store's answer was lost). A repository that the store does not
+    request did not reach the store, no answer came, or an answer came that could not be read. A repository that the store does not
     delete is an action of its own too, with why. The outcome
-    says nothing of the deletion: it says how the measurement ended, and only that (changed on
-    2026-10-14, jms_kapps 116, decided by Sören as the product owner of the tests; until then a
-    repository that the store did not delete added "; the repository was not deleted" to the
-    outcome, and a completed run then had no observation).
+    says nothing of the deletion: it says how the measurement ended, and only that.
     """
     if repository in server.created:
         deletion = _deletion(repository, server)
@@ -1120,8 +1111,7 @@ def outcome_line(program: str, record: Mapping[str, Any], runs: Path) -> str:
     """The line that tells how a run ended and where its record is below `runs`, and names its
     repository where the store did not delete it, so that a person deletes it: the last line of
     `jms-eval-uc2` and of `jms-eval-baseline`, and the line that `jms-eval-sweep` prints after
-    each run, each with its command's name `program`. (The repository added on 2026-10-14,
-    jms_kapps 116; interim name, jms_kapps 83.)"""
+    each run, each with its command's name `program`."""
     return (
         f"{program}: {record['outcome']}. The record is at "
         f"{runs / record['run_id'] / 'record.json'}{_left_repository_suffix(record)}"

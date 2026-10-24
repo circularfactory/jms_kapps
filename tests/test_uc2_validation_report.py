@@ -62,7 +62,7 @@ def test_a_report_that_names_no_rule_adds_no_clause():
 
 def test_the_messages_clause_says_what_each_rule_the_store_names_says_once():
     """For a person to read why, beside where: the message of each result, in the order the
-    middleware's reader gives the results, each message once (jms_kapps 41)."""
+    middleware's reader gives the results, each message once."""
     assert messages_clause(recorded("skip-reserve")) == (
         ": A FlexConveyorModule may possess at most one Box at a time."
     )

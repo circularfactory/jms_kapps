@@ -18,7 +18,6 @@ from collections.abc import Iterable, Sequence, Sized
 from typing import Any
 
 from kapps_semantic_middleware.dashboard import (
-    SHORTENING_NOTE,
     DashboardRegistry,
     escape,
     hint,
@@ -80,20 +79,24 @@ def _origin_to_destination(origin: str | None, destination: str | None) -> str:
     return f"{_short(origin)} → {_short(destination)}"
 
 
-# The column of prose, the only one whose cells wrap.
+# The column of prose.
 REASON = "Reason"
 
-# A short value stays on one line. The dashboard breaks a cell anywhere, which suits a long IRI
+# The columns whose cells wrap: the prose, and the IRIs, which are long (a box is `Box-` and a
+# whole UUID) and would run past the edge of a column that did not wrap them.
+WRAPPING = frozenset({REASON, "Box", "Transport", "Origin → destination"})
+
+# Any other value stays on one line. The dashboard breaks a cell anywhere, which suits a long IRI
 # but cuts "accepted" or a time of day in two in a box half the page wide; the table scrolls
 # sideways instead.
 _ONE_LINE = ' style="white-space: nowrap"'
 
 
 def _table(head: Sequence[str], rows: Iterable[Iterable[str]]) -> str:
-    """A table under the note that its identifiers are shortened. Each cell is HTML already, and
-    stays on one line, except in the column "Reason"."""
+    """A table whose cells are HTML already. A cell stays on one line, except in the columns of
+    `WRAPPING`."""
     header = "".join(f"<th>{escape(title)}</th>" for title in head)
-    cell_attributes = ["" if title == REASON else _ONE_LINE for title in head]
+    cell_attributes = ["" if title in WRAPPING else _ONE_LINE for title in head]
     body = "".join(
         "<tr>"
         + "".join(
@@ -103,10 +106,7 @@ def _table(head: Sequence[str], rows: Iterable[Iterable[str]]) -> str:
         + "</tr>"
         for row in rows
     )
-    return (
-        f"{hint(SHORTENING_NOTE)}"
-        f'<div class="table-scroll"><table><tr>{header}</tr>{body}</table></div>'
-    )
+    return f'<div class="table-scroll"><table><tr>{header}</tr>{body}</table></div>'
 
 
 def _newest(shown: Sized, count: int, things: str) -> str:
@@ -129,9 +129,10 @@ def _rate_in_force(boxes_per_minute: float) -> str:
     """The line that shows the rate in force. It asks for its dashboard box again every few
     seconds and takes only itself from the answer, so the form above it keeps what a person
     types."""
-    text = f"In force: {boxes_per_minute:g} boxes per minute"
     if boxes_per_minute == 0:
-        text += ", so none spawns"
+        text = "Current rate: 0, spawning is off"
+    else:
+        text = f"Current rate: {boxes_per_minute:g} boxes per minute"
     return (
         f'<p class="rate-in-force" hx-get="{_from_the_dashboard(RATE_ROUTE)}" '
         f'hx-trigger="every {REFRESH_SECONDS}s" hx-select=".rate-in-force" '
@@ -157,10 +158,7 @@ def register_boxes(
         origins: The modules "Spawn a box" offers as the origin: the entry modules of the
             FlexConveyor station, or every module where it names none.
         destinations: Those it offers as the destination: its exit modules, or every module
-            where it names none. (Changed on 2026-10-06, jms_kapps 45, decided by Etienne: roles
-            are optional. Until then the two were `entry_modules`, "The entry modules of the
-            FlexConveyor station, which "Spawn a box" offers as the origin", and
-            `exit_modules`, "Its exit modules, which "Spawn a box" offers as the destination".)
+            where it names none.
     """
     origin_options, destination_options = _options(origins), _options(destinations)
 
@@ -190,26 +188,11 @@ def register_boxes(
             '<button type="submit">Set</button>'
             "</form>"
             f"{_rate_in_force(boxes_per_minute)}"
-            # Changed on 2026-10-06, jms_kapps 41, decided by Etienne: a spawn moves no box.
-            # Until then the hint went on "A spawn lasts until its box is on its origin, a move
-            # long, so a rate above one box per move spawns as fast as the moves allow."
-            # Changed again on 2026-10-06, jms_kapps 45, decided by Etienne: roles are optional.
-            # Until then "created on a free entry module and that module is notified" and "A
-            # spawn while no entry module is free is refused."
-            # Changed again on 2026-10-07, jms_kapps 51, decided by Etienne: spawns overlap, and
-            # each one beyond the cap is refused. Until then: "The WMS spawns one box after
-            # another at this rate, and chooses each box's origin and destination. 0 stops it. A
-            # spawn lasts until its box is created on a free entry module, or on any free module
-            # where the topology names no entry module, and that module is notified, so a rate
-            # faster than that spawns as fast as the store answers. A spawn while no such module
-            # is free is refused."
             + hint(
-                "The WMS starts a spawn each time one is due at this rate, whether the "
-                "one before it has ended or not, and chooses each box's origin and "
-                "destination. 0 stops it. At most as many spawns are under way at once "
-                "as there are entry modules, or modules where the topology names no "
-                "entry module: a spawn beyond that is refused, and so is one while no "
-                "such module is free, or none reaches a destination."
+                "The WMS starts a spawn each time one is due at this rate and chooses "
+                "each box's origin and destination; 0 stops it. A spawn is refused while "
+                "every origin has a spawn under way, while no origin is free, "
+                "or while none reaches a destination."
             )
         )
 

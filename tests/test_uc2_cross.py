@@ -1,17 +1,13 @@
 """Several boxes at once on the 5-module cross, each module choosing its next module from the graph.
 
-The cross names no roles: Modules 1, 2, 4 and 5 are each connected to Module 3 in the middle, both
-ways, and a box may start on any module and end on any other. So a box between two outer modules
-goes over Module 3, two hops, and boxes that travel at the same time contend for Module 3. The
+The cross names the first iteration's roles: Modules 1 and 2 are entry modules and Modules 4 and 5
+exit modules, each connected to Module 3 in the middle, both ways, and Module 3 has none. A box
+starts on Module 1 or 2 and ends on Module 4 or 5, so it goes over Module 3, two hops, and boxes
+that travel at the same time contend for Module 3. The
 origin of a spawn looks ahead: it accepts the WMS's Reserve only once Module 3 has reserved itself
 for the box, so of two spawns at once, one onto Module 1 and one onto Module 2, one is refused, and
-is spawned again once Module 3 is free (changed on 2026-10-06, jms_kapps 43, decided by Etienne;
-until then "a module that finds it occupied or reserved waits and asks again").
-(Changed on 2026-10-06, jms_kapps 45, decided by Etienne: the cross names no roles, and the WMS
-sends boxes between any two of its modules. Until then the first paragraph began: "The cross has
-two entry modules, Module 1 and Module 2, and two exit modules, Module 4 and Module 5, each
-connected to Module 3 in the middle. So every box goes from an entry over Module 3 to an exit, two
-hops", and the second spoke of "one onto each entry".)
+is spawned again once Module 3 is free. The WMS
+sends boxes between the four ordered pairs of an entry and an exit module.
 
 The parties are served in this process (`_participants`), with a transit time of 0 and a retry
 time of 0.1 s. Every call between them goes over REST, every notification through the middleware,
@@ -58,12 +54,10 @@ CROSS_TOPOLOGY = shipped_topology("cross")
 
 # Four boxes over two hops each, through one module in the middle, on the shared KIT store.
 TRANSPORTS_SECONDS = 120.0
-# The cross names no entry module, so a spawn left to the WMS is refused while every module holds
-# a box (changed on 2026-10-06, jms_kapps 45, decided by Etienne: roles are optional; until then
-# "no entry module is free").
-NO_MODULE_FREE = "no module is free"
-# The rate of acceptance criterion 1 of jms_kapps 45, and how long the boxes it spawns may take to
-# cover the twenty ordered pairs of the cross's modules, on the shared KIT store.
+# A spawn left to the WMS is refused while both entry modules, Modules 1 and 2, hold a box.
+NO_MODULE_FREE = "no entry module is free"
+# The rate of acceptance criterion 1, and how long the boxes it spawns may take to
+# cover the four ordered pairs of an entry and an exit module of the cross, on the shared KIT store.
 BOXES_PER_MINUTE = 30
 PAIRS_SECONDS = 420.0
 
@@ -126,8 +120,7 @@ def test_boxes_from_modules_1_and_2_reach_modules_4_and_5_over_module_3_and_cont
         [refused] = [s for s in at_once if not s["accepted"]]
         [first] = [s for s in at_once if s["accepted"]]
         # Module 3 is reserved for the box of the spawn it accepted, which the WMS named by a
-        # UUID. (Changed on 2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85: a new box
-        # gets a UUID. Until then the box was "Box[12]", Box 1 or Box 2.)
+        # UUID.
         assert re.fullmatch(
             r"Module[12] refused to reserve: Module3, its next module, refused to reserve: "
             r"reserved for " + re.escape(IRI(first["box"]).fragment),
@@ -141,9 +134,7 @@ def test_boxes_from_modules_1_and_2_reach_modules_4_and_5_over_module_3_and_cont
             [first, again],
             key=lambda s: routes.index((IRI(s["origin"]), IRI(s["destination"]))),
         )
-        # Each further box as soon as its origin is free again. (Changed on 2026-10-06,
-        # jms_kapps 45, decided by Etienne: the cross names no roles, so the origins are named,
-        # as Module 3 could otherwise be one. Until then only the destination was named.)
+        # Each further box as soon as its origin is free again.
         spawned += [
             spawn_until_accepted(
                 party, origin=str(origin), destination=str(destination)
@@ -183,7 +174,7 @@ def transport_ends(db: Queryable) -> list[tuple[IRI, IRI, str]]:
         SELECT ?origin ?destination ?status WHERE {{
             ?transport a <{FC.BoxTransportOperation}> ;
                 <{FC.hasOrigin}> ?origin ; <{FC.hasDestination}> ?destination .
-            OPTIONAL {{ ?transport <{SVC.operationStatus}> ?status }}
+            OPTIONAL {{ ?transport <{SVC.hasOperationStatus}> ?status }}
         }}
         """,
     )
@@ -195,7 +186,7 @@ def transport_ends(db: Queryable) -> list[tuple[IRI, IRI, str]]:
 
 class FewestTravelled:
     """How the WMS picks a module out of several, for a test that must cover every ordered pair of
-    the cross's modules in a few boxes: the origin with the most pairs that no box has travelled
+    an entry and an exit module of the cross in a few boxes: the origin with the most pairs that no box has travelled
     yet, then the destination fewest boxes have travelled to from it, the lowest IRI first. It
     reads the transports in `db` at each pick, and keeps what it was offered to pick from: each
     origin with the origins and the destinations offered.
@@ -204,8 +195,8 @@ class FewestTravelled:
     alternate.
     """
 
-    def __init__(self, db: Queryable, modules: list[IRI]) -> None:
-        self.db, self.modules = db, modules
+    def __init__(self, db: Queryable, exits: list[IRI]) -> None:
+        self.db, self.exits = db, exits
         self.offered: list[tuple[list[IRI], IRI, list[IRI]]] = []
         self._origins: list[IRI] = []
         self._origin: IRI | None = None
@@ -218,7 +209,7 @@ class FewestTravelled:
             self._origin = min(
                 options,
                 key=lambda o: (
-                    -sum(1 for d in self.modules if d != o and not travelled[o, d])
+                    -sum(1 for d in self.exits if d != o and not travelled[o, d])
                 ),
             )
             return self._origin
@@ -239,16 +230,15 @@ def set_spawn_rate(party: Participants, boxes_per_minute: float) -> None:
 def test_at_30_boxes_a_minute_left_to_the_wms_boxes_travel_between_every_ordered_pair(
     dataset,
 ):
-    """Acceptance criterion 1 of jms_kapps 45: on the cross, which names no roles, the WMS starts
-    a box on any free module and sends it to any other, so boxes travel between every ordered pair
-    of its five modules, and all arrive. The WMS picks toward the pairs no box has travelled yet
-    rather than at random (`FewestTravelled`), so that twenty pairs need few more than twenty
-    boxes; what it picks from is its own, and is checked: every free module as the origin, and
-    every other module as the destination. (Added on 2026-10-06, jms_kapps 45, decided by
-    Etienne.)"""
-    modules = [M1, M2, M3, M4, M5]
-    chooser = FewestTravelled(connect(dataset), modules)
-    every_pair = {(o, d) for o in modules for d in modules if o != d}
+    """Acceptance criterion 1: on the cross, which names Modules 1 and 2 as entry modules and
+    Modules 4 and 5 as exit modules, the WMS starts a box on a free entry module and sends it to an
+    exit module, so boxes travel between every one of the four ordered pairs, never from or to
+    Module 3, and all arrive. The WMS picks toward the pairs no box has travelled yet rather than
+    at random (`FewestTravelled`), so that four pairs need few more than four boxes; what it picks
+    from is its own, and is checked: the free entry modules as the origin, and the exit modules as
+    the destination."""
+    chooser = FewestTravelled(connect(dataset), [M4, M5])
+    every_pair = {(o, d) for o in (M1, M2) for d in (M4, M5)}
     with participants(dataset, CROSS_TOPOLOGY, choose=chooser) as party:
         set_spawn_rate(party, BOXES_PER_MINUTE)
         started = time.monotonic()
@@ -283,9 +273,10 @@ def test_at_30_boxes_a_minute_left_to_the_wms_boxes_travel_between_every_ordered
     assert {(o, d) for o, d, _ in travelled} == every_pair
     assert len(held) == len(travelled)
     for origins, origin, destinations in chooser.offered:
-        assert set(origins) <= set(modules) and origin in origins
-        assert destinations == [m for m in modules if m != origin]
-    assert any(len(origins) == len(modules) for origins, _, _ in chooser.offered)
+        assert set(origins) <= {M1, M2} and origin in origins
+        assert destinations == [M4, M5]
+    assert any(origins == [M1, M2] for origins, _, _ in chooser.offered)
+    assert M3 not in {m for o, d, _ in travelled for m in (o, d)}
     print(
         f"{by_then} boxes covered the {len(every_pair)} ordered pairs in {covered:.0f} s at "
         f"{BOXES_PER_MINUTE} boxes a minute offered: {by_then / covered * 60:.1f} a minute "

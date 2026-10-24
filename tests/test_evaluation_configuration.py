@@ -1,4 +1,4 @@
-"""The configuration of one UC2 run of the measurement harness, iteration one (jms_kapps 47).
+"""The configuration of one UC2 run of the measurement harness, iteration one.
 
 A configuration is a TOML file with every value the run takes: a missing value is refused by its
 name, and so is a key the run does not know. A topology file, a prefill file or a strategy that
@@ -138,7 +138,7 @@ def test_a_value_of_the_wrong_kind_is_refused_with_its_name(tmp_path, key, value
 def test_a_configuration_of_part_one_without_the_two_new_values_is_refused_by_name(
     tmp_path, missing
 ):
-    """The warm-up and the matcher interval came with the sweep (jms_kapps 78): a configuration
+    """The warm-up and the matcher interval came with the sweep: a configuration
     written before them has neither, and is refused with the name of the one it misses."""
     values = {k: v for k, v in CROSS.items() if k != missing}
 
@@ -147,7 +147,7 @@ def test_a_configuration_of_part_one_without_the_two_new_values_is_refused_by_na
 
 
 def test_a_configuration_written_before_the_wrapper_is_refused_by_its_name(tmp_path):
-    """The wrapper came with the observation (jms_kapps 48): a configuration written before it
+    """The wrapper came with the observation: a configuration written before it
     has no `wrapper`, and is refused with that name."""
     values = {k: v for k, v in CROSS.items() if k != "wrapper"}
 
@@ -251,7 +251,7 @@ def test_a_configuration_that_is_no_toml_is_refused(tmp_path):
         read_configuration(path, **STRATEGIES)
 
 
-# The run settings of the spec (jms_kapps 93, interim names, jms_kapps 83): the transit time and
+# The run settings of the spec (interim names): the transit time and
 # the retry wait are keys, and the pick seed is the one value a configuration may leave out.
 
 

@@ -1,5 +1,4 @@
-"""The monitor page's "possible deadlock" notice, in a headless browser (Etienne, 2026-10-11,
-jms_kapps 77).
+"""The monitor page's "possible deadlock" notice, in a headless browser.
 
 The page is the real one, served by the monitor's own routes, except its state route: a fake that
 answers the state a test sets, and reads nothing. What the state holds is tested in
@@ -112,8 +111,8 @@ def test_graph_only_shows_no_notice_and_says_why(page: Page, monitor_url, state)
 
     expect(page.locator("#deadlock .notice")).to_have_count(0)
     expect(page.locator("#deadlock")).to_contain_text(
-        'In "graph only" the monitor follows no handover event stream'
+        "The monitor follows no handover event stream"
     )
     expect(page.locator("#deadlock")).to_contain_text(
-        'switch to "graph + streams" to see a possible deadlock'
+        'turn on "Follow the services\' handover event streams" to see a possible deadlock'
     )

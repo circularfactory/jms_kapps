@@ -25,8 +25,7 @@ use case 2 exchange topologies: a JSON list of modules, as the first iteration o
 - `rdfs:label` is optional. Without one, the pages show the module's local name.
 - `fc:hasTransitTime` is optional: the module's own transit time, a list of one number, the seconds
   it takes to convey a box. 0 is allowed and means that it conveys at once, with no wait. A module
-  without one takes the transit time of its launch (`seed.seed_topology`). (Added on 2026-10-07,
-  jms_kapps 8, decided by Etienne.)
+  without one takes the transit time of its launch (`seed.seed_topology`).
 - `fc:hasConnection` holds the connections, each a node with the module it leads to
   (`fc:connectsTo`), its direction (`fc:hasDirection`: `fc:North`, `fc:East`, `fc:South` or
   `fc:West`) and its port (`fc:onPort`, 0 where none is given). A connection runs one way, as it is
@@ -42,16 +41,6 @@ use case 2 exchange topologies: a JSON list of modules, as the first iteration o
 package ships is one, below `topologies/`, and the first iteration's files load as they are.
 In memory a topology is a `Topology`, which names each module by the local name of its IRI in
 `fci:`, so that it reads without prefixes; the Launcher page shows the running one in those terms.
-(Changed on 2026-10-06, jms_kapps 44, decided by Etienne: "the old topology worked. so use it here
-too, adapt if you need too". Until then this head began: "A topology is a JSON document. The
-Launcher seeds the graph from one, the Launcher page shows one, and `jms-uc2 --topology` names
-one", and ended its first paragraph: "The document names each module by the local name of its IRI
-in `fci:`, so it reads without prefixes:", above the example `{"modules": [{"id": "Module1",
-"label": "Module 1", "type": "EntryModule", "connections": [{"direction": "South", "to":
-"Module3", "port": 0}]}, ...]}`; the next paragraph began "A topology that
-`Topology.model_validate` accepts is one the graph accepts"; and one more paragraph read:
-"`parse_topology` also reads the format the paper's artifact exported, a list of modules keyed by
-encoded IRIs, and adds the way back of every one-way link, as the artifact did when it seeded.")
 
 The Launcher seeds the graph from a topology, and `jms-uc2 --topology` names one: a shipped one by
 its name, the stem of its file, or else a file by its path. The Launcher page names a shipped one,
@@ -63,18 +52,14 @@ A topology that `parse_topology` accepts is one the graph accepts: every connect
 module of the same topology, and a module has at most one connection in each direction. No module
 takes the IRI of the WarehouseManagementSystem, which every run seeds and starts beside its
 topology. The monitor is the demo Launcher's, so the Launcher refuses a module on its IRI, and a
-run without the Launcher, as a benchmark's, may have one. (Changed on 2026-10-10, jms_kapps 31,
-decided by Etienne: the monitor's reservation moved into the Launcher. Until then the sentence read "No module takes
-the IRI of the WarehouseManagementSystem or the monitor, which the Launcher seeds and starts beside
-every topology.")
+run without the Launcher, as a benchmark's, may have one.
 
 **A topology that is loaded holds at least one module**: with none, the WarehouseManagementSystem
 and the monitor would run and no box could be spawned, so loading a topology, shipped or from a
 file, or launching one edited on the page, refuses an empty module list with "a topology needs at
 least one module". Only the load check refuses it: reading a module list, for the editor's layout
 or an opened file, accepts the empty list, so that a person can edit it until it passes. A single
-module loads. (Added on 2026-10-10, jms_kapps 69, decided by Etienne: the editor's "Empty grid"
-passed the check and enabled "Launch this".)
+module loads. Otherwise the editor's "Empty grid" would pass the check and enable "Launch this".
 
 **A topology that is loaded may hold no pure two-way corridor** (`routing.pure_corridor`): a
 module whose only two connections both run both ways. Two boxes that meet head-on there, one each
@@ -82,38 +67,16 @@ way, could wait for each other forever, with no neighbour to step aside to, so l
 shipped or from a file, refuses one that has such a module, and names it and its two neighbours.
 Any other cycle of connections loads, two-way connections too: a module accepts a box only where
 the box can go on at once, and a box whose next module declines tries a detour first. Where a
-cycle could still hold boxes, the deadlock alarm is the visible backstop, which fails nothing
-(changed on 2026-10-11, jms_kapps 77, decided by Etienne; until then "a bound on a wait with
-escalation, a build of its own, is the backstop"). (Changed on 2026-10-06, jms_kapps 43, decided
-by Etienne: "it refuses only a pure two-way corridor, a module whose only two connections both run both ways; any other routed cycle loads".
-Until then this paragraph read: "**A topology that is loaded must let every box from an entry to
-an exit arrive.** A module refused as occupied waits and asks the same next module again, with no
-bound, so two boxes that each wait for the other's module wait forever. Loading a topology,
-shipped or from a file, therefore refuses one where the hops a box can make from an entry module
-to an exit module run in a cycle, and names the modules of one such cycle (`routing.hop_cycle`).
-Without such a cycle every wait of such boxes ends, because a box on its destination gives itself
-back. The connections themselves may hold cycles that no such box takes, as the cross's do. The
-WarehouseManagementSystem starts a box only on an entry module and ends it only on an exit module,
-a named one too, so every box it spawns is covered. A topology that names no entry module counts
-every module as one, and one that names no exit module counts every module as an exit, so that
-the check errs on the safe side (`entries_and_exits`); the WarehouseManagementSystem spawns nothing
-on such a topology." The sentences on a topology without roles had changed on 2026-10-05, KSM 413,
-decided by Etienne.)
+cycle could still hold boxes, the deadlock alarm is the visible backstop, which fails nothing.
 
 **Roles are optional** (`choices`). A box starts on an entry module where the topology names any,
 and on any module where it names none; it ends on an exit module where the topology names any, and
 on any module where it names none; never on its origin. The WarehouseManagementSystem spawns by
 this rule and its form offers by it (`entries_and_exits`). The load check looks at no role. The
-shipped cross names no roles, so every module of it can send a box to every other; the grid, the
-tee and the pair name theirs. (Changed on 2026-10-06, jms_kapps 45, decided by Etienne: "in
-general entry and exit module are roles. a module can be both", and roles are optional, as the
-first iteration's WarehouseManagementSystem had them. Until then this paragraph read:
-"`entries_and_exits` names the entry modules and the exit modules of a topology, a module without
-roles counting as both: the monitor draws strong the hops a box from an entry module to an exit
-module makes." Changed again on 2026-10-10, jms_kapps 24, decided by Etienne on 2026-10-06: "we can
-map destinations but not routes", so the monitor draws no hop strong. Until then the second
-sentence went on: "and the monitor draws strong the hops a box makes from where it may start to
-where it may end".)
+shipped cross names Modules 1 and 2 as entry modules and Modules 4 and 5 as exit modules, and
+Module 3, in the middle, none; the grid, the tee and the pair name theirs. Roles are optional, as the first iteration's
+WarehouseManagementSystem had them, and a module can be both. The monitor draws no hop strong: it
+maps destinations, not routes.
 """
 
 from __future__ import annotations
@@ -323,13 +286,7 @@ def layout[Key](
     the others, from the left edge. So a part never takes a cell of another, and a topology the
     page's editor wrote opens again in it. A connection to a key that is not a module of
     `connections` is not walked, so a graph that is only partly populated still has a layout, and
-    no module has none. (Changed on 2026-10-06, jms_kapps 29, whose acceptance criterion reads "A
-    topology built in the editor round-trips through JSON in today's format: download, then
-    upload, gives the same grid." Until then the sentence on a module the walk does not reach
-    read: "A module the walk does not reach, or whose cell is taken already, gets the next free
-    cell on a row below the others.", and a part was walked from its start on that row, so that a
-    module of it could lie on a cell that another part held, and was then set aside on a row of
-    its own.)
+    no module has none.
     """
     # Each module's neighbours, each with the step that leads from the module to it.
     neighbours: dict[Key, list[tuple[tuple[int, int], Key]]] = {
@@ -619,9 +576,8 @@ def choices[Key](
 
     **Roles are optional.** A box starts on an entry module where the modules name any, and on any
     module where they name none; it ends on an exit module where they name any, and on any module
-    where they name none. A module of both roles is both. (Added on 2026-10-06, jms_kapps 45,
-    decided by Etienne: "in general entry and exit module are roles. a module can be both", and
-    roles are optional, as the first iteration's WMS had them.)
+    where they name none. A module of both roles is both. Roles are optional, as the first
+    iteration's WMS had them.
     """
     everyone = list(types)
     entries = [m for m, its_types in types.items() if "EntryModule" in its_types]
@@ -640,14 +596,7 @@ def entries_and_exits[Key](
     of both roles is both.
     Modules that name no entry module count every module as one, and modules that name no exit
     module count every module as an exit, as the WarehouseManagementSystem does (`choices`).
-    (Changed on 2026-10-06, jms_kapps 43, decided by Etienne: the load check no longer looks at
-    these hops. Until then "whose hops the load check looks at" and "so that the check errs on the
-    safe side". Changed again on 2026-10-06, jms_kapps 45, decided by Etienne: roles are optional
-    for the WarehouseManagementSystem too. Until then the first sentence ended at "strong", and the
-    last ended at "exit". Changed on 2026-10-10, jms_kapps 24, decided by Etienne on 2026-10-06:
-    "we can map destinations but not routes", so the monitor draws no hop strong. Until then the
-    first sentence went on: "where the boxes start and end whose hops the monitor draws strong,
-    and the modules the WarehouseManagementSystem's form offers".)"""
+    """
     origins, destinations = choices(types)
     return origins.modules, destinations.modules
 
@@ -657,10 +606,7 @@ def _runnable(topology: Topology) -> Topology:
 
     Raises:
         TopologyRefused: If it holds no module, or if a module's only two connections both run
-            both ways, naming it and its two neighbours. (The empty list was added on 2026-10-10,
-            jms_kapps 69, decided by Etienne. The corridor was changed on 2026-10-06, jms_kapps
-            43, decided by Etienne. Until then: "If the hops a box can make from an entry module
-            to an exit module run in a cycle, naming its modules.")
+            both ways, naming it and its two neighbours.
     """
     if not topology.modules:
         raise TopologyRefused("a topology needs at least one module")
@@ -685,14 +631,13 @@ class TopologyRefused(ValueError):
     """Loading refuses a topology: what is read is no module list, or one that cannot be seeded,
     or the load check refuses it. The message is the reason, for a person to read: the Launcher
     page shows it, and `jms-uc2 --topology` prints it. Every refusal of this module is one, so
-    that a caller can tell a refusal from any other error, as a bug's. (Added on 2026-10-11,
-    jms_kapps 33.)"""
+    that a caller can tell a refusal from any other error, as a bug's."""
 
 
 class UnknownTopology(TopologyRefused):
     """The package ships no topology of the name asked for. The message names it and the
     topologies the package ships, for a person to read. `shipped_topology` is the one check of a
-    shipped name, and every caller of it refuses with this. (Added on 2026-10-11, jms_kapps 33.)"""
+    shipped name, and every caller of it refuses with this."""
 
 
 def _shipped() -> dict[str, str]:
@@ -715,8 +660,7 @@ def shipped_topology(name: str) -> Topology:
     """The topology this package ships as `name`. Nothing outside the package is read.
 
     This is the one check of a shipped name: a caller asks for the topology by its name, and
-    checks the name no more itself. (Added on 2026-10-11, jms_kapps 33: until then the Launcher's
-    routes and `load_topology` each checked the name first, in words of their own.)
+    checks the name no more itself.
 
     Raises:
         UnknownTopology: If the package ships no topology of that name, naming the ones it ships.
@@ -767,9 +711,7 @@ def topology_file(path: Path) -> Topology:
 
 def edited_topology(module_list: Any) -> Topology:
     """The topology of `module_list`, which a person edited, checked as loading checks a shipped
-    topology or a file. (Changed on 2026-10-06, jms_kapps 44, decided by Etienne. Until then this
-    read: "It takes the format of the shipped topologies only, not the paper's artifact's module
-    list, which a file may hold.")
+    topology or a file.
 
     Raises:
         TopologyRefused: If it is no module list, naming the format a topology has, or one that
@@ -789,8 +731,7 @@ def load_topology(name_or_path: str) -> Topology:
     Raises:
         UnknownTopology: If it is neither a shipped name nor a file, in the words of the check of
             a shipped name, which name the shipped topologies, and saying that there is no such
-            file either. (Changed on 2026-10-11, jms_kapps 33: until then in words of its own,
-            "There is no topology <name>, and no such file. Shipped: <names>.")
+            file either.
         TopologyRefused: If its topology cannot be seeded, naming why.
     """
     path = Path(name_or_path)

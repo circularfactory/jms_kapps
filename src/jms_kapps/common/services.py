@@ -11,9 +11,10 @@ services, one for each middleware instance bound to it. Of several live ones, a 
 one whose heartbeat is newest: of a killed instance and its restart, the restart.
 
 Discovery, the live-instance guard, the supervisor and its readiness gate read a service only here
-(`services`), so what counts as live is written once. A read that finds a service by something
-other than its resource, as use case 1 finds its detector by a capability, takes the same rule from
-`live_pattern`.
+(`services`), so what counts as live is written once. The supervisor also reads one service that
+is not live here (`reader_of_one`), to say why its process stopped being ready. A read that finds a
+service by something other than its resource, as use case 1 finds its detector by a capability,
+takes the same rule from `live_pattern`.
 """
 
 from __future__ import annotations
@@ -53,6 +54,11 @@ class Service:
 # over one store (`reader`), or a test's stand-in.
 ServiceReader = Callable[[Collection[IRI]], Iterable[Service]]
 
+# What reads every service of one resource, live or not, each with its workflows of the classes it
+# is given: `services` narrowed to the resource with `live_only` False (`reader_of_one`), or a
+# test's stand-in. What a supervisor reads to say why a process stopped being ready.
+OneServiceReader = Callable[[IRI, Collection[IRI]], Iterable[Service]]
+
 
 def live_pattern(
     service: str = "service", max_age_seconds: float = MAX_HEARTBEAT_AGE_SECONDS
@@ -61,8 +67,8 @@ def live_pattern(
     now: it has an address and a heartbeat younger than `max_age_seconds`."""
     cutoff = datetime.now(UTC) - timedelta(seconds=max_age_seconds)
     return f"""
-        ?{service} <{SVC.address}> ?address ;
-                   <{SVC.lastHeartbeat}> ?heartbeat .
+        ?{service} <{SVC.hasAddress}> ?address ;
+                   <{SVC.hasLastHeartbeat}> ?heartbeat .
         FILTER (?heartbeat >= "{cutoff.isoformat()}"^^<{XSD.dateTime}>)
     """
 
@@ -89,8 +95,8 @@ def services(
         found = live_pattern("service", max_age_seconds)
     else:
         found = f"""
-            OPTIONAL {{ ?service <{SVC.address}> ?address }}
-            OPTIONAL {{ ?service <{SVC.lastHeartbeat}> ?heartbeat }}
+            OPTIONAL {{ ?service <{SVC.hasAddress}> ?address }}
+            OPTIONAL {{ ?service <{SVC.hasLastHeartbeat}> ?heartbeat }}
         """
     of_resource = f"VALUES ?resource {{ <{resource}> }}" if resource is not None else ""
     registered = ""
@@ -101,7 +107,7 @@ def services(
                 VALUES ?class {{ {classes} }}
                 ?workflow <{SVC.isWorkflowOf}> ?service ;
                           a ?class ;
-                          <{SVC.endpoint}> ?endpoint .
+                          <{SVC.hasEndpoint}> ?endpoint .
             }}
         """
     rows = bindings(
@@ -143,6 +149,14 @@ def reader(db: Queryable) -> ServiceReader:
     """The live services of `db`, each with its workflows of the classes given: what a supervisor
     and the live-instance guard read."""
     return lambda workflows: services(db, workflows=workflows)
+
+
+def reader_of_one(db: Queryable) -> OneServiceReader:
+    """Every service of one resource in `db`, live or not, each with its workflows of the classes
+    given: what a supervisor reads of a process that stopped being ready."""
+    return lambda resource, workflows: services(
+        db, resource=resource, workflows=workflows, live_only=False
+    )
 
 
 def live_resources(

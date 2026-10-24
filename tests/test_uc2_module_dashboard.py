@@ -80,7 +80,7 @@ def test_each_module_process_serves_the_state_dashboard_with_a_tab_of_the_module
                 box(base, box_id)
             # The Instance box shows the module it runs, read from the instance itself.
             assert str(module) in box(base, "header")
-            # Its transit time, which its process read from the graph at its start (jms_kapps 8).
+            # Its transit time, which its process read from the graph at its start.
             assert "transit time: 0 s" in box(base, "module")
 
 
@@ -102,7 +102,7 @@ def test_a_module_s_tab_shows_the_connections_from_its_start_and_each_decision_i
 
         [(_, *decided)] = rows(box(first, "routing-decisions"))
         box_name = local_name(answer["box"])
-        # The detour column, added on 2026-10-06 (jms_kapps 43): no other way leads on.
+        # The detour column: no other way leads on.
         assert decided == [box_name, "Module2", "Module2", "—", "—", "—", "0"]
         [(_, *given_back)] = rows(box(second, "routing-decisions"))
         assert given_back == [

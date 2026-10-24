@@ -10,14 +10,13 @@ puts them on the participants' command lines, `--module-strategy` and `--wms-str
 core does not check the names: a caller checks them with `strategies.chosen` before the start, as
 `jms-uc2` and the Launcher do, because the seed clears the dataset; a process given a name it
 does not know ends at its start with the reason, and the readiness gate then raises `NotReady`.
-(Added on 2026-10-10, when jms_kapps 52 met the run core of jms_kapps 31, by the rule of jms_kapps
-52 that Etienne decided with it on 2026-10-07: the two options go on the command lines the run
-core builds.) The caller names the deadlock alarm time of the modules too, 300 s unless it names
+The two options go on the command lines the run core builds. The caller names the deadlock alarm
+time of the modules too, 300 s unless it names
 another, and the run core puts it on every module's command line, `--deadlock-alarm-seconds`, as
 it puts the strategies there; a caller checks that it is a positive number first, as `jms-uc2`
-and the Launcher do (added on 2026-10-11, jms_kapps 77, decided by Etienne). The caller also says
+and the Launcher do. The caller also says
 whether the seed turns on the store's history collection, the launch option `collect_history`,
-off unless it says so (added on 2026-10-10, jms_kapps 22). The rest is the supervisor's:
+off unless it says so. The rest is the supervisor's:
 
 - **Before the start:** the one live-instance guard, the supervision's `refuse_if_live`, with
   the services the run's graph reads, because the seed clears the dataset.
@@ -76,11 +75,19 @@ class RunGraph(Protocol):
         """Clear the dataset, then seed use case 2's ontology, shapes and `topology`, each
         module with its own transit time, or else `transit_seconds`. With `collect_history`, the
         launch option, turn on the store's history collection after the ontology is loaded;
-        without it, leave the collection as it is (added on 2026-10-10, jms_kapps 22)."""
+        without it, leave the collection as it is."""
         ...
 
     def services(self, workflows: Collection[IRI]) -> Iterable[Service]:
         """The live services, each with its workflows of the classes in `workflows`."""
+        ...
+
+    def service_of(
+        self, resource: IRI, workflows: Collection[IRI]
+    ) -> Iterable[Service]:
+        """Every service of `resource`, live or not, newest heartbeat first, each with its
+        workflows of the classes in `workflows`: what the supervisor reads of a process whose
+        service stopped being ready."""
         ...
 
 
@@ -113,6 +120,11 @@ class TripleStoreGraph:
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return services(self.db, workflows=workflows)
 
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return services(
+            self.db, resource=resource, workflows=workflows, live_only=False
+        )
+
 
 def participants_of(
     topology: Topology,
@@ -130,8 +142,7 @@ def participants_of(
     <module_strategy>` on every module's, `--wms-strategy <wms_strategy>` on the
     WarehouseManagementSystem's. Each process loads its strategy by that name at its start, and
     one that knows no strategy by it ends there, with the reason (`strategies`). Every module's
-    ends with `--deadlock-alarm-seconds <deadlock_alarm_seconds>` after it (added on 2026-10-11,
-    jms_kapps 77, decided by Etienne).
+    ends with `--deadlock-alarm-seconds <deadlock_alarm_seconds>` after it.
 
     Args:
         module_command: The command line of the process for one module, by its resource:
@@ -187,8 +198,7 @@ def start_run(
         transit_seconds: The transit time of every module that has none of its own in
             `topology`. 0 is allowed.
         collect_history: Whether the seed turns on the store's history collection, the launch
-            option; a seed without it leaves the collection as it is (added on 2026-10-10,
-            jms_kapps 22).
+            option; a seed without it leaves the collection as it is.
 
     Raises:
         LaunchFailed: If seeding or starting a process failed, naming why. Every process this

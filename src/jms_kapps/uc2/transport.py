@@ -3,7 +3,7 @@
 The transport names the box, its origin and its destination, and the box links back to its
 transport (`fc:hasTransport`): the opening writes both, so a party that holds a box finds the
 transport through the box, never from the box's name. Its status is the middleware's
-`svc:operationStatus`, and it says where the journey is:
+`svc:hasOperationStatus`, and it says where the journey is:
 
 - `queued` from the moment it is opened, in the commit that creates the box on its origin, until
   the origin is notified;
@@ -12,14 +12,8 @@ transport through the box, never from the box's name. Its status is the middlewa
   commit that makes it the possessor;
 - `failed` when the party that cannot go on ends it: on the station the module it is assigned
   to, or the WarehouseManagementSystem when it cannot notify the origin. Its
-  `svc:executionResult` says why.
+  `svc:hasExecutionResult` says why.
 
-(Changed on 2026-10-06, jms_kapps 41, decided by Etienne: the WarehouseManagementSystem creates
-the box on its origin. Until then `queued` lasted "while the box is still in the
-WarehouseManagementSystem or has just reached its origin", the WarehouseManagementSystem ended a
-transport "when its handover to the origin is refused", and the paragraph below named one
-exception, "the party that has just passed both on and then cannot reach the receiving module",
-and the box's first possession was the WarehouseManagementSystem's.)
 
 **A transport is assigned to one module at a time**: the one that carries the box on now. Core's
 `cfc:executedOn` names it, and `cfc:implementsCapability` names that module's
@@ -30,13 +24,6 @@ it writes the transport on the station: a module that has just passed both on an
 reach the receiving module writes nothing, and the receiving module ends the transport. The
 WarehouseManagementSystem writes it only in the create that opens it and when it cannot notify
 the origin. The box has no state of its own.
-
-(Changed on 2026-10-06, jms_kapps 42, decided by Etienne: only the assigned module writes the
-transport. Until then `failed` also came from "the module that passed the box and the transport
-on when it cannot reach the receiving module after the move", and the paragraph above read "The
-exceptions are the module that has just passed both on and then cannot reach the receiving
-module, which ends the transport `failed`, since nobody else would, and the
-WarehouseManagementSystem, which does the same when it cannot notify the origin.")
 
 Every write of a transport is a commit of the middleware: one `mw.create()` opens it together with
 the box and the box's first possession, by the origin, each change of status is a `mw.commit()`,
@@ -63,7 +50,7 @@ _TRANSPORT_CHAINS: list[list[str | IRI]] = [
     [FC.hasBox],
     [FC.hasOrigin],
     [FC.hasDestination],
-    [SVC.operationStatus],
+    [SVC.hasOperationStatus],
     [CFC.executedOn],
     [CFC.implementsCapability],
 ]
@@ -74,7 +61,7 @@ TRANSPORT_SCOPE = ClassScope.from_property_chains(_TRANSPORT_CHAINS)
 
 # What the WarehouseManagementSystem reads of a transport that ended: the same, and why it failed.
 ENDED_TRANSPORT_SCOPE = ClassScope.from_property_chains(
-    [*_TRANSPORT_CHAINS, [SVC.executionResult]]
+    [*_TRANSPORT_CHAINS, [SVC.hasExecutionResult]]
 )
 
 # What a module reads of a box it holds: the box with its transport, in one fetch through the
@@ -111,13 +98,13 @@ def transport_from(node: Node) -> Transport:
         values = [getattr(v, "id", v) for v in (node.data or {}).get(prop, [])]
         return values[0] if values else None
 
-    assigned, result = first(CFC.executedOn), first(SVC.executionResult)
+    assigned, result = first(CFC.executedOn), first(SVC.hasExecutionResult)
     return Transport(
         operation=IRI(str(node.id)),
         box=IRI(str(first(FC.hasBox))),
         origin=IRI(str(first(FC.hasOrigin))),
         destination=IRI(str(first(FC.hasDestination))),
-        status=str(first(SVC.operationStatus)),
+        status=str(first(SVC.hasOperationStatus)),
         assigned=IRI(str(assigned)) if assigned is not None else None,
         result=str(result) if result is not None else None,
     )
@@ -135,28 +122,26 @@ def transport_of_box(node: Node) -> Transport | None:
 
 
 def operation_status(db: Queryable, operation: IRI) -> str | None:
-    """The `svc:operationStatus` of `operation`, or None if it has none."""
+    """The `svc:hasOperationStatus` of `operation`, or None if it has none."""
     rows = bindings(
         db,
-        f"SELECT ?status WHERE {{ <{operation}> <{SVC.operationStatus}> ?status }} LIMIT 1",
+        f"SELECT ?status WHERE {{ <{operation}> <{SVC.hasOperationStatus}> ?status }} LIMIT 1",
     )
     return str(rows[0]["status"]) if rows else None
 
 
 def execution_result(db: Queryable, operation: IRI) -> str | None:
-    """The `svc:executionResult` of `operation`: why it failed. None if it has none."""
+    """The `svc:hasExecutionResult` of `operation`: why it failed. None if it has none."""
     rows = bindings(
         db,
-        f"SELECT ?result WHERE {{ <{operation}> <{SVC.executionResult}> ?result }} LIMIT 1",
+        f"SELECT ?result WHERE {{ <{operation}> <{SVC.hasExecutionResult}> ?result }} LIMIT 1",
     )
     return str(rows[0]["result"]) if rows else None
 
 
 def boxes(db: Queryable) -> list[IRI]:
     """Every box in the graph: a read whose answer grows with the store, which no participant
-    makes; a test checks the graph with it. (Changed on 2026-10-12, jms_kapps 92, decided by
-    Sören on jms_kapps 85: until then the WarehouseManagementSystem read it at each spawn, to
-    number the next box.)"""
+    makes; a test checks the graph with it."""
     rows = bindings(db, f"SELECT ?box WHERE {{ ?box a <{FC.Box}> }}")
     return [IRI(str(row["box"])) for row in rows]
 
@@ -262,7 +247,7 @@ class TransportRecords:
                     str(FC.hasBox): [created.iri],
                     str(FC.hasOrigin): [origin],
                     str(FC.hasDestination): [destination],
-                    str(SVC.operationStatus): [OperationStatus.QUEUED],
+                    str(SVC.hasOperationStatus): [OperationStatus.QUEUED],
                     str(CFC.executedOn): [origin],
                 }
             )
@@ -275,7 +260,7 @@ class TransportRecords:
             kapps_triplestore_interface.ShaclValidationError: If the store refuses the commit, as
                 it does while no module holds the box, and nothing is written.
         """
-        self._set(operation, {str(SVC.operationStatus): [OperationStatus.RUNNING]})
+        self._set(operation, {str(SVC.hasOperationStatus): [OperationStatus.RUNNING]})
 
     def complete(self, operation: IRI) -> None:
         """Set the transport `operation` `done` by itself, without the handover that gives its box
@@ -286,15 +271,15 @@ class TransportRecords:
             kapps_triplestore_interface.ShaclValidationError: If the store refuses the commit, as
                 it does while a module holds the box, and nothing is written.
         """
-        self._set(operation, {str(SVC.operationStatus): [OperationStatus.DONE]})
+        self._set(operation, {str(SVC.hasOperationStatus): [OperationStatus.DONE]})
 
     def fail(self, operation: IRI, reason: str, report: str | None = None) -> None:
         """End the transport `operation` as `failed`, with why as its result."""
         self._set(
             operation,
             {
-                str(SVC.operationStatus): [OperationStatus.FAILED],
-                str(SVC.executionResult): [failure(reason, report)],
+                str(SVC.hasOperationStatus): [OperationStatus.FAILED],
+                str(SVC.hasExecutionResult): [failure(reason, report)],
             },
         )
 

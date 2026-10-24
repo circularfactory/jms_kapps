@@ -1,5 +1,5 @@
 """Use case 2 copes with failure, in one module's handshake logic, without a network or a triple
-store (Etienne, 2026-10-11, jms_kapps 77):
+store:
 
 - **Busy: the wait stays.** A refusal that passes keeps the module asking, with no time limit.
 - **Crash: route around.** A next module that is not reachable is left out for the box, and the
@@ -60,7 +60,7 @@ RETRY_SECONDS = 0.1
 ALARM_SECONDS = 5.0
 # What a call raises when the peer's process is gone and its port is closed.
 REFUSED = httpx.ConnectError("[Errno 111] Connection refused")
-NO_LIVE_RESERVE = "the graph names no live ReserveWorkflow of it"
+NO_LIVE_RESERVE = "the knowledge graph names no live ReserveWorkflow of it"
 
 # A diamond: Module 1 hands boxes to Module 2 and to Module 3, and both to Module 4, the exit.
 DIAMOND = {(M1, M2), (M1, M3), (M2, M4), (M3, M4)}
@@ -299,6 +299,100 @@ def test_with_a_busy_detour_the_module_waits_and_the_box_goes_there_once_it_is_f
     assert world.jobs[T1].status == OperationStatus.DONE
 
 
+# Module 1 hands boxes to Module 2, Module 3 and Module 4, each of which leads to Module 5, the exit.
+FAN = {(M1, M2), (M1, M3), (M1, M4), (M2, M5), (M3, M5), (M4, M5)}
+
+
+@pytest.mark.parametrize("how", CRASHES)
+def test_a_detour_that_is_not_reachable_is_left_out_and_the_box_takes_the_next_free_detour(
+    caplog, world, tasks, waits, moves, network, station, how
+):
+    """Module 2, the next module, holds a box, and Module 3, the detour, cannot be reached: Module
+    1 leaves Module 3 out, asks its strategy again, and at once asks Module 2 and then Module 4,
+    the detour it names now, which is free. The box goes there without waiting."""
+    world.connections = set(FAN)
+    m = station(M1, M2, M4, M5)
+    crash(world, network, M3, how)
+    world.place(B9, M2)
+    world.place(B1, M1, destination=M5)
+
+    m[M1].box_transport(world.transport(T1))
+    tasks.run()
+
+    # A module the graph names no live Reserve of gets no call.
+    expected = [M2, M3, M2, M4] if how == "call refused" else [M2, M2, M4]
+    assert asked(network)[: len(expected)] == expected
+    assert moved(moves, B1) == [M4, M5, WMS]
+    assert world.jobs[T1].status == OperationStatus.DONE
+    assert waits.waited == []
+    assert warnings(caplog) == [
+        f"Module1: leaves Module3 out for Box1: {why_not_reachable(M3, how)}"
+    ]
+
+
+def test_with_no_other_detour_left_the_module_waits_and_asks_the_next_module_again(
+    caplog, world, tasks, waits, moves, network, station
+):
+    """Module 2, the next module, holds a box, and Module 3, the only detour, cannot be reached:
+    the strategy names no other detour, so Module 1 waits the retry time and asks Module 2 again,
+    and Module 3 no more, and the box goes to Module 2 once it is free."""
+    world.connections = set(DIAMOND)
+    m = station(M1, M2, M4)
+    crash(world, network, M3, "call refused")
+    world.place(B9, M2)
+    world.place(B1, M1, destination=M4)
+    waits.meanwhile = [lambda: None, lambda: world.held[M2].remove(B9)]
+
+    m[M1].box_transport(world.transport(T1))
+    tasks.run()
+
+    assert waits.waited == [RETRY_SECONDS] * 2
+    assert asked(network)[:4] == [M2, M3, M2, M2]
+    assert moved(moves, B1) == [M2, M4, WMS]
+    assert world.jobs[T1].status == OperationStatus.DONE
+    assert len(warnings(caplog)) == 1
+
+
+class Scripted(ModuleStrategy):
+    """Names Module 2 and then Module 3 while Module 3 is connected, and Module 4 alone once it is
+    left out."""
+
+    label = "Scripted"
+
+    def neighbours_to_ask(
+        self,
+        module: IRI,
+        destination: IRI,
+        came_from: IRI | None,
+        ahead: IRI | None,
+        connections: Sequence[DirectedConnection],
+    ) -> Sequence[IRI]:
+        if any(c.source == module and c.target == M3 for c in connections):
+            return [M2, M3]
+        return [M4]
+
+
+def test_a_detour_left_out_after_a_refusal_that_does_not_pass_asks_the_new_first_at_once(
+    world, tasks, waits, moves, network, station
+):
+    """Module 2 has no route to Module 5, a refusal that does not pass, and Module 3, the detour,
+    cannot be reached: the strategy now names Module 4 alone, which Module 1 asks at once, and the
+    box goes there instead of the transport ending."""
+    world.connections = {(M1, M2), (M1, M3), (M1, M4), (M3, M5), (M4, M5)}
+    m = station(M1, strategy=Scripted())
+    station(M2, M4, M5)
+    crash(world, network, M3, "call refused")
+    world.place(B1, M1, destination=M5)
+
+    m[M1].box_transport(world.transport(T1))
+    tasks.run()
+
+    assert asked(network)[:3] == [M2, M3, M4]
+    assert moved(moves, B1) == [M4, M5, WMS]
+    assert world.jobs[T1].status == OperationStatus.DONE
+    assert waits.waited == []
+
+
 # Two-way between Module 1 and Module 2; Module 2 goes on to Module 5 over Module 3, and Module 1
 # over Module 4.
 TWO_WAY = {(M1, M2), (M2, M1), (M2, M3), (M3, M5), (M1, M4), (M4, M5)}
@@ -434,6 +528,71 @@ def test_at_its_look_ahead_a_module_leaves_out_a_next_module_that_is_not_reachab
             "[Errno 111] Connection refused"
         )
     ]
+
+
+# Module 2 goes on to Module 5 over Module 3 or over Module 4.
+FORK = {(M1, M2), (M2, M3), (M2, M4), (M3, M5), (M4, M5)}
+
+
+def test_at_its_look_ahead_a_module_warns_once_per_box_of_a_next_module_it_leaves_out(
+    caplog, world, network, station
+):
+    """Module 1 asks Module 2's Reserve for Box 1 three times, once per retry time, as while the
+    box waits there: Module 3, Module 2's next module, cannot be reached, and Module 4 holds a box.
+    Module 2 leaves Module 3 out at each look-ahead, and warns about it once."""
+    world.connections = set(FORK)
+    m = station(M2, M4)
+    crash(world, network, M3, "call refused")
+    world.place(B9, M4)
+
+    answers = [reserve(m[M2], B1, M1, M5) for _ in range(3)]
+
+    assert [(a.accepted, a.refusal) for a in answers] == [(False, "blocked")] * 3
+    assert asked(network) == [M3, M4] * 3
+    assert warnings(caplog) == [
+        (
+            "Module2: leaves Module3 out for Box1: Module3 is not reachable: "
+            "[Errno 111] Connection refused"
+        )
+    ]
+
+
+def test_the_look_ahead_warns_again_once_the_box_has_moved_elsewhere(
+    caplog, world, network, station
+):
+    """Box 1 asks Module 2 from Module 1, and later from Module 6: it has moved elsewhere, so it
+    has left Module 2's waiting order, and Module 2 warns again about Module 3 for it."""
+    world.connections = set(FORK) | {(M6, M2)}
+    m = station(M2, M4)
+    crash(world, network, M3, "call refused")
+    world.place(B9, M4)
+
+    reserve(m[M2], B1, M1, M5)
+    reserve(m[M2], B1, M1, M5)
+    reserve(m[M2], B1, M6, M5)
+
+    assert len(warnings(caplog)) == 2
+    assert asked(network) == [M3, M4] * 3
+
+
+def test_the_look_ahead_warns_again_once_the_left_out_module_has_answered_in_between(
+    caplog, world, network, station
+):
+    """Module 3 cannot be reached, then answers one look-ahead (it holds a box, so it refuses),
+    then cannot be reached again: Module 2 warns about it for Box 1 a second time."""
+    world.connections = set(FORK)
+    m = station(M2, M3, M4)
+    world.place(B2, M3)
+    world.place(B9, M4)
+
+    crash(world, network, M3, "call refused")
+    reserve(m[M2], B1, M1, M5)
+    network.fails_with.pop(M3)
+    reserve(m[M2], B1, M1, M5)
+    crash(world, network, M3, "call refused")
+    reserve(m[M2], B1, M1, M5)
+
+    assert len(warnings(caplog)) == 2
 
 
 def test_with_no_live_module_left_the_look_ahead_refuses_no_live_route_on_and_keeps_none(

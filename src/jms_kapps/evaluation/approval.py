@@ -2,9 +2,7 @@
 
 A sustained-load or breaking-point run on the configured GraphDB is never a unit test or a CI job:
 other people use that server, so such a run starts only under an approval that covers it. Any
-person may approve, in agreement with the server's admins (decided by Sören Weindel on 2026-10-12,
-as the product owner of the tests, jms_kapps 85; until then only Etienne Hoffmann approved, and for
-one ramp each, decided by Etienne on 2026-10-11).
+person may approve, in agreement with the server's admins.
 
 **An approval is a small file** (TOML), passed by the option `--heavy-run-approval`:
 
@@ -22,13 +20,12 @@ configuration of the spec, which is the spec's configurations (`spec.configurati
 keys, several ramps and sustained loads alike.
 
 **Refused, before anything reaches a store** (`HeavyRunRefused`, with the reason, and its short
-reason for the sweep's list of skipped runs, jms_kapps 112): a heavy run without an approval;
+reason for the sweep's list of skipped runs): a heavy run without an approval;
 outside its period; of another spec or a changed spec file; with `--set` overrides, which the
 approval does not cover; of a bare configuration file, which has no spec; and a replay of a run
 whose record holds no configuration key. The sweep and `jms-eval` check each heavy run at its
-start, and skip and list one that is refused then (jms_kapps 112). A run at normal load needs no approval.
-A replay of a recorded run compressed in time by a factor above 1 is a heavy run too (jms_kapps 98,
-`replay_levels`): the baseline and the sweep's replay levels take a `Covered` for the replayed
+start, and skip and list one that is refused then. A run at normal load needs no approval.
+A replay of a recorded run compressed in time by a factor above 1 is a heavy run too (`replay_levels`): the baseline and the sweep's replay levels take a `Covered` for the replayed
 configuration, as they do for a heavy run, and a refusal names the factor (`why`).
 The record of each heavy run keeps the whole approval it ran under (`Approval.record`).
 
@@ -44,7 +41,7 @@ stored key names in the approved spec.
 No test, CI job or example gives an approval that covers a real spec of the repository
 (`tests/test_evaluation_approval.py` checks that no file holds the key of a shipped spec).
 
-Interim names (jms_kapps 83): the approval file and its keys, and this module's API.
+Interim names: the approval file and its keys, and this module's API.
 """
 
 from __future__ import annotations
@@ -77,7 +74,7 @@ KEYS = ("spec_key", "start", "end", "approver", "text")
 OPTION = "--heavy-run-approval"
 
 # Why an approval does not cover a heavy run, in short, as the sweep lists a heavy run it skipped
-# (jms_kapps 112, interim names): no approval, another or a changed spec, a period that is not
+# (interim names): no approval, another or a changed spec, a period that is not
 # now, `--set` overrides, or another reason (a bare configuration file, a record without a key).
 NO_APPROVAL = "no approval"
 OTHER_SPEC = "another or a changed spec"
@@ -89,7 +86,7 @@ NOT_COVERED = "not covered"
 class HeavyRunRefused(RuntimeError):
     """A heavy run without an approval that covers it, or an approval that cannot be read.
     `reason` says why in short (`NO_APPROVAL`, `OTHER_SPEC`, `NOT_NOW`, `OVERRIDDEN` or
-    `NOT_COVERED`; jms_kapps 112, interim name); the message says it in full."""
+    `NOT_COVERED`; interim name); the message says it in full."""
 
     def __init__(self, message: str, reason: str = NOT_COVERED) -> None:
         super().__init__(message)
@@ -127,7 +124,7 @@ class Covered:
     `cover` found it to cover. Only `cover` makes one; the run entry points (`bench.run`,
     `baseline.run_baseline`) take nothing else for a heavy run, and check that it names the
     configuration they run (`fingerprint`) and that the approval's period holds at the run's
-    start. (Interim names, jms_kapps 83.)"""
+    start. (Interim names.)"""
 
     approval: Approval
     spec_key: str
@@ -234,7 +231,7 @@ def approved(
         approval: The approval given with the option, or None where it is off.
         now: The time the run starts: this machine's if None.
         why: What makes the run heavy, for the refusal to name (a replay at a factor above 1,
-            jms_kapps 98, interim).
+            interim).
 
     Raises:
         HeavyRunRefused: If the run is heavy and there is no approval, or the time is outside the

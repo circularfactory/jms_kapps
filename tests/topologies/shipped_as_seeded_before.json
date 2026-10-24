@@ -1,10 +1,10 @@
 {
  "cross": [
-  {"id": "Module1", "label": "Module 1", "types": ["FlexConveyorModule"], "connections": [["South", "Module3", 0]]},
-  {"id": "Module2", "label": "Module 2", "types": ["FlexConveyorModule"], "connections": [["East", "Module3", 0]]},
+  {"id": "Module1", "label": "Module 1", "types": ["EntryModule"], "connections": [["South", "Module3", 0]]},
+  {"id": "Module2", "label": "Module 2", "types": ["EntryModule"], "connections": [["East", "Module3", 0]]},
   {"id": "Module3", "label": "Module 3", "types": ["FlexConveyorModule"], "connections": [["East", "Module4", 0], ["North", "Module1", 0], ["South", "Module5", 0], ["West", "Module2", 0]]},
-  {"id": "Module4", "label": "Module 4", "types": ["FlexConveyorModule"], "connections": [["West", "Module3", 0]]},
-  {"id": "Module5", "label": "Module 5", "types": ["FlexConveyorModule"], "connections": [["North", "Module3", 0]]}
+  {"id": "Module4", "label": "Module 4", "types": ["ExitModule"], "connections": [["West", "Module3", 0]]},
+  {"id": "Module5", "label": "Module 5", "types": ["ExitModule"], "connections": [["North", "Module3", 0]]}
  ],
  "grid": [
   {"id": "Module1", "label": "Module 1", "types": ["EntryModule"], "connections": [["South", "Module7", 0]]},
@@ -37,6 +37,12 @@
   {"id": "Module28", "label": "Module 28", "types": ["ExitModule"], "connections": [["East", "Module29", 0]]},
   {"id": "Module29", "label": "Module 29", "types": ["ExitModule"], "connections": [["East", "Module30", 0]]},
   {"id": "Module30", "label": "Module 30", "types": ["ExitModule"], "connections": []}
+ ],
+ "line": [
+  {"id": "Module1", "label": "Module 1", "types": ["EntryModule"], "connections": [["East", "Module2", 0]]},
+  {"id": "Module2", "label": "Module 2", "types": ["FlexConveyorModule"], "connections": [["East", "Module3", 0]]},
+  {"id": "Module3", "label": "Module 3", "types": ["FlexConveyorModule"], "connections": [["East", "Module4", 0]]},
+  {"id": "Module4", "label": "Module 4", "types": ["ExitModule"], "connections": []}
  ],
  "pair": [
   {"id": "Module1", "label": "Module 1", "types": ["EntryModule"], "connections": [["South", "Module2", 0]]},

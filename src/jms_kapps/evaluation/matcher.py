@@ -50,7 +50,7 @@ class CompletionMatcher:
     Args:
         read_ended: One read of the run's transports that have ended, from the graph: of the run's
             own transports (`own_transports`) that it has not read ended before, so a read grows
-            with the transports still open, not with the run (jms_kapps 90).
+            with the transports still open, not with the run.
         interval: The seconds from one read to the next: the configuration's
             `matcher_interval_seconds`.
         clock: The run's clock.

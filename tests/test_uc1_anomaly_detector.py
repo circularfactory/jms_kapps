@@ -7,8 +7,8 @@ operation as the detector reads it, the Screw's effective values, and the frame.
 sees exactly the writes of one classify call. `test_uc1_anomaly_detector_live.py` runs the same
 call on a live GraphDB and a live InfluxDB.
 
-The values of each test are mock, and the frames are replayed from the legacy mock recordings.
-`_uc1_mock.py` says how the values that the frame of `success` passes were chosen.
+The values of each test are example values, and the frames are replayed from the example recordings.
+`_uc1_example.py` says how the values that the frame of `success` passes were chosen.
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 import pytest
-from _uc1_mock import (
-    MOCK_M4_VALUES,
+from _uc1_example import (
+    EXAMPLE_M4_VALUES,
     RECORDING_PLACEMENT_VALUES,
     SUCCESS_PASSING_M4_VALUES,
 )
@@ -32,16 +32,22 @@ from rdflib.namespace import OWL, RDF, RDFS
 
 from jms_kapps.common.triplestore import read_asset
 from jms_kapps.uc1.anomaly_detector import (
+    ANOMALY,
     NOT_CLASSIFIED,
     AnomalyDetector,
     OperationToClassify,
     left_as_it_is_record,
     outcome_iri,
 )
-from jms_kapps.uc1.decision_tree import UNSCREWING_OUTCOMES, EffectiveValues
-from jms_kapps.uc1.effective_values import as_properties, resolve
+from jms_kapps.uc1.anomaly_detector_memory import DetectorMemory
+from jms_kapps.uc1.decision_tree import DETECTION_RESULTS
+from jms_kapps.uc1.effective_values import (
+    EffectiveValuesWithOrigin,
+    as_properties,
+    resolve_with_origin,
+)
 from jms_kapps.uc1.frame import Frame
-from jms_kapps.uc1.replay import mock_frame
+from jms_kapps.uc1.replay import example_frame
 from jms_kapps.uc1.timeseries import FrameNotFound, InfluxDBError
 from jms_kapps.uc1.vocabulary import JMS, JMS_NS, PROV
 
@@ -51,9 +57,9 @@ SCREW = IRI("TestScrew", base=JMS_NS)
 REFERENCE = "influxdb:///jms-kapps/unscrewing?frame=f1&start=2026-10-05T00:00:00.000000000Z&stop=2026-10-05T00:00:07.000000000Z"
 
 
-def effective(type_values: dict[IRI, float]) -> EffectiveValues:
+def effective(type_values: dict[IRI, float]) -> EffectiveValuesWithOrigin:
     """The effective values of a Screw of a type with `type_values`, placed as `RECORDING_PLACEMENT_VALUES`."""
-    return resolve(
+    return resolve_with_origin(
         SCREW,
         {prop: [value] for prop, value in RECORDING_PLACEMENT_VALUES.items()},
         JMS.M4,
@@ -94,7 +100,7 @@ class Reads:
         self,
         *,
         statuses: list[str],
-        values: Callable[[IRI], EffectiveValues],
+        values: Callable[[IRI], EffectiveValuesWithOrigin],
         frame: Callable[[str], Frame],
     ) -> None:
         self.statuses = list(statuses)
@@ -109,8 +115,8 @@ class Reads:
             for change in write:
                 if IRI(str(change.instance_iri)) != operation:
                     continue
-                status = change.data.get(str(SVC.operationStatus), [status])[0]
-                results = change.data.get(str(SVC.executionResult), results)
+                status = change.data.get(str(SVC.hasOperationStatus), [status])[0]
+                results = change.data.get(str(SVC.hasExecutionResult), results)
         return OperationToClassify(
             operation=operation,
             status=status,
@@ -144,7 +150,11 @@ def middleware(ogm: FakeOGM) -> SemanticMiddleware:
 ENDED = datetime(2026, 10, 16, 9, 30, tzinfo=UTC)
 
 
-def detector_with(middleware: SemanticMiddleware, reads: Reads) -> AnomalyDetector:
+def detector_with(
+    middleware: SemanticMiddleware,
+    reads: Reads,
+    memory: DetectorMemory | None = None,
+) -> AnomalyDetector:
     return AnomalyDetector(
         DETECTOR,
         commit=middleware.commit,
@@ -153,6 +163,7 @@ def detector_with(middleware: SemanticMiddleware, reads: Reads) -> AnomalyDetect
         values=reads.values,
         frame=reads.read_frame,
         clock=lambda: ENDED,
+        memory=memory if memory is not None else DetectorMemory(),
     )
 
 
@@ -199,23 +210,23 @@ def test_a_running_operation_ends_done_with_its_outcome_and_its_decision_snapsho
     reads = Reads(
         statuses=[OperationStatus.RUNNING],
         values=returns(values),
-        frame=returns(mock_frame("success")),
+        frame=returns(example_frame("success")),
     )
 
     answer = detector_with(middleware, reads).classify(OPERATION)
 
     write = the_one_write(ogm)
-    snapshot = created(write, JMS.DecisionSnapshot)
+    snapshot = created(write, JMS.ParameterCopy)
     classification = created(write, PROV.Activity)
     assert snapshot.data == {
-        str(prop): [value] for prop, value in as_properties(values).items()
+        str(prop): [value] for prop, value in as_properties(values.values).items()
     } | {
         str(PROV.wasGeneratedBy): [reference_to(IRI(str(classification.instance_iri)))]
     }
     assert change_of(write, OPERATION).data == {
-        str(SVC.operationStatus): [OperationStatus.DONE],
-        str(JMS.hasOutcome): [reference_to(IRI("ScrewIntact", base=JMS_NS))],
-        str(JMS.usedValues): [reference_to(IRI(str(snapshot.instance_iri)))],
+        str(SVC.hasOperationStatus): [OperationStatus.DONE],
+        str(JMS.hasDetectionResult): [reference_to(IRI("ScrewIntact", base=JMS_NS))],
+        str(JMS.classifiedWith): [reference_to(IRI(str(snapshot.instance_iri)))],
     }
     assert answer.ended == OperationStatus.DONE
     assert answer.outcome == str(IRI("ScrewIntact", base=JMS_NS))
@@ -226,13 +237,13 @@ def test_a_running_operation_ends_done_with_its_outcome_and_its_decision_snapsho
 def test_the_classification_is_a_prov_activity_of_the_detector_in_the_same_commit(
     middleware, ogm
 ):
-    """Paper claim 16, the PROV witness on the decision (jms_kapps 59): the commit that ends the operation `done`
+    """Paper claim 16, the PROV witness on the decision: the commit that ends the operation `done`
     also creates the classification, with the detector's resource as its agent and the clock's
     time as its end, and the snapshot names it."""
     reads = Reads(
         statuses=[OperationStatus.RUNNING],
         values=returns(effective(SUCCESS_PASSING_M4_VALUES)),
-        frame=returns(mock_frame("success")),
+        frame=returns(example_frame("success")),
     )
 
     detector_with(middleware, reads).classify(OPERATION)
@@ -243,7 +254,7 @@ def test_the_classification_is_a_prov_activity_of_the_detector_in_the_same_commi
         str(PROV.wasAssociatedWith): [reference_to(DETECTOR)],
         str(PROV.endedAtTime): [ENDED],
     }
-    snapshot = created(write, JMS.DecisionSnapshot)
+    snapshot = created(write, JMS.ParameterCopy)
     assert snapshot.data[str(PROV.wasGeneratedBy)] == [
         reference_to(IRI(str(classification.instance_iri)))
     ]
@@ -256,7 +267,7 @@ def test_each_classification_has_its_own_iri_in_the_use_cases_namespace(
     reads = Reads(
         statuses=[OperationStatus.RUNNING],
         values=returns(effective(SUCCESS_PASSING_M4_VALUES)),
-        frame=returns(mock_frame("success")),
+        frame=returns(example_frame("success")),
     )
     detector = detector_with(middleware, reads)
 
@@ -269,21 +280,68 @@ def test_each_classification_has_its_own_iri_in_the_use_cases_namespace(
     assert first != second
 
 
-def test_a_failure_outcome_also_records_where_the_approach_ended(middleware, ogm):
-    values = effective(MOCK_M4_VALUES)
+# --- A failure outcome ends the operation failed, and names the outcome --------------------
+
+
+def test_a_failure_outcome_ends_the_operation_failed_naming_it_in_the_classifications_commit(
+    middleware, ogm
+):
+    """Every outcome other than ScrewIntact is a failure outcome: the commit that records the
+    classification, the snapshot that it generated and the outcome ends the operation `failed`,
+    and its result names the outcome. The measured end of the approach goes in the same commit."""
+    values = effective(EXAMPLE_M4_VALUES)
     reads = Reads(
         statuses=[OperationStatus.RUNNING],
         values=returns(values),
-        frame=returns(mock_frame("missing_screw")),
+        frame=returns(example_frame("missing_screw")),
     )
 
     answer = detector_with(middleware, reads).classify(OPERATION)
 
-    data = change_of(the_one_write(ogm), OPERATION).data
-    assert data[str(SVC.operationStatus)] == [OperationStatus.DONE]
-    assert data[str(JMS.hasOutcome)] == [reference_to(IRI("MissingScrew", base=JMS_NS))]
-    assert data[str(JMS.hasMeasuredApproachEndPosition)] == [0.0]
+    write = the_one_write(ogm)
+    classification = created(write, PROV.Activity)
+    snapshot = created(write, JMS.ParameterCopy)
+    assert snapshot.data[str(PROV.wasGeneratedBy)] == [
+        reference_to(IRI(str(classification.instance_iri)))
+    ]
+    assert change_of(write, OPERATION).data == {
+        str(SVC.hasOperationStatus): [OperationStatus.FAILED],
+        str(SVC.hasExecutionResult): ["ANOMALY: MissingScrew"],
+        str(JMS.hasDetectionResult): [reference_to(IRI("MissingScrew", base=JMS_NS))],
+        str(JMS.classifiedWith): [reference_to(IRI(str(snapshot.instance_iri)))],
+        str(JMS.hasMeasuredApproachEndPosition): [0.0],
+    }
+    assert answer.ended == OperationStatus.FAILED
     assert answer.outcome == str(IRI("MissingScrew", base=JMS_NS))
+    assert answer.why == "ANOMALY: MissingScrew"
+
+
+def test_the_reason_of_a_failure_outcome_is_told_apart_from_an_attempt_not_classified():
+    assert not NOT_CLASSIFIED.startswith(ANOMALY)
+
+
+def test_a_failure_outcome_whose_end_the_store_refuses_leaves_an_operation_that_ended(
+    middleware, ogm, caplog
+):
+    reads = Reads(
+        statuses=[
+            OperationStatus.RUNNING,
+            OperationStatus.RUNNING,
+            OperationStatus.FAILED,
+        ],
+        values=returns(effective(EXAMPLE_M4_VALUES)),
+        frame=returns(example_frame("missing_screw")),
+    )
+    ogm.refuse = PreconditionFailedError("the status the write removes is gone")
+
+    with caplog.at_level(logging.INFO):
+        answer = detector_with(middleware, reads).classify(OPERATION)
+
+    assert ogm.written == []
+    assert detector_log(caplog) == [
+        left_as_it_is_record(DETECTOR, OPERATION, OperationStatus.FAILED)
+    ]
+    assert answer.ended is None
 
 
 # --- An operation that is not running is left as it is ---------------------------------------
@@ -326,7 +384,7 @@ def test_an_operation_that_ended_while_it_was_classified_is_left_as_it_is(
     reads = Reads(
         statuses=[OperationStatus.RUNNING, OperationStatus.FAILED],
         values=returns(effective(SUCCESS_PASSING_M4_VALUES)),
-        frame=returns(mock_frame("success")),
+        frame=returns(example_frame("success")),
     )
 
     with caplog.at_level(logging.INFO):
@@ -352,7 +410,7 @@ def test_an_end_that_the_store_refuses_because_the_status_changed_leaves_the_ope
             OperationStatus.FAILED,
         ],
         values=returns(effective(SUCCESS_PASSING_M4_VALUES)),
-        frame=returns(mock_frame("success")),
+        frame=returns(example_frame("success")),
     )
     ogm.refuse = PreconditionFailedError("the status the write removes is gone")
 
@@ -374,9 +432,12 @@ def assert_failed_with_nothing_else(ogm: FakeOGM, answer) -> str:
     (change,) = the_one_write(ogm)
     assert isinstance(change, Update)
     assert IRI(str(change.instance_iri)) == OPERATION
-    assert set(change.data) == {str(SVC.operationStatus), str(SVC.executionResult)}
-    assert change.data[str(SVC.operationStatus)] == [OperationStatus.FAILED]
-    (why,) = change.data[str(SVC.executionResult)]
+    assert set(change.data) == {
+        str(SVC.hasOperationStatus),
+        str(SVC.hasExecutionResult),
+    }
+    assert change.data[str(SVC.hasOperationStatus)] == [OperationStatus.FAILED]
+    (why,) = change.data[str(SVC.hasExecutionResult)]
     assert why.startswith(NOT_CLASSIFIED)
     assert answer.ended == OperationStatus.FAILED
     assert answer.why == why
@@ -414,8 +475,8 @@ def test_a_frame_read_that_fails_ends_the_operation_failed_with_why(middleware, 
 def test_a_screw_without_placement_values_ends_the_operation_failed_and_nothing_else(
     middleware, ogm
 ):
-    def unplaced(screw: IRI) -> EffectiveValues:
-        return resolve(
+    def unplaced(screw: IRI) -> EffectiveValuesWithOrigin:
+        return resolve_with_origin(
             screw,
             {},
             JMS.M4,
@@ -425,7 +486,7 @@ def test_a_screw_without_placement_values_ends_the_operation_failed_and_nothing_
     reads = Reads(
         statuses=[OperationStatus.RUNNING],
         values=unplaced,
-        frame=returns(mock_frame("success")),
+        frame=returns(example_frame("success")),
     )
 
     answer = detector_with(middleware, reads).classify(OPERATION)
@@ -445,14 +506,14 @@ def test_curves_that_the_decision_tree_refuses_end_the_operation_failed_with_why
     reads = Reads(
         statuses=[OperationStatus.RUNNING],
         values=returns(
-            resolve(
+            resolve_with_origin(
                 SCREW,
                 {prop: [value] for prop, value in deep.items()},
                 JMS.M4,
-                {prop: [value] for prop, value in MOCK_M4_VALUES.items()},
+                {prop: [value] for prop, value in EXAMPLE_M4_VALUES.items()},
             )
         ),
-        frame=returns(mock_frame("missing_screw")),
+        frame=returns(example_frame("missing_screw")),
     )
 
     answer = detector_with(middleware, reads).classify(OPERATION)
@@ -573,5 +634,121 @@ def test_each_outcome_of_the_tree_is_an_unscrewing_outcome_of_the_ontology() -> 
 
     assert {
         str(subject)
-        for subject in graph.subjects(RDF.type, URIRef(str(JMS.UnscrewingOutcome)))
-    } == {str(outcome_iri(outcome)) for outcome in UNSCREWING_OUTCOMES}
+        for subject in graph.subjects(RDF.type, URIRef(str(JMS.DetectionResult)))
+    } == {str(outcome_iri(outcome)) for outcome in DETECTION_RESULTS}
+
+
+# --- What the detector keeps in its memory, for its dashboard ----------------------------------
+#
+# A classification goes into the memory once its commit has reached the store; an attempt that
+# could not be classified, once its `failed` has. What a Screw type holds goes in at each read
+# of the effective values, a true read even when the commit that follows does not reach the store.
+
+
+def test_a_classification_that_reached_the_store_is_kept_with_its_values_and_whether_the_tree_asked(
+    middleware, ogm
+):
+    memory = DetectorMemory(clock=lambda: ENDED)
+    values = effective(EXAMPLE_M4_VALUES)
+    reads = Reads(
+        statuses=[OperationStatus.RUNNING],
+        values=returns(values),
+        frame=returns(example_frame("missing_screw")),
+    )
+
+    detector_with(middleware, reads, memory).classify(OPERATION)
+
+    state = memory.state()
+    (kept,) = state.classifications
+    assert state.classification_count == 1
+    assert (kept.at, kept.operation, kept.screw, kept.screw_type) == (
+        ENDED,
+        OPERATION,
+        SCREW,
+        JMS.M4,
+    )
+    assert (kept.outcome, kept.why) == ("MissingScrew", "ANOMALY: MissingScrew")
+    assert {used.prop: used.value for used in kept.values} == as_properties(
+        values.values
+    )
+    assert {used.prop for used in kept.values if used.asked} == {
+        JMS.hasMinApproachAxialForce,
+        JMS.hasMinApproachPosition,
+    }
+    (type_values,) = state.type_values
+    assert (type_values.screw_type, type_values.values) == (JMS.M4, EXAMPLE_M4_VALUES)
+
+
+def test_an_attempt_it_could_not_classify_is_kept_with_why(middleware, ogm):
+    memory = DetectorMemory(clock=lambda: ENDED)
+    reads = Reads(
+        statuses=[OperationStatus.RUNNING],
+        values=returns(effective(SUCCESS_PASSING_M4_VALUES)),
+        frame=raises(FrameNotFound("the store holds no row of the frame")),
+    )
+
+    answer = detector_with(middleware, reads, memory).classify(OPERATION)
+
+    (kept,) = memory.state().classifications
+    assert (kept.operation, kept.screw, kept.outcome) == (OPERATION, SCREW, None)
+    assert kept.why == answer.why
+    assert len(kept.values) == 10
+    assert not any(used.asked for used in kept.values)
+
+
+def test_an_operation_left_as_it_is_is_not_kept(middleware, ogm):
+    memory = DetectorMemory()
+    reads = Reads(
+        statuses=[OperationStatus.FAILED],
+        values=raises(AssertionError("no values are read")),
+        frame=raises(AssertionError("no frame is read")),
+    )
+
+    detector_with(middleware, reads, memory).classify(OPERATION)
+
+    assert memory.state().classifications == []
+
+
+def test_a_classification_whose_commit_did_not_reach_the_store_is_not_kept(
+    middleware, ogm
+):
+    memory = DetectorMemory()
+    reads = Reads(
+        statuses=[OperationStatus.RUNNING],
+        values=returns(effective(SUCCESS_PASSING_M4_VALUES)),
+        frame=raises(FrameNotFound("the store holds no row of the frame")),
+    )
+    ogm.refuse = RuntimeError("the store does not answer")
+
+    with pytest.raises(Exception, match="the store holds no row of the frame"):
+        detector_with(middleware, reads, memory).classify(OPERATION)
+
+    state = memory.state()
+    assert state.classifications == []
+    assert [values.screw_type for values in state.type_values] == [JMS.M4]
+
+
+def test_the_values_of_a_screw_type_are_those_of_the_last_read(middleware, ogm):
+    """A value that the learner wrote to the Screw type shows at the detector's next read."""
+    memory = DetectorMemory()
+    learned = {**SUCCESS_PASSING_M4_VALUES, JMS.hasMaxDynamicTorque: 0.84}
+    # What the graph holds now: the seeded values, then the learner's.
+    held = [effective(SUCCESS_PASSING_M4_VALUES)]
+    reads = Reads(
+        statuses=[OperationStatus.RUNNING],
+        values=lambda screw: held[0],
+        frame=returns(example_frame("success")),
+    )
+    detector = detector_with(middleware, reads, memory)
+    detector.classify(OPERATION)
+    held[0] = effective(learned)
+    ogm.written.clear()
+
+    detector.classify(OPERATION)
+
+    (type_values,) = memory.state().type_values
+    assert type_values.values[JMS.hasMaxDynamicTorque] == 0.84
+    newest = memory.state().classifications[0]
+    assert {used.prop: used.value for used in newest.values}[
+        JMS.hasMaxDynamicTorque
+    ] == 0.84

@@ -1,5 +1,5 @@
 """The monitor page's switch, the interval of its graph read, its "Queries sent" panel and each
-box's destination, in a headless browser, as a person uses them (jms_kapps 24).
+box's destination, in a headless browser, as a person uses them.
 
 The page is the real one, served by the monitor's real routes over a real memory, whose background
 task runs. It reads the fakes of `_monitor_fakes.py`, so nothing reaches a store: the cross, Box 1
@@ -80,37 +80,85 @@ def test_the_switch_stops_the_streams_and_switching_back_resumes_them(
     opened: Page, memory
 ):
     page = opened
-    graph_only = page.get_by_role("radio", name="graph only")
-    graph_and_streams = page.get_by_role("radio", name="graph + streams")
-    expect(graph_and_streams).to_be_checked()
+    follow = page.get_by_role(
+        "checkbox", name="Follow the services' handover event streams"
+    )
+    expect(follow).to_be_checked()
     expect(refusal_cards(page)).to_have_count(1)
 
-    graph_only.check()
+    follow.uncheck()
 
     eventually(lambda: memory.mode == GRAPH_ONLY)
     eventually(lambda: memory.following() == {})
-    expect(graph_only).to_be_checked()
+    expect(follow).not_to_be_checked()
     expect(refusal_cards(page)).to_have_count(0)
 
-    graph_and_streams.check()
+    follow.check()
 
     eventually(lambda: memory.mode == GRAPH_AND_STREAMS)
     eventually(lambda: memory.following() == {M1: STREAM_1, WMS: STREAM_WMS})
     expect(refusal_cards(page)).to_have_count(1)
 
 
+def test_the_streams_switch_heads_refusals_and_the_first_section_holds_only_the_interval(
+    opened: Page,
+):
+    page = opened
+    follow = page.get_by_role(
+        "checkbox", name="Follow the services' handover event streams"
+    )
+
+    expect(
+        page.locator("#refusals-section h2 + .toolbar").get_by_role("checkbox")
+    ).to_have_count(1)
+    expect(follow).to_have_count(1)
+    expect(page.locator("#reading").get_by_role("checkbox")).to_have_count(0)
+    expect(page.locator("#reading").get_by_role("radio")).to_have_count(0)
+    expect(page.locator("#reading input")).to_have_count(1)
+    expect(page.locator("#deadlock").locator("xpath=..")).to_contain_text(
+        "the notice follows the switch \"Follow the services' handover event streams\" at Refusals"
+    )
+
+
+def test_the_switch_shows_the_mode_the_monitor_runs_in_when_the_page_is_opened_directly(
+    page: Page, reads, streams
+):
+    memory = MonitorMemory(reads, read_stream=streams, mode=GRAPH_ONLY)
+    memory.start()
+    try:
+        app = FastAPI()
+        mount_onto(app, memory=memory)
+        with serving(app) as address:
+            page.goto(f"{address}/")
+            follow = page.get_by_role(
+                "checkbox", name="Follow the services' handover event streams"
+            )
+            expect(follow).to_be_enabled()
+            expect(follow).not_to_be_checked()
+    finally:
+        memory.stop()
+
+
 def test_in_graph_only_the_refusals_view_says_why_it_is_empty(opened: Page):
     page = opened
     expect(refusal_cards(page)).to_have_count(1)
 
-    page.get_by_role("radio", name="graph only").check()
+    page.get_by_role(
+        "checkbox", name="Follow the services' handover event streams"
+    ).uncheck()
 
     refusals = page.locator("#refusals")
-    expect(refusals).to_contain_text("a refused write leaves no trace in the graph")
+    expect(refusals).to_contain_text(
+        "a refused write leaves no trace in the knowledge graph"
+    )
     expect(refusals).to_contain_text('glossary entry "Handover event stream"')
-    expect(refusals).to_contain_text('switch to "graph + streams" to see the refusals')
+    expect(refusals).to_contain_text(
+        'turn on "Follow the services\' handover event streams" to see the refusals'
+    )
 
-    page.get_by_role("radio", name="graph + streams").check()
+    page.get_by_role(
+        "checkbox", name="Follow the services' handover event streams"
+    ).check()
 
     expect(refusal_cards(page)).to_have_count(1)
     expect(refusals).not_to_contain_text("leaves no trace")
@@ -121,10 +169,14 @@ def test_a_refusal_that_comes_back_with_the_streams_is_not_highlighted_as_new(
 ):
     page = opened
     expect(refusal_cards(page)).to_have_count(1)
-    page.get_by_role("radio", name="graph only").check()
+    page.get_by_role(
+        "checkbox", name="Follow the services' handover event streams"
+    ).uncheck()
     expect(refusal_cards(page)).to_have_count(0)
 
-    page.get_by_role("radio", name="graph + streams").check()
+    page.get_by_role(
+        "checkbox", name="Follow the services' handover event streams"
+    ).check()
 
     expect(refusal_cards(page)).to_have_count(1)
     expect(refusal_cards(page)).not_to_have_class(re.compile(r"\bfresh\b"))
@@ -132,7 +184,7 @@ def test_a_refusal_that_comes_back_with_the_streams_is_not_highlighted_as_new(
 
 def test_the_interval_a_person_sets_applies(opened: Page, memory):
     page = opened
-    interval = page.get_by_label("Read the graph every")
+    interval = page.get_by_label("Read the knowledge graph every")
     expect(interval).to_have_value("1")
 
     interval.fill("2")
@@ -148,7 +200,7 @@ def test_an_interval_out_of_range_is_refused_on_the_page_with_the_monitors_reaso
     opened: Page, memory
 ):
     page = opened
-    interval = page.get_by_label("Read the graph every")
+    interval = page.get_by_label("Read the knowledge graph every")
 
     interval.fill("20")
     interval.press("Enter")
@@ -175,7 +227,9 @@ def test_the_queries_sent_panel_shows_each_query_with_its_interval_duration_and_
     streams = page.locator('#queries article.query[data-read="streams"]')
     expect(streams.locator(".every")).to_have_text("every 5 s")
 
-    page.get_by_role("radio", name="graph only").check()
+    page.get_by_role(
+        "checkbox", name="Follow the services' handover event streams"
+    ).uncheck()
 
     expect(streams.locator(".every")).to_have_text("not sent in graph only")
     expect(modules.locator(".every")).to_have_text("every 1 s")

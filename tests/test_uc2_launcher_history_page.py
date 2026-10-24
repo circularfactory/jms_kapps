@@ -2,9 +2,8 @@
 
 The page is the real one, served by the Launcher's real app. What stands behind the Launcher is
 fake, and nothing reaches a store: the graph records the option of each seed and calls no service
-live, and every process only sleeps. (Added on 2026-10-10, jms_kapps 22, with the names Etienne
-decided on 2026-10-07: `jms-uc2 --collect-history`, the checkbox "collect history", and the field
-`collect_history`.)
+live, and every process only sleeps. The names are `jms-uc2 --collect-history`, the checkbox "collect
+history", and the field `collect_history`.
 """
 
 from __future__ import annotations
@@ -38,6 +37,9 @@ class Graph:
         self, topology: Topology, transit_seconds: float, *, collect_history: bool
     ) -> None:
         self.collected.append(collect_history)
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return []
@@ -77,7 +79,7 @@ def launcher_url(monkeypatch) -> Iterator[Callable[..., tuple[Launcher, Graph, s
         launcher.stop_all()
 
 
-def test_the_checkbox_is_beside_the_topology_picker_and_off_by_default(
+def test_the_checkbox_is_among_the_run_settings_and_off_by_default(
     page: Page, launcher_url
 ):
     _, _, url = launcher_url()
@@ -85,7 +87,9 @@ def test_the_checkbox_is_beside_the_topology_picker_and_off_by_default(
 
     checkbox = page.get_by_label("collect history")
     expect(checkbox).not_to_be_checked()
-    toolbar = page.locator(".toolbar", has=page.get_by_label("Topology to launch"))
+    toolbar = page.locator(
+        ".toolbar", has=page.get_by_role("button", name="Launch", exact=True)
+    )
     expect(toolbar.get_by_label("collect history")).to_have_count(1)
     expect(page.locator("#history")).to_have_text("")
 
@@ -112,7 +116,7 @@ def test_a_launch_sends_the_checkbox_and_the_state_reports_it(page: Page, launch
     with page.expect_request(
         lambda request: request.url.endswith("/api/launch")
     ) as launched:
-        page.get_by_role("button", name="Launch this topology").click()
+        page.get_by_role("button", name="Launch", exact=True).click()
 
     assert launched.value.post_data_json["collect_history"] is True
     expect(page.locator("#running")).to_have_text("running: grid")
@@ -130,7 +134,7 @@ def test_a_launch_with_the_checkbox_off_sends_it_off(page: Page, launcher_url):
     with page.expect_request(
         lambda request: request.url.endswith("/api/launch")
     ) as launched:
-        page.get_by_role("button", name="Launch this topology").click()
+        page.get_by_role("button", name="Launch", exact=True).click()
 
     assert launched.value.post_data_json["collect_history"] is False
     expect(page.locator("#history")).to_have_text("")
@@ -143,7 +147,7 @@ def test_a_launch_of_the_editor_sends_the_checkbox(page: Page, launcher_url):
     page.goto(url)
     page.get_by_label("Topology to launch").select_option("pair")
     page.get_by_role("button", name="Edit").click()
-    launch_edited = page.get_by_role("button", name="Launch this", exact=True)
+    launch_edited = page.get_by_role("button", name="Launch", exact=True)
     expect(launch_edited).to_be_enabled()
     page.get_by_label("collect history").check()
 

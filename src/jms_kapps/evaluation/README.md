@@ -30,8 +30,7 @@ and passes it in. There are two kinds, both in `jms_kapps.uc2.strategies`:
   with no module the box came from (None), so the module the box came from is then a valid
   choice. At a look-ahead, the module that holds the box stays the module it came from. A
   strategy that names only neighbours to which a connection it is given leads never names a
-  module left out; one it names all the same is not asked, with one WARNING. (Added on
-  2026-10-11, jms_kapps 77, decided by Etienne.)
+  module left out; one it names all the same is not asked, with one WARNING.
 - A **WMS strategy** is an object of a subclass of `WmsStrategy`. Its `origin_and_destination` is
   given the candidates of a spawn (each free origin the spawn allows, with the destinations it
   allows that the origin reaches), the station's connections as the WarehouseManagementSystem
@@ -61,7 +60,7 @@ second strategy of one kind with a name already found.
 ## The southward strategy
 
 `southward`, labelled "Southward (synthetic)", is one strategy of each kind, in `southward.py`, and
-the first benchmark strategy (jms_kapps 80, iteration one of the harness). It is made for a grid
+the first benchmark strategy (iteration one of the harness). It is made for a grid
 with its entries on the top row and its exits on the bottom row, such as the shipped `grid`. Both
 are registered under the name `southward`: `jms-uc2 --module-strategy southward --wms-strategy
 southward`, the Launcher's two pickers and the harness's configuration choose them.
@@ -76,15 +75,13 @@ southward`, the Launcher's two pickers and the harness's configuration choose th
   refuses as no candidate, with a reason that names `southward`: such a spawn ends in a refusal,
   never in an error.
 
-Neither writes, reads the store or waits. (Decided by Etienne on 2026-10-07, note on jms_kapps 36;
-the name and the label on 2026-10-11.)
+Neither writes, reads the store or waits.
 
 ## One command: `jms-eval`
 
-(Added on 2026-10-12, jms_kapps 100, decided by Sören Weindel as the product owner of the tests,
-jms_kapps 85, note 1864593; interim names, jms_kapps 83: the command, its options, its output
-folder and `harness.py`.) Repeating the evaluation should take about as much effort as running a
-use case. `jms-eval` takes a spec to the report and the table in one command:
+(Interim names: the command, its options, its output folder and `harness.py`.) Repeating the
+evaluation should take about as much effort as running a use case. `jms-eval` takes a spec to the
+report and the table in one command:
 
 ```sh
 uv run jms-eval                                   # the validation spec, into eval-validation/
@@ -125,9 +122,7 @@ It composes the commands below and does none of their work twice:
    `jms-eval-sweep --remove` removed in `--output`, until `jms-eval-sweep --put-back` puts it back
    (see "The precision rule and the rounds"). It takes the sweep's `--repeat`, which makes sure a
    target repetition of a ramp, a replay or a sustained load exists (see "The heavy parts in the
-   rounds"). (Changed on 2026-10-13, jms_kapps 111, decided by Sören as the
-   product owner of the tests, jms_kapps 85, note 1866296: until then a spec with the precision
-   rule was one pass per call, and a person called the command again for the next pass.)
+   rounds").
 4. **The report and the table** at the end, whatever the end of the runs: `report/report.md` and
    its files (`jms-eval-report`), `table.md` and `table.json` (`jms-eval-table`), in `--output`.
 
@@ -146,9 +141,7 @@ heavy parts and skips what has a record. With an approval file, each heavy run i
 `approval.cover` at its start, as the sweep covers it: one that the approval does not cover then
 (another spec, a spec changed since, a period that is not now) is skipped, and the command makes
 the normal runs and, at its end, lists each heavy run it skipped with the reason (see "Selection,
-records and stops"). (Changed on 2026-10-14, jms_kapps 112, decided by Sören as the product owner
-of the tests, jms_kapps 85, note 1866296: until then such an approval refused the call before its
-first run, with exit code 2.) The command adds no other way to start a heavy part, and no test, CI
+records and stops"). The command adds no other way to start a heavy part, and no test, CI
 job or example holds an approval of a shipped spec.
 
 **The dry run** shows the sweep's `--list` (the configurations and the runs that have a record,
@@ -173,7 +166,7 @@ Which table of the paper each one is, the paper step names.
 | `specs/validation.toml` | `uv run jms-eval` | each claimed figure once, short windows, the 5-module cross at 1k and 100k | below |
 | `specs/calibration-cross-short.toml` | `uv run jms-eval src/jms_kapps/evaluation/specs/calibration-cross-short.toml` | the harness's own overhead: a wrapped and an unwrapped run, compared by the calibration pair section of the table | about 6 minutes |
 | `specs/iteration-one.toml` | `uv run jms-eval src/jms_kapps/evaluation/specs/iteration-one.toml --output runs/iteration-one` | write throughput, OGM latency, store scaling (4 topologies, 4 prefill sizes), SHACL overhead (SHACL off at each size), the `southward` strategy, the history comparison; 125 runs | about 25 hours, over two time windows |
-| `specs/after-series.toml` | `uv run jms-eval src/jms_kapps/evaluation/specs/after-series.toml --output runs/after-series` | the same figures under the precision rule, 26 cells; a draft until Sören fixes its values; no replay and no ramp yet | at least 260 runs of about 12 minutes, in rounds of about 5.2 hours; one call goes on round after round until its stop time or the stop file |
+| `specs/after-series.toml` | `uv run jms-eval src/jms_kapps/evaluation/specs/after-series.toml --output runs/after-series` | the same figures under the precision rule, 26 cells; a draft until the product owner of the tests fixes its values; no replay and no ramp yet | at least 260 runs of about 12 minutes, in rounds of about 5.2 hours; one call goes on round after round until its stop time or the stop file |
 
 **The validation spec** is the default. It holds six configurations: the centre (the 5-module
 cross, a 1k prefill, SHACL on, with the wrapper), the same at 100k (store scaling), the centre
@@ -199,8 +192,7 @@ into the store before a run, so that the run meets a store of a known size. It h
 2 writes when a journey has ended `done`: each box, named by a UUID as the
 WarehouseManagementSystem names the boxes it spawns (`Box-<UUID>`), in the
 WarehouseManagementSystem's possession, its transport `done` from its origin to its destination,
-and the links between the two, both ways. (Changed on 2026-10-12, jms_kapps 92, decided by Sören
-on jms_kapps 85: until then each box was "numbered from 1".) A running use case 2 reads nothing in it as work in
+and the links between the two, both ways. A running use case 2 reads nothing in it as work in
 flight: no box is on a module, no transport is `queued` or `running`, and there is no reservation.
 
 ```sh
@@ -220,14 +212,12 @@ python -m jms_kapps.evaluation.prefill --topology grid --size 100k --seed 79 --o
 
 The file's first comment lines, one `# key: value` each, state the topology, the size asked for,
 the seed, the number of boxes, the generator and its version, and the number of statements in the
-file. The generator's version is 2 since the boxes are named by UUIDs (jms_kapps 92; version 1
+file. The generator's version is 2 since the boxes are named by UUIDs (version 1
 numbered them): a file of version 1 is no longer what the command writes for the same topology,
 size and seed. Neither the WarehouseManagementSystem nor a module reads every box of the file
 (the monitor does, which a run of the harness does not start): the WarehouseManagementSystem names a
-new box by a new UUID, and asks about a box that comes back in one `ASK` (until 2026-10-12: "The
-number of boxes matters as much as the size: the WarehouseManagementSystem reads every box when it
-numbers the next one."). The generator writes each box as it makes it, so a file of 10M
-statements needs no more memory than one of 100k.
+new box by a new UUID, and asks about a box that comes back in one `ASK`. The generator writes each
+box as it makes it, so a file of 10M statements needs no more memory than one of 100k.
 
 **Loading it.** Load the file after the seed and before any participant starts, as the seed is
 loaded. A box, its possession and its transport need each other in the store's shapes, so load
@@ -246,12 +236,11 @@ changes files, not code.
 **A run with heavy load needs an approval that covers it: any person may approve.** A
 sustained-load or breaking-point run is never a unit test or a CI job, because other people use
 the server. It runs only under an approval, which any person may give, in agreement with the
-server's admins (decided on 2026-10-12, jms_kapps 85 and 96; until then only Etienne approved, for
-one run each). Such a configuration says `heavy = true`, and a command that makes one run
+server's admins. Such a configuration says `heavy = true`, and a command that makes one run
 (`jms-eval-uc2`, `jms-eval-baseline`) then refuses to start unless an approval covers the run; the
-sweep and `jms-eval` skip and list such a run, and go on with the next (jms_kapps 112, below).
+sweep and `jms-eval` skip and list such a run, and go on with the next (below).
 
-**An approval is a small file** (interim names, jms_kapps 83: the file and its keys), passed by
+**An approval is a small file** (interim names: the file and its keys), passed by
 the option `--heavy-run-approval`. It covers **one spec for one period**:
 
 ```toml
@@ -267,14 +256,14 @@ text = "<what was approved, and with whom: the server's admins>"
 - **Inside its period** the approval covers every heavy configuration of the spec: several ramps
   and sustained loads alike. Each heavy run checks the period at its start; a sweep that reaches
   the end of the period skips the heavy runs after it and goes on with the normal runs
-  (jms_kapps 112; until 2026-10-14 it stopped there, between two runs).
+  (it does not stop there, between two runs).
 - **What no approval covers**, refused with the reason before anything reaches a store, or, in
-  the sweep and in `jms-eval`, skipped and listed with the reason (jms_kapps 112): a heavy run
+  the sweep and in `jms-eval`, skipped and listed with the reason: a heavy run
   without an approval; outside its period; of another spec or a changed spec file; with `--set`
   overrides of the sweep; of a bare configuration file; and the baseline of a run whose record
   holds no configuration key. A run at normal load needs no approval, and `heavy = false`
   is the default. **A replay of a recorded run compressed in time by a factor above 1 is a heavy
-  run too** (the store-only baseline, below; jms_kapps 98): it needs the approval of the replayed
+  run too** (the store-only baseline, below): it needs the approval of the replayed
   run's configuration, as a heavy run does; a replay at the factor 1 is at normal load.
 - **The record of each heavy run** keeps the whole approval it ran under in `heavy_run_approval`:
   `spec_key`, `start`, `end`, `approver` and `text`.
@@ -292,10 +281,11 @@ uv run jms-eval-uc2 --spec my-spec.toml --configuration 3 --heavy-run-approval m
 ### What a run needs
 
 A GraphDB that the environment names, as for every use case: `TRIPLESTORE_URL`,
-`TRIPLESTORE_USERNAME` and `TRIPLESTORE_PASSWORD` (changed on 2026-10-11, jms_kapps 62: until then
-`GRAPHDB_URL`, `GRAPHDB_USERNAME` and `GRAPHDB_PASSWORD`). The login needs the right to create and delete repositories and to read
-the server's monitoring views. The repository never comes from the environment. The command runs
-from a checkout of jms_kapps, because it reads `graphdb/jms-kapps-repo-config.ttl` at its root.
+`TRIPLESTORE_USERNAME` and `TRIPLESTORE_PASSWORD` (the deprecated `GRAPHDB_URL`, `GRAPHDB_USERNAME`
+and `GRAPHDB_PASSWORD` are still read, with a deprecation message). The login needs the right to
+create and delete repositories and to read the server's monitoring views. The repository never comes
+from the environment. The command runs from a checkout of jms_kapps, because it reads
+`graphdb/jms-kapps-repo-config.ttl` at its root.
 
 A run with the wrapper (`wrapper = true`, below) needs OpenTelemetry, the extra `evaluation` of
 jms_kapps, which a plain install leaves out: `uv sync --extra evaluation` (the development
@@ -320,12 +310,12 @@ value is refused by its name, and so is a key a run does not know.
 | `window_seconds` | How long the measured window is |
 | `drain_bound_seconds` | How long the run then waits at most for every transport to end |
 | `matcher_interval_seconds` | How often the completion matcher reads the run's ended transports from the graph, from the load's start to the drain's end |
-| `transit_seconds` | The transit time of every module that has none of its own in the topology, in seconds, 0 or more (jms_kapps 93; interim, jms_kapps 83) |
-| `retry_seconds` | How long a module waits before it asks a Reserve again, in seconds, more than 0 (jms_kapps 93; interim, jms_kapps 83) |
+| `transit_seconds` | The transit time of every module that has none of its own in the topology, in seconds, 0 or more (interim) |
+| `retry_seconds` | How long a module waits before it asks a Reserve again, in seconds, more than 0 (interim) |
 | `wrapper` | `true`: each participant runs through the wrapper, which observes it (below). `false`: no wrapper, and the run kind `uc2-unwrapped` |
 | `heavy` | Whether the load is heavy: a sustained-load or breaking-point run |
 
-**The pick seed** (jms_kapps 93; interim names, jms_kapps 83) is the one value a configuration may
+**The pick seed** (interim names) is the one value a configuration may
 leave out, and it is no key: `wms_pick_seed`, a whole number from 0, written after the keys. It
 seeds the generator that the WarehouseManagementSystem picks its modules with, for both strategies,
 so that the same seed and topology make the same sequence of picks. A run without one takes
@@ -342,10 +332,9 @@ A relative path is read from the configuration file's folder. A topology file, a
 strategy that cannot be found is refused before anything reaches the server.
 `configurations/` holds two short runs on the 5-module cross, with SHACL on and off, which check
 that a run works end to end; neither has a warm-up. A third, `grid-short.toml`, is a short run on
-the 30-module grid with a warm-up of 30 s (added on 2026-10-12, jms_kapps 48). The values of the measured runs come from the
-run task. The warm-up and the matcher interval came with the sweep (added on 2026-10-11, jms_kapps
-78), and the wrapper with the observation (added on 2026-10-12, jms_kapps 48): a configuration
-written before them is refused with the name of the one it misses.
+the 30-module grid with a warm-up of 30 s. The values of the measured runs come from the
+run task. The warm-up and the matcher interval came with the sweep, and the wrapper with the
+observation: a configuration written before them is refused with the name of the one it misses.
 
 ### What a run does
 
@@ -356,12 +345,11 @@ written before them is refused with the name of the one it misses.
    repository: not `jms-kapps`, not `kapps-demo`, not `Tests`, and no name without `eval-`.
 2. It starts use case 2 on the run core, as the Launcher does, but without the monitor: the reset
    of the repository and the seed of the topology, which sets the shapes only with SHACL on (the
-   twin has no SHACL validation and refuses them, so its seed sends none; changed on 2026-10-11,
-   jms_kapps 62: until then the twin held the shapes as plain data), then the prefill file, in transactions of whole
-   boxes of at most 10 000 statements each (`prefill.transactions`), then the history collection
-   if the configuration collects history, then a process for each module and one for the
-   WarehouseManagementSystem, with the configuration's strategies, each through the wrapper where
-   the configuration has it. It waits until each is ready.
+   twin has no SHACL validation and refuses them, so its seed sends none), then the prefill file, in
+   transactions of whole boxes of at most 10 000 statements each (`prefill.transactions`), then the
+   history collection if the configuration collects history, then a process for each module and one
+   for the WarehouseManagementSystem, with the configuration's strategies, each through the wrapper
+   where the configuration has it. It waits until each is ready.
 3. The warm-up and the window: it sets the WarehouseManagementSystem's spawn rate through its
    REST workflow at the warm-up's start, waits `warm_up_seconds`, and the measured window starts
    when the warm-up ends; it waits `window_seconds` and sets the rate to 0. Load enters only
@@ -377,16 +365,14 @@ written before them is refused with the name of the one it misses.
    create is found all the same. No box number is read: a box may be named by a number or by a
    UUID. Every read of the harness names the run's transports, in steps of at most 200 (`READ_NAMES`),
    and the matcher and the drain leave out the transports they have seen ended; no read asks for
-   every box or every transport of the store (changed on 2026-10-12, jms_kapps 90; interim names,
-   jms_kapps 83). From the warm-up's start to the drain's end the
-   harness writes nothing to the graph.
+   every box or every transport of the store (interim names). From the warm-up's start to the
+   drain's end the harness writes nothing to the graph.
 5. It stops the processes in order, deletes its repository, also after a failure, and writes the
    record, with the observation's measures and checks for a run that completed (below). A run that the server refuses, or that fails on the way, deletes its repository all the
    same, and its record says why it failed. So does a run that a stop signal ends: Ctrl+C,
    SIGTERM or a closing terminal's SIGHUP; a second one does not cut the end short.
 
-**The deletion of the repository** (Sören's decision of 2026-10-14 as the product owner of the
-tests, jms_kapps 116; interim names, jms_kapps 83). A large repository after a heavy run can take
+**The deletion of the repository** (interim names). A large repository after a heavy run can take
 the store longer to delete than a request may take, and the store can refuse a deletion.
 
 - **The outcome says how the measurement ended, and only that.** A run whose steps completed is
@@ -405,7 +391,7 @@ the store longer to delete than a request may take, and the store can refuse a d
   the connection dropped, where a gateway in front of the store answered 502, 503 or 504 in its
   place, as the proxy in front of the KIT GraphDB can, and where an answer arrived but could not be
   read (httpx's `DecodingError`: the record says "an answer to the deletion arrived but could not
-  be read", not that the answer was lost; changed on 2026-10-15 after a review). For an
+  be read", not that the answer was lost). For an
   answer that arrived but could not be read, as for the others, the one listing decides whether it
   was deleted. A repository that the store lists no more
   is deleted (`deleted` true, with `answer_lost`); one that it still lists is not. Where that list
@@ -418,16 +404,11 @@ the store longer to delete than a request may take, and the store can refuse a d
   server`. The exit code follows the outcome: 0 for a completed run, also where its repository
   was not deleted.
 
-(Changed on 2026-10-14, jms_kapps 116: until then a repository that the store did not delete
-added `; the repository was not deleted` to the outcome, and the observation was made only for an
-outcome of exactly `completed`, so a completed run had no measures, the sweep stopped at it and
-never made it again, it counted toward the 20 runs of the precision rule, and the baseline refused
-to replay it. Earlier records keep their outcome text, and no reader takes such a record as
-completed.)
+A record made before the deletion became a fact of its own may carry `; the repository was not
+deleted` in its outcome; it keeps its outcome text, and no reader takes such a record as completed.
 
-**The run limit** (added on 2026-10-13, jms_kapps 106, decided by Sören on jms_kapps 85; interim
-names, jms_kapps 83). Each step has a limit of its own, and the whole run has one too: 30 minutes
-by default. A run of the "after" series takes about 12 minutes.
+**The run limit** (interim names). Each step has a limit of its own, and the whole run has one too:
+30 minutes by default. A run of the "after" series takes about 12 minutes.
 
 - The time counts from the run's start, the moment before it creates its repository, to the start
   of its end (step 5). The end itself, the stop of the processes, the deletion of the repository
@@ -446,7 +427,7 @@ by default. A run of the "after" series takes about 12 minutes.
 
 Every other setting of use case 2 stays at its default, the deadlock alarm time among them, and
 the record holds each with its value. The transit time and the retry wait are keys of the
-configuration since jms_kapps 93, so a spec can sweep them and the record holds them in its
+configuration, so a spec can sweep them and the record holds them in its
 configuration, not under `run_settings`; the records of the "before" series hold them under
 `run_settings`, and the store-only baseline and the report still read those.
 
@@ -479,19 +460,19 @@ A folder below `--runs` (default: `runs`), named by the run id:
   the stop; and the observation (below): the matcher's reads, the measures, whether the run is
   valid, the checks it failed and made, and its stuck Operations; and whether the store deleted
   the run's repository (`repository_deletion`, above). No secret: the login is not in it.
-- **The client host's load** (`client_load` in the record; added on 2026-10-12, jms_kapps 91;
-  interim, jms_kapps 83). The participants and the harness share the client host, so a slow step
-  could be a busy client. From the load's start, the spawn rate set at the warm-up's start (the
-  window's for a run without a warm-up), to the drain's end, the harness samples the host's CPU
-  use and memory use every `client_load_interval_seconds` (a run setting, 1 s) from the operating
-  system's own figures, `/proc/stat` and `/proc/meminfo`, with a thread that sleeps between two
-  reads of two small files; it adds no package. `client_load` holds the `status` (`sampled`, or
-  `not available` on a host without `/proc`, which then holds no sample), the `interval_seconds`,
-  the host's `memory_total_bytes` and the `samples`, each with its time `at`, its `cpu_percent`
-  (the share of the time that all CPUs were busy since the sample before, in percent of all of
-  them; null where no time passed) and its `memory_used_bytes` (the total less what the host calls
-  available). The store-only baseline samples the same way from before its first replayed request
-  to its window's end. A record made before this (the "before" series) has no `client_load`.
+- **The client host's load** (`client_load` in the record; interim). The participants and the
+  harness share the client host, so a slow step could be a busy client. From the load's start, the
+  spawn rate set at the warm-up's start (the window's for a run without a warm-up), to the drain's
+  end, the harness samples the host's CPU use and memory use every `client_load_interval_seconds` (a
+  run setting, 1 s) from the operating system's own figures, `/proc/stat` and `/proc/meminfo`, with
+  a thread that sleeps between two reads of two small files; it adds no package. `client_load` holds
+  the `status` (`sampled`, or `not available` on a host without `/proc`, which then holds no
+  sample), the `interval_seconds`, the host's `memory_total_bytes` and the `samples`, each with its
+  time `at`, its `cpu_percent` (the share of the time that all CPUs were busy since the sample
+  before, in percent of all of them; null where no time passed) and its `memory_used_bytes` (the
+  total less what the host calls available). The store-only baseline samples the same way from
+  before its first replayed request to its window's end. A record made before this (the "before"
+  series) has no `client_load`.
 - `configuration.toml`, the resolved configuration. `jms-eval-uc2 <run>/configuration.toml` runs it
   again.
 - `output/`: each participant's output, one file each, every line stamped with the time it
@@ -506,8 +487,7 @@ its state, its resource view, and the server watch below.
 ### The server watch
 
 Other use of the same GraphDB may overlap a run, and nothing in the run itself shows it. The
-harness watches the server (added on 2026-10-12, jms_kapps 95). Every name below is interim
-(jms_kapps 83).
+harness watches the server. Every name below is interim.
 
 - **The series.** From the load's start to the drain's end, the warm-up, the window and the drain,
   the harness reads the resource view (`GET rest/monitor/infrastructure`) and measures one round
@@ -558,7 +538,7 @@ shows them, counters only.
 
 ## Observe a run
 
-Part 2 of the harness (added on 2026-10-12, jms_kapps 48) observes each run from outside KSM, the
+Part 2 of the harness observes each run from outside KSM, the
 object-graph mapper and the triple-store interface: none of them has a probe, and the code of no
 participant changes.
 
@@ -621,8 +601,7 @@ The record's `measures`, for a run that completed:
   with whether it came in the window); and the transports ended per minute, the ends the matcher
   saw in the window;
 - **"timed out" and "connection dropped" are two outcomes** of a store request that got no answer
-  (changed on 2026-10-14, jms_kapps 109, decided by Sören as the product owner of the tests,
-  jms_kapps 85, note 1866296, decision 2; interim names, jms_kapps 83). A request whose client gave
+  (interim names). A request whose client gave
   up because the time ran out is `timed out` (requests' and httpx's `ReadTimeout`,
   `ConnectTimeout`, `WriteTimeout`, `PoolTimeout`); one whose connection closed, reset or failed
   before an answer is `connection dropped` (requests' `ConnectionError`, whose message names
@@ -632,20 +611,18 @@ The record's `measures`, for a run that completed:
   decides (`store_requests.unanswered_outcome`); an error of neither class counts as connection
   dropped, and the report lists it with its error. By the same rule a request without an answer
   whose record holds no error is connection dropped too, in a new record and in an earlier one
-  alike (changed on 2026-10-15 after a review: until then an earlier record's `timed out`
-  without an error stayed timed out, while a new record said connection dropped). Both count toward the 1 % of the broken rule of
+  alike. Both count toward the 1 % of the broken rule of
   the ramp and of the replay, whose signal is `refused or unanswered`. A record written before
   keeps `timed out` for each request without an answer, with its error; the readers (`summary`,
   the table, the report) classify such a request by its error, and never change a record file. So
-  the four unanswered requests of iteration one, dropped connections of 2 to 9 ms (jms_kapps 91),
-  count as connection dropped. (Until 2026-10-14 every request without an answer was timed out,
-  and the share was `refused_or_timed_out_share`.)
-- the spawns of the measured window, wrapper or not (added on 2026-10-12, jms_kapps 99, interim
-  names): `spawns_offered_in_window`, the spawns the WarehouseManagementSystem spawned or refused,
-  `spawns_accepted_in_window`, those it spawned, and `spawns_accepted_share`, accepted over
-  offered (null where none was offered). They come from the WarehouseManagementSystem's
-  time-stamped output lines, each counted by the time it arrived; a box's name is not read. The
-  record's `spawns` still counts the whole run, the warm-up included.
+  the four unanswered requests of iteration one, dropped connections of 2 to 9 ms,
+  count as connection dropped.
+- the spawns of the measured window, wrapper or not (interim names): `spawns_offered_in_window`, the
+  spawns the WarehouseManagementSystem spawned or refused, `spawns_accepted_in_window`, those it
+  spawned, and `spawns_accepted_share`, accepted over offered (null where none was offered). They
+  come from the WarehouseManagementSystem's time-stamped output lines, each counted by the time it
+  arrived; a box's name is not read. The record's `spawns` still counts the whole run, the warm-up
+  included.
 
 A run without the wrapper holds only the measures that need none: the window, the transports
 ended per minute and the spawns of the window, beside the matcher's reads, the transports after
@@ -681,7 +658,7 @@ invalid.
 
 `jms-eval-sweep` runs the runs of a **spec** one by one, each a run of one configuration, as
 `jms-eval-uc2` makes it, and skips a run whose record exists, so that a sweep continues in a later
-time window (added on 2026-10-11, jms_kapps 78).
+time window.
 
 ```sh
 uv run jms-eval-sweep src/jms_kapps/evaluation/specs/iteration-one.toml --list
@@ -729,15 +706,13 @@ prefill = ["{topology}-1k.ttl", "{topology}-1M.ttl"]
   value; a key a spec does not know; and, among the selected configurations that have a run to
   make, one whose topology file, prefill file or strategy is not found, or one
   with the wrapper where OpenTelemetry, the extra `evaluation`, is not installed. A heavy run
-  needs an approval that covers it (above; changed on 2026-10-12, jms_kapps 96): the sweep's
+  needs an approval that covers it (above): the sweep's
   option `--heavy-run-approval` gives the approval file, and the sweep then runs every heavy
   configuration of the approved spec, ramps and sustained loads alike, in the approval's period.
   A heavy run that no approval covers at its start, outside the period, of another spec or a
   changed spec file, or with `--set` overrides, is skipped and listed (see "Selection, records and
-  stops"; until 2026-10-14, jms_kapps 112, such a run was refused before the first run).
-- **The series** (added on 2026-10-14, jms_kapps 110, decided by Sören as the product owner of the
-  tests, jms_kapps 85, note 1866296, the changed reading "the 60- and 120-module cells are
-  configurations 7 to 14"; interim names, jms_kapps 83). The configuration numbers of two specs
+  stops").
+- **The series** (interim names). The configuration numbers of two specs
   point to different configurations: configuration 7 of the iteration-one spec is the 30-module
   grid at 10M, configuration 7 of the "after" spec the 60-module grid at 1k. So a spec names its
   series in its `[defaults]`, `series = "before"`, a text that is not empty, and the report
@@ -751,10 +726,9 @@ prefill = ["{topology}-1k.ttl", "{topology}-1M.ttl"]
   `series`; the run folders, the record files, `--configurations`, `--remove`, `--put-back` and
   `--repeat` stay by number. The shipped specs name theirs: `specs/iteration-one.toml` "before",
   `specs/after-series.toml` "after", `specs/validation.toml` "validation" and
-  `specs/calibration-cross-short.toml` "calibration". **The names changed the four shipped spec
-  files**, so their SHA-256 changed: an approval issued before the merge is issued again, since an
-  approval covers one spec as written (jms_kapps 96).
-- **Replay factors** (jms_kapps 98; interim names, jms_kapps 83). A block may list
+  `specs/calibration-cross-short.toml` "calibration". The name is a line of each shipped spec file,
+  so it is part of the file's SHA-256; an approval covers one spec as written.
+- **Replay factors** (interim names). A block may list
   `replay_factors = [1, 2, 4, 8]`, numbers from 1: after the UC2 runs of each configuration of the
   block, the sweep replays the first valid UC2 run of that configuration with the store-only
   baseline (below), once per factor, in rising order, each on a repository of its own. The factors
@@ -780,11 +754,11 @@ prefill = ["{topology}-1k.ttl", "{topology}-1M.ttl"]
   the spec, the configuration's number in it, its key and the repetition of how many. The key is
   a digest of the configuration's values as the spec gives them, so a run is found again where the
   spec lists its configuration elsewhere, or where the checkout moved; keep each spec's runs in a
-  folder of their own (`--runs`). **The keys changed with jms_kapps 93:** the transit time and the
-  retry wait are keys of a configuration now, so every configuration has a new key and a sweep finds
+  folder of their own (`--runs`). **The key holds the transit time and the retry wait,** so a
+  configuration's key differs from the key it had in the "before" series, and a sweep finds
   no run of the "before" series. That is intended: the "after" series starts fresh, in a runs
   folder of its own. The report and `jms-eval-table` still read the records of the "before"
-  series (jms_kapps 105, interim names, jms_kapps 83): both match a record to a configuration in
+  series (interim names): both match a record to a configuration in
   `record_match`. A record matches by the configuration's key, as before; or, for a record of the
   "before" series, by the legacy key (`spec.legacy_key`), the digest of the configuration's values
   without `transit_seconds` and `retry_seconds`, when the record's `run_settings` hold the
@@ -792,7 +766,7 @@ prefill = ["{topology}-1k.ttl", "{topology}-1M.ttl"]
   file name. A record that matches neither way is of no configuration of the spec: the report
   counts it as left out. The readers never write a record file; the sweep's skip of existing
   records still keys by the configuration's key.
-- **The pick seed of a sweep** (jms_kapps 93; interim names, jms_kapps 83). Repetition k of every
+- **The pick seed of a sweep** (interim names). Repetition k of every
   configuration takes the seed derived from a base seed and k (a SHA-256 digest of both, so it is
   the same on every host and Python version): the spec's `pick_base_seed` in its `[defaults]`, a
   whole number from 0, or else the command's fixed default base seed, 20261012. So repetition k has
@@ -803,56 +777,44 @@ prefill = ["{topology}-1k.ttl", "{topology}-1M.ttl"]
   SIGTERM or a closing terminal's SIGHUP), and it is no measurement, so the next call makes that
   run again; a run that completed or failed is skipped, since a failure is a result. The
   interrupted attempt keeps its own folder and its record, as they are, beside the folder of the
-  run made again: each run's folder is named by its own run id. (Decided on 2026-10-11 in the
-  unattended rules, note on jms_kapps 78, for Etienne to confirm.)
-- **A failed run does not stop the sweep; 3 failed runs in a row do** (changed on 2026-10-14,
-  jms_kapps 112, decided by Sören as the product owner of the tests, jms_kapps 85, note 1866296,
-  "The series must run with no person present", and notes 1866704 and 1866813 on jms_kapps 112;
-  interim names, jms_kapps 83). One failed run at 01:00 must not end the night. The sweep goes on
-  after a failed run, and stops after 3 failed runs one after the other, which still keeps a store
-  that refuses every run from the rest of the spec; its message names the three runs. A run is
-  failed where its outcome is `failed` or `failed (over time)`, a replay level too, or where the
-  call cannot find its record below `--runs` after it made it: the call then leaves its
-  configuration out for the rest of the call (a ramp's level: the whole ramp), so that it does not
-  make the same run again all night. The call looks for the record twice: right after the run, in
-  the run's own record file, and again when it chooses the next round, so that a record that was
-  there after its run and is gone when the next round is chosen counts as a failed run the same
-  way, at the end of its round. A failed run whose record is also missing says both: its outcome,
-  and that its configuration is left out. A completed run whose repository the store did not delete
-  counts in the statistics by its validity, but it counts toward the 3 and does not reset the count,
-  so a server that leaves repositories behind ends the call after three such runs in a row. Any
-  other completed run, valid or invalid, resets the count. A failed run ends its ramp or its replay,
-  as before: no higher rate or factor is sent after a level that cannot be judged. **A stop signal
-  still ends the call at once**: a run that a stop signal ended stops the call, and the next call
-  makes it again. At its end the call names each of its runs that failed. The next call skips a
-  failed run and goes on after it; to make a failed run again, move its folder out of `--runs`. A
-  run that completed but whose repository the store did not delete is completed, and the line after
-  the run names the repository (changed on 2026-10-14, jms_kapps 116: until then the sweep stopped
-  at it, and never made it again). (Changed on 2026-10-14, jms_kapps 112: until then the sweep
-  stopped at each run that did not complete, failed or ended by a stop signal, and a guard of the
-  rounds stopped the call where the records did not show a run that the call had just made. That
-  guard is now the second look for the record, between two rounds: a run that it finds counts as a
-  failed run, and the call goes on without its configuration, or stops where it is the third failed
-  run in a row.)
-- **A heavy run that no approval covers is skipped and listed** (jms_kapps 112, from the same
-  decision). Each heavy run, a ramp's level, a sustained load and a replay level above the factor 1,
-  is checked at its start against the approval (`approval.cover`), and one that the approval does
-  not cover then is skipped, and the sweep goes on with the next run. No heavy run starts without an
-  approval that covers it. A skipped level of a ramp or a replay skips its higher levels in that
-  round, so a period that begins partway through a call never lets level 2 run after level 1 was
-  skipped; under the precision rule a later round goes on with the ramp or the replay from its
-  lowest level without a record, as with any unfinished heavy part. A replay level that cannot start
-  (its recorded run cannot be replayed) is skipped and listed the same way. At its end the call
-  lists each run it skipped, with the reason: no approval, another or a changed spec, a period that
-  is not now, `--set` overrides, a lower level that was skipped, or why the replay level cannot
-  start. A skip writes no record, so a later call whose approval covers the run makes it. A call
-  that only skipped heavy runs exits as if they were not selected. (Changed on 2026-10-14: until
-  then a heavy run that no approval covered stopped the sweep: a selection with such a run to make
-  was refused before its first run, with exit code 2, and a sweep that reached the end of the
-  approval's period stopped there, between two runs, so that an approval that ended at 02:00 also
-  stopped every normal run after it.)
-- **The stop time and the stop file** (added on 2026-10-13, jms_kapps 111, decided by Sören as the
-  product owner of the tests, jms_kapps 85, note 1866296; interim names, jms_kapps 83). Before
+  run made again: each run's folder is named by its own run id.
+- **A failed run does not stop the sweep; 3 failed runs in a row do** (interim names). One failed
+  run at 01:00 must not end the night. The sweep goes on after a failed run, and stops after 3
+  failed runs one after the other, which still keeps a store that refuses every run from the rest of
+  the spec; its message names the three runs. A run is failed where its outcome is `failed` or
+  `failed (over time)`, a replay level too, or where the call cannot find its record below `--runs`
+  after it made it: the call then leaves its configuration out for the rest of the call (a ramp's
+  level: the whole ramp), so that it does not make the same run again all night. The call looks for
+  the record twice: right after the run, in the run's own record file, and again when it chooses the
+  next round, so that a record that was there after its run and is gone when the next round is
+  chosen counts as a failed run the same way, at the end of its round. A failed run whose record is
+  also missing says both: its outcome, and that its configuration is left out. A completed run whose
+  repository the store did not delete counts in the statistics by its validity, but it counts toward
+  the 3 and does not reset the count, so a server that leaves repositories behind ends the call
+  after three such runs in a row. Any other completed run, valid or invalid, resets the count. A
+  failed run ends its ramp or its replay, as before: no higher rate or factor is sent after a level
+  that cannot be judged. **A stop signal still ends the call at once**: a run that a stop signal
+  ended stops the call, and the next call makes it again. At its end the call names each of its runs
+  that failed. The next call skips a failed run and goes on after it; to make a failed run again,
+  move its folder out of `--runs`. A run that completed but whose repository the store did not
+  delete is completed, and the line after the run names the repository. The second look for the
+  record, between two rounds, guards the call where the records do not show a run that the call had
+  just made: a run that it finds counts as a failed run, and the call goes on without its
+  configuration, or stops where it is the third failed run in a row.
+- **A heavy run that no approval covers is skipped and listed.** Each heavy run, a ramp's level, a
+  sustained load and a replay level above the factor 1, is checked at its start against the approval
+  (`approval.cover`), and one that the approval does not cover then is skipped, and the sweep goes
+  on with the next run. No heavy run starts without an approval that covers it. A skipped level of a
+  ramp or a replay skips its higher levels in that round, so a period that begins partway through a
+  call never lets level 2 run after level 1 was skipped; under the precision rule a later round goes
+  on with the ramp or the replay from its lowest level without a record, as with any unfinished
+  heavy part. A replay level that cannot start (its recorded run cannot be replayed) is skipped and
+  listed the same way. At its end the call lists each run it skipped, with the reason: no approval,
+  another or a changed spec, a period that is not now, `--set` overrides, a lower level that was
+  skipped, or why the replay level cannot start. A skip writes no record, so a later call whose
+  approval covers the run makes it. A call that only skipped heavy runs exits as if they were not
+  selected. So an approval that ends at 02:00 does not stop the normal runs after it.
+- **The stop time and the stop file** (interim names). Before
   each run, a replay level too, the call checks its stop time, `--stop-at`, and the stop file,
   `STOP` in `--runs`. The stop time is a date and time with its zone, such as
   `2026-10-14T06:00+02:00` or `2026-10-14T04:00Z`; one without a zone, or one that has passed, is
@@ -862,14 +824,13 @@ prefill = ["{topology}-1k.ttl", "{topology}-1M.ttl"]
   there before the first run stops the call before it. **A stop file never outlives its call:** a
   call that ends another way (a run that did not complete, the end of the rule, a round that
   cannot start or has nothing to make, Ctrl+C) removes a stop file that came meanwhile, and says
-  so (changed on 2026-10-14 after a review; until then such a file stopped the next
-  call before its first run). Each end has its own message. A stop signal ends the call as
-  before. Both hold for a spec of fixed repetitions too.
+  so; such a file would otherwise stop the next call before its first run. Each end has its own
+  message. A stop signal ends the call as before. Both hold for a spec of fixed repetitions too.
 - **A person removes configurations at any run:** make the stop file (`touch <runs>/STOP`), wait
   until the call stops, remove the configurations with `--remove` (see "The precision rule and
   the rounds"), and call the sweep or `jms-eval` again. The next call goes on at the round that
-  the records show, and the removed configurations keep their runs as they are. (Until
-  2026-10-14 a smaller `--configurations` removed them for one call only.)
+  the records show, and the removed configurations keep their runs as they are. (A smaller
+  `--configurations` leaves them out for one call only.)
 - `--list` shows each configuration with its values, its number of repetitions and those that
   have a record, each with its outcome (`completed`, `failed` or `interrupted`), and runs nothing:
   it needs no store, and none of the files the spec names. For a spec with the precision rule it
@@ -886,8 +847,7 @@ prefill = ["{topology}-1k.ttl", "{topology}-1M.ttl"]
 
 ### Replay levels in a sweep
 
-(Added on 2026-10-12, jms_kapps 98, from Sören's decision on jms_kapps 85, as the product owner of
-the tests; interim names, jms_kapps 83.) A block with `replay_factors` makes a **replay level** for
+(Interim names.) A block with `replay_factors` makes a **replay level** for
 each factor, after the UC2 runs of each of its configurations. A level is one store-only baseline
 (below) of the configuration's first valid UC2 run (the lowest repetition that completed and was
 not found invalid), at that factor, in a fresh repository with the configuration's seed and
@@ -899,9 +859,7 @@ and the factor (`<key>@x4`), so a level has a record of its own, found again by 
   answered requests, a refusal is an answer and a request that timed out or whose connection
   dropped is none, over the level's replay span in minutes, which runs from the level's window
   start to its last answer, the drain included. **The replay span is at least the window**
-  (changed on 2026-10-14, jms_kapps 107, decided by Sören as the product owner of the tests,
-  jms_kapps 85, note 1866296, the changed reading "The replay span is read literally"; interim,
-  jms_kapps 83): the achieved rate uses the larger of the span and the window's length over the
+  (interim): the achieved rate uses the larger of the span and the window's length over the
   factor. So the achieved rate is never more than the offered rate, and 100 % means that the store
   kept up: a level whose every request is answered before the window's end achieves the offered
   rate, and one whose last answer comes after the window's end has the rate it had before. A level
@@ -910,32 +868,26 @@ and the factor (`<key>@x4`), so a level has a record of its own, found again by 
   already, and no broken verdict changes. The record holds both rates in `replay_level`, with the
   factor, the requests, the refusals, the timeouts and the dropped connections in the window, the
   refusals for want of heap, the replay span as it is, from the window's start to the last answer,
-  whether the level is broken, and the signals. (Until 2026-10-14 the span was read literally: a
-  window of 300 s whose last answer came at 290 s, every request answered, gave an achieved rate
+  whether the level is broken, and the signals. (Read literally, the span would give a
+  window of 300 s whose last answer came at 290 s, every request answered, an achieved rate
   of 103 % of the offered rate.)
 - **Broken:** a level is broken when the store refuses a request for want of heap, when more than
   1 % of its window's requests are refused or unanswered (`refused or unanswered`: refused, timed
-  out or with their connection dropped; named `refused or timed out` until 2026-10-14, jms_kapps
-  109, for the same sum), or when the achieved rate is below 90 % of the offered rate. A replay has no commits, so the ramp's commit-latency and plateau signals do
-  not apply. The thresholds are judgement settings outside the configuration's key.
+  out or with their connection dropped), or when the achieved rate is below 90 % of the offered
+  rate. A replay has no commits, so the ramp's commit-latency and plateau signals do not apply. The
+  thresholds are judgement settings outside the configuration's key.
 - **The sweep stops the replay of a configuration at its first broken level**: the higher factors
   are not run, in this call or a later one, and the sweep goes on with the runs after them. A level
   that failed ends the replay: no higher factor is sent after a level that cannot be judged; it
-  counts toward the 3 failed runs in a row, as any failed run does, and the sweep goes on (changed
-  on 2026-10-14, jms_kapps 112: until then it stopped the sweep). A level that a stop signal ended
-  runs again.
+  counts toward the 3 failed runs in a row, as any failed run does, and the sweep goes on. A level
+  that a stop signal ended runs again.
 - **Heavy:** every level above 1 needs the approval of the spec, as a ramp does (above). The sweep
   checks each such level at its start, and skips and lists one that no approval covers then, with
-  the replay's higher levels (jms_kapps 112; until then a selection with such a level to make was
-  refused before its first run where none covered it). A level at the factor 1 needs none.
+  the replay's higher levels. A level at the factor 1 needs none.
 - **The rounds of the precision rule** make a replay one time, in round 1, right after its
   configuration's first valid run, and again on request (see "The heavy parts in the rounds"). A
   level's record says the replay's repetition in `sweep.repetition`, and every repetition replays
-  the run that the first one replayed. (Changed on 2026-10-14, jms_kapps 114, from Sören's
-  decision of 2026-10-13 as the product owner of the tests, jms_kapps 85, note 1866296, decision
-  6: until then the levels were fixed runs, made with round 1, after the configuration's run of
-  round 1, and a replay that ended never ran again. Changed before on 2026-10-13, jms_kapps 111:
-  until then pass 1 planned them, after the configuration's repetitions 1 to 5.)
+  the run that the first one replayed.
 - **A configuration with no valid UC2 run** to replay keeps its levels, and the sweep says so. In
   a spec of fixed repetitions they wait for a later call, and the call exits with 1. Under the
   precision rule they run right after the configuration's first valid run, in the round that
@@ -946,8 +898,8 @@ and the factor (`<key>@x4`), so a level has a record of its own, found again by 
 
 ### The iteration-one spec
 
-`specs/iteration-one.toml` holds the design of the numbers decision (jms_kapps 56), with the run
-timing of the run task (KSM 271, note of 2026-10-11) as its defaults: a box rate of 30 boxes per
+`specs/iteration-one.toml` holds the design of the first benchmark, with the run
+timing of the run task as its defaults: a box rate of 30 boxes per
 minute, which is not heavy, a warm-up of 1 minute, a measured window of 5 minutes, a drain bound of
 5 minutes, a matcher interval of 2 seconds, a transit time of 3 s and a retry wait of 1 s. These are data in the spec, so iteration two changes
 them without a build.
@@ -973,7 +925,7 @@ that is not there before anything reaches the store.
   120-module grids** are committed as `src/jms_kapps/evaluation/topologies/grid-60.json` and
   `src/jms_kapps/evaluation/topologies/grid-120.json` (the spec names them as
   `../topologies/grid-60.json` and `../topologies/grid-120.json`). They are the 12 x 5 and 24 x 5
-  grids that the grid script makes (jms_kapps 94; interim, jms_kapps 83), and a test checks that
+  grids that the grid script makes (interim), and a test checks that
   each file is what the script makes:
 
 ```sh
@@ -1013,12 +965,11 @@ done
 the WarehouseManagementSystem's one state, which every past box points at. The first box onto each
 module creates that module's state in its commit, 2 statements, about 60 on the 30-module grid, as
 in a run without a prefill. So the store is not warm in that respect: the first box onto a module
-in each run writes 2 statements more than the boxes after it (decided on 2026-10-11, note on
-jms_kapps 78).
+in each run writes 2 statements more than the boxes after it.
 
 **Over two time windows.** A run takes about 12 minutes: the start, a warm-up of 1 minute, the
 window of 5, a drain of up to 5 and the end. The 125 runs of this spec take about 25 hours, and the
-5 repetitions of each configuration are spread over at least two time windows (jms_kapps 56). For
+5 repetitions of each configuration are spread over at least two time windows. For
 a spec of fixed repetitions that is two calls, for example repetitions 1 to 3 in the first window
 and 4 and 5 in the second, with `--repetitions`. A spec with the precision rule (below) does it by
 itself: a round is a time window, and the 10 valid runs of a configuration come from at least 10
@@ -1031,10 +982,7 @@ run's outcome.
 
 ### The precision rule and the rounds
 
-Added on 2026-10-12 (jms_kapps 101, from the numbers decision of jms_kapps 56 as Sören changed it
-on jms_kapps 85); the rounds on 2026-10-13 (jms_kapps 111, decided by Sören as the product owner of
-the tests, jms_kapps 85, note 1866296, decision 5 and "The series must run with no person
-present"); interim names, jms_kapps 83. A spec with a `[precision]` table does not give its
+Interim names. A spec with a `[precision]` table does not give its
 configurations a number of repetitions: each runs until the rule holds.
 
 ```toml
@@ -1055,18 +1003,17 @@ maximum_runs = 20               # runs made at most
 - **The rounds.** A round makes one run of each selected configuration that is still **open**, in
   the spec's order: round k makes repetition k. A configuration is open while it does not meet the
   rule, has made fewer than 20 runs, and has no throughput median of 0 at its minimum of valid runs
-  or later (`rounds.is_open`). A round is a time window in the sense
-  of the numbers decision (jms_kapps 56): with the 26 cells of the draft spec it takes about 5.2
-  hours, and the 10 valid runs of a configuration come from at least 10 rounds, so from at least
-  two time windows; the rule refuses a `minimum_runs` below 2. Repetition k keeps the pick seed of repetition k, so the
-  repetitions of two configurations stay paired. A configuration whose run of a round was not
-  valid is open in the next round, as any open configuration.
+  or later (`rounds.is_open`). A round is a time window: with the 26 cells of the draft spec it
+  takes about 5.2 hours, and the 10 valid runs of a configuration come from at least 10 rounds, so
+  from at least two time windows; the rule refuses a `minimum_runs` below 2. Repetition k keeps the
+  pick seed of repetition k, so the repetitions of two configurations stay paired. A configuration
+  whose run of a round was not valid is open in the next round, as any open configuration.
 - **One call goes on round after round**, with no person present, until one of its ends: its stop
   time (`--stop-at`), the stop file (`STOP` in `--runs`), or the end of the rule, where each
   selected configuration meets the rule, has made 20 runs or stopped at a throughput median of 0.
   It checks the stop time and the stop file before each run (see "Selection, records and stops").
   A stop signal ends the call as before, and so does the third failed run in a row; a failed run
-  alone does not (jms_kapps 112).
+  alone does not.
 - **The calls.** The state is in the records: the round of a call is the lowest round that has a
   run without a completed or failed record among the open selected configurations, so a call
   after a stop goes on at the round and the repetition that the records show, and an interrupted
@@ -1076,24 +1023,21 @@ maximum_runs = 20               # runs made at most
   they have a record. A round that plans runs whose records the rule cannot read (a record that
   names its run but has no run kind, for example) has nothing to make: the call ends with its own
   message and exit code 1, and names the records to repair or move away.
-- **Removing configurations, and putting them back** (Sören's decision of 2026-10-14 on jms_kapps
-  111, note 1866695; interim names). After some rounds a person removes the cells that are less
-  important: `jms-eval-sweep <spec> --runs <runs> --remove 7-14` records them by their keys in
-  `removed-configurations.json` in the runs' folder and runs nothing. Every later call of
-  `jms-eval-sweep` and of `jms-eval` leaves them out, whatever it selects, and their runs stay as
-  they are; a running call reads the file before each round. `--list` shows each as `removed since
-  <time>`, and each call names them before its first run. `jms-eval-sweep <spec> --runs <runs>
-  --put-back 9` puts configuration 9 back: the next round plans it again. To remove cells from a
-  running call at once, make the stop file first. (Until 2026-10-14 a smaller `--configurations`
-  removed them for one call only, and `jms-eval` had no way to.)
+- **Removing configurations, and putting them back** (interim names). After some rounds a person
+  removes the cells that are less important: `jms-eval-sweep <spec> --runs <runs> --remove 7-14`
+  records them by their keys in `removed-configurations.json` in the runs' folder and runs nothing.
+  Every later call of `jms-eval-sweep` and of `jms-eval` leaves them out, whatever it selects, and
+  their runs stay as they are; a running call reads the file before each round. `--list` shows each
+  as `removed since <time>`, and each call names them before its first run. `jms-eval-sweep <spec>
+  --runs <runs> --put-back 9` puts configuration 9 back: the next round plans it again. To remove
+  cells from a running call at once, make the stop file first. (A smaller `--configurations` leaves
+  them out for one call only, and `jms-eval` has no selection.)
 - **The counting.** Only valid runs count toward the rule and the minimum. Every run made counts
   toward the 20, valid or not, a failed run too. An attempt that a stop signal interrupted
   (`interrupted`) does not count, and the next call makes that repetition again. A configuration
   that has made 20 runs without meeting the rule stops, and the table marks it "precision not
   reached (20 runs)".
-- **A throughput median of 0** (Sören's decision of 2026-10-13 as the product owner of the tests,
-  jms_kapps 85, note 1866296, the changed reading "A throughput median of 0 never meets the spread
-  condition"; jms_kapps 113, interim names). A median of 0 meets no spread, so such a
+- **A throughput median of 0** (interim names). A median of 0 meets no spread, so such a
   configuration can never meet the rule. Thus a configuration whose throughput median is 0 after
   its minimum of valid runs (10) stops there: it is not open, and no later round plans a run of
   it. The throughput is the transports ended per minute, the number that the rule judges, and the
@@ -1105,9 +1049,7 @@ maximum_runs = 20               # runs made at most
   configuration whose throughput median is above 0 is judged as before. The stop is no setting of
   the spec and changes no key. A stopped configuration runs again only when its records are
   moved out of the runs' folder, for example after its cause is fixed: while they are there, no
-  round plans it. (Changed on 2026-10-14, jms_kapps 113: until then such a configuration ran until
-  it had made 20 runs, about 4 hours of the shared server, and the table marked it "precision not
-  reached (20 runs)".)
+  round plans it.
 - **The records.** A record made under the rule says, in `sweep`, `repetitions` 20 (the maximum:
   "of how many") and `round`, the round that made it. A record made in a pass before the rounds
   keeps its `pass`, and its run counts as its repetition in the rounds: no key of a configuration
@@ -1124,25 +1066,17 @@ maximum_runs = 20               # runs made at most
 - **The table** (`jms-eval-table`) has a section "Precision rule" for such a spec: for each
   configuration the runs made, the valid runs, the rounds they were made in, and the rule's
   status. A run made before the rounds shows its pass, as its record says (`pass 1`).
-- **Until 2026-10-13** the passes planned the runs: pass 1 made repetitions 1 to 5 of every
-  configuration, in the spec's order, pass 2 made 6 to 10, each later pass one more of each
-  configuration that did not meet the rule yet, and `pass_sizes` in `[precision]` gave the sizes of
-  the first passes. A call made at most one pass and exited, so the 26th configuration of the draft
-  spec got its first run after 125 runs, about 25 hours, and each pass needed a person to call the
-  sweep again. Sören decided that rounds replace the passes (jms_kapps 85, note 1866296, decision
-  5). A `[precision]` table that still gives `pass_sizes` is refused, with a message that names the
-  rounds.
+- **There are no passes.** A `[precision]` table that still gives `pass_sizes` is refused, with a
+  message that names the rounds.
 
-`specs/after-series.toml` is the **draft spec of the "after" series** (jms_kapps 101): the cells
+`specs/after-series.toml` is the **draft spec of the "after" series**: the cells
 of the iteration-one spec under the rule, the calibration pair first (the centre with the wrapper
-and without it), then Sören's order: SHACL off at each store size, the 60- and 120-module grids,
-the history-on comparison, the rest, and `southward` last. 26 configurations. Its header states
-what stays open: the values of the transit time and the retry wait, the 60- and 120-module cells
-that need the grid ticket (jms_kapps 94), and the baselines that need the compressed replay
-(jms_kapps 98). **The rounds changed the file** (its header, and `pass_sizes` left it), so its
-SHA-256 changed: an approval issued before the change covers it no more, since an approval covers
-one spec as written, and a heavy run of it needs a new approval (jms_kapps 96). One call runs the
-rounds, for example until the next morning:
+and without it), then the order of the product owner of the tests: SHACL off at each store size, the
+60- and 120-module grids, the history-on comparison, the rest, and `southward` last. 26
+configurations. Its header states what stays open: the values of the transit time and the retry
+wait, and the baselines that need the compressed replay. An approval covers one spec as written, so
+a heavy run of it needs an approval issued for the file as it is. One call runs the rounds, for
+example until the next morning:
 
 ```sh
 uv run jms-eval-sweep src/jms_kapps/evaluation/specs/after-series.toml --list --runs runs/after-series
@@ -1156,10 +1090,9 @@ uv run jms-eval-table src/jms_kapps/evaluation/specs/after-series.toml --runs ru
 
 ### The heavy parts in the rounds
 
-Changed on 2026-10-14 (jms_kapps 114), from Sören's decision of 2026-10-13 as the product owner of
-the tests (jms_kapps 85, note 1866296, decision 6); interim names, jms_kapps 83. The heavy levels
+Interim names. The heavy levels
 are in the same spec as the configurations at normal load, inside the rounds, under the one
-approval of the spec for its period (jms_kapps 96). A **heavy part** is one of three:
+approval of the spec for its period. A **heavy part** is one of three:
 
 - a **ramp**, named by its block: its levels in rising order of their box rates;
 - a **replay**, named by its configuration's number: the levels of its first valid UC2 run, one
@@ -1194,9 +1127,7 @@ The rules:
   way makes nothing, so a restart with the same command line is safe and goes on where the last
   call stopped. A repetition has its own number in its records (`sweep.repetition` 2, then 3), and
   its runs take that repetition's pick seed. The call says what each target makes before its first
-  run. (Changed on 2026-10-14, Sören's ruling on jms_kapps 114 after a review: until then
-  the option named a part without a target, asked for one more repetition per call, and refused a
-  call where no part it named had ended, so a restart with the same line ran nothing.)
+  run.
 - **A repeated replay replays the same run** as its first repetition did, so the repetitions show
   the store and the time of day, with the same input.
 - **Refused before the first run:** a request in a spec without the precision rule, one without
@@ -1209,14 +1140,12 @@ The rules:
   check is against the repetition that the next round makes, not only against the target:
   `--repeat 6:3 --repetitions 3` after repetition 1 of part 6 would need repetition 2 first. The
   call says so in one line that names the part and the repetition left out, makes nothing for that
-  part, and goes on with no refusal, so that a restart with the same line stays safe. (Changed on
-  2026-10-15 after a review: until then such a call made nothing for the part and said
-  nothing.)
+  part, and goes on with no refusal, so that a restart with the same line stays safe.
 - **Every heavy level still runs only under an approval that covers it.** A repetition on request
   is covered exactly as the first one, at the start of each level; `jms-eval` without an approval
   skips its heavy levels and lists them, and a level that the approval does not cover at its start
-  is skipped and listed, and goes on in a later round (jms_kapps 112). No configuration key changes: a repetition has the key of its configuration, or of
-  its level.
+  is skipped and listed, and goes on in a later round. No configuration key changes: a repetition
+  has the key of its configuration, or of its level.
 - **`--list`** shows each heavy part with where it stands and, for one that ended, the `--repeat`
   value that asks for its next repetition.
 - **The table** shows the first repetition in its cells: the `baseline` and `baseline xF` columns
@@ -1224,17 +1153,12 @@ The rules:
   later repetitions appear apart: the section on ramps has each repetition of a ramp with its own
   judgement, compared with the replay's first repetition, and a heading that says how many the
   ramp has; the section "Replay levels" lists the levels by repetition and says how many each
-  replay has. (Sören's ruling of 2026-10-14 on jms_kapps 114.)
-
-(Until 2026-10-14 a ramp's levels and a heavy configuration kept their fixed repetitions, the
-sweep made them with the runs of round 1, a replay ran with round 1 after its configuration's run,
-and a ramp or a replay that ended never ran again: a ramp that ended never sent a higher rate, and
-a replay that stopped at its first broken level never ran its higher factors.)
+  replay has.
 
 ## The table of a spec
 
 `jms-eval-table` turns the records of a spec's runs into its numbers: one table, written beside
-the records (added on 2026-10-12, jms_kapps 49, from the numbers decision of jms_kapps 56). It
+the records. It
 needs no store, runs nothing, and may be made again at any time, as more runs have their records.
 
 ```sh
@@ -1254,20 +1178,20 @@ uv run jms-eval-table src/jms_kapps/evaluation/specs/iteration-one.toml --runs r
 **One row for each configuration at its box rate, its load level.** The configurations that
 differ only in the wrapper are one row, and the run kind tells them apart: each row has the
 columns of `uc2`, with the wrapper; `uc2-unwrapped`, without it; and `baseline`, the store-only
-baseline that replays a run of the row (jms_kapps 81), found by the run it names. A run kind with
+baseline that replays a run of the row, found by the run it names. A run kind with
 no run that counts leaves its columns empty. **The replay levels have columns of their own**
-(jms_kapps 98, interim names): the `baseline` columns are the baselines at the factor 1, and those
+(interim names): the `baseline` columns are the baselines at the factor 1, and those
 of an earlier record, which says no factor, as they were; each factor above 1 has the same columns
 under `baseline x2`, `baseline x4`, and so on (`replays` of the row in `table.json`). The section
 "Replay levels" of `table.md` lists every baseline that says its level, by the repetition of the
 replay and in rising order of the factor: the offered and the achieved rate per minute, the
-requests, those refused, those that timed out and those whose connection dropped (jms_kapps 109),
+requests, those refused, those that timed out and those whose connection dropped,
 the refusals for want of heap, and the signals that broke the level, each by its name now: a level
-recorded before jms_kapps 109 keeps `refused or timed out` in its file, and the table shows
-`refused or unanswered` for it as for a new one. The `baseline` and `baseline xF` columns hold the first repetition of a replay only,
-the one the ramp comparison uses. The section says how many repetitions each replay has
-(`replay_repetitions` of the row, and
-`repetition` of each level, in `table.json`; jms_kapps 114, interim names).
+recorded before the split of the two outcomes keeps `refused or timed out` in its file, and the
+table shows `refused or unanswered` for it as for a new one. The `baseline` and `baseline xF`
+columns hold the first repetition of a replay only, the one the ramp comparison uses. The section
+says how many repetitions each replay has (`replay_repetitions` of the row, and `repetition` of each
+level, in `table.json`; interim names).
 
 **Which runs count.** A run counts when it completed and its record does not say it is invalid.
 The table lists every run left out, with why: invalid, with the checks it failed; failed, with
@@ -1288,8 +1212,7 @@ count and from their measured window alone, which is all that a baseline measure
   whose connection dropped, apart (`refused_in_window`, `timed_out_in_window`,
   `connection_dropped_in_window` of a cell in `table.json`, and the section "Store requests refused
   or unanswered" of `table.md`), the three together and their share
-  (`refused_or_unanswered_in_window`, `refused_or_unanswered_share`; jms_kapps 109, until then
-  `refused_or_timed_out_in_window` and `refused_or_timed_out_share`, the same sum), and the
+  (`refused_or_unanswered_in_window`, `refused_or_unanswered_share`), and the
   refusals for want of heap under the load, in the warm-up, the window and the drain: a
   refusal while the load is on or drains is a signal of the store at that load; one before the
   load's start, as at the participants' start, says how large the store is. A baseline has
@@ -1318,10 +1241,10 @@ wrapper = [true, false]
 The table compares the pair in its row by the measures that need no wrapper, the transports ended
 per minute and the refused spawns per run, each with the difference and its share, which give the
 wrapper's own overhead; beside them, the matcher's reads of both. The calibration pairs of the
-measured runs run on the same hardware and the same versions as those runs (decided by Etienne on
-2026-10-11, note on jms_kapps 49). `specs/calibration-cross-short.toml` is a short calibration
-pair on the 5-module cross, at the short run's values, which checks that a pair and its table work
-end to end; it is no measurement:
+measured runs run on the same hardware and the same versions as those runs, so that the overhead is
+that of those runs. `specs/calibration-cross-short.toml` is a short calibration pair on the 5-module
+cross, at the short run's values, which checks that a pair and its table work end to end; it is no
+measurement:
 
 ```sh
 uv run jms-eval-sweep src/jms_kapps/evaluation/specs/calibration-cross-short.toml --runs runs/calibration-cross-short
@@ -1342,12 +1265,12 @@ boxes_per_minute = [10, 20, 40, 80, 160, 320, 640]
 repetitions = 1
 ```
 
-The run task's ramp doubles the rate from 10 boxes per minute, one window for each step (KSM 271,
-note of 2026-10-11). Each rate is one **load level**. A ramp's runs are heavy: its configurations
-take `heavy = true` whatever the spec's defaults say, and a ramp that its block or a flag says is
-not heavy is refused. It runs with the wrapper, since the broken rule reads the measures that need
-it. A ramp's configurations are its own: one that another block lists too is refused, and so is a
-ramp with another axis, with rates that do not rise, or with more than 1 repetition.
+The run task's ramp doubles the rate from 10 boxes per minute, one window for each step. Each rate
+is one **load level**. A ramp's runs are heavy: its configurations take `heavy = true` whatever the
+spec's defaults say, and a ramp that its block or a flag says is not heavy is refused. It runs with
+the wrapper, since the broken rule reads the measures that need it. A ramp's configurations are its
+own: one that another block lists too is refused, and so is a ramp with another axis, with rates
+that do not rise, or with more than 1 repetition.
 
 **A ramp runs only under an approval that covers its spec,** which any person may give, in
 agreement with the server's admins (above). The sweep's option `--heavy-run-approval` gives the
@@ -1355,11 +1278,11 @@ approval file; the record of each of the ramp's runs keeps the whole approval. T
 by default, and no test, CI job or example here gives an approval that covers a real spec. Without
 an approval that covers it, a selection with a level of a ramp to make is refused before its first
 run. One approval covers the ramps of its spec for its period, so a selection with levels of
-several ramps to make runs under it (changed on 2026-10-12, jms_kapps 96; until then a selection
-with two ramps was refused). A selection with a level of a ramp whose lower levels have no record
-and are not selected is refused, since a ramp judges each rate before the next. Select a ramp's
-levels with `--configurations`, from its lowest level without a record, as in
-`jms-eval-sweep <spec> --runs <folder> --configurations <the ramp's numbers> --heavy-run-approval <the approval file>`.
+several ramps to make runs under it. A selection with a level of a ramp whose lower levels have no
+record and are not selected is refused, since a ramp judges each rate before the next. Select a
+ramp's levels with `--configurations`, from its lowest level without a record, as in `jms-eval-sweep
+<spec> --runs <folder> --configurations <the ramp's numbers> --heavy-run-approval <the approval
+file>`.
 
 **The broken rule.** A load level is broken at the first store-side signal, from the measured
 window of its runs, but the refusals for want of heap, which count under the whole load, the
@@ -1367,8 +1290,7 @@ warm-up and the drain included:
 
 - `heap refusal`: a refusal for want of heap;
 - `refused or unanswered`: more than 1 % of the store requests refused, timed out or with their
-  connection dropped (named `refused or timed out` until 2026-10-14, jms_kapps 109, for the same
-  sum: "timed out" counted the dropped connections then);
+  connection dropped;
 - `p95 commit latency`: a p95 commit latency more than 10 times its value at the ramp's lowest
   rate.
 
@@ -1390,24 +1312,20 @@ judges the level, and it stops the ramp at the first level broken by a heap refu
 with the runs after them. A ramp none of whose levels broke runs up to its top level. The table
 reports the level before the broken one as the ramp's **scale**; a ramp broken at its lowest rate
 has none. A ramp also stops at a level that has a run but none that counts, a failed or an invalid
-one: that level cannot be judged, so no higher rate goes to the store, and the table gives no scale
-(decided on 2026-10-12 in the unattended rules, for Etienne to confirm). A ramp that ended in an
-earlier call sends no higher rate in a later one. **In a spec with the precision rule** a ramp runs
-one time, in round 1, at its block's place, and again on request (`--repeat block3:2`): each
-repetition starts again from the lowest rate, ends by the same rule, and is judged apart, from its
-own runs (changed on 2026-10-14, jms_kapps 114, from Sören's decision of 2026-10-13, jms_kapps 85,
-note 1866296, decision 6; see "The heavy parts in the rounds"). The table's section on ramps shows
-each repetition of each ramp, with how many the ramp has: each level judged, with its numbers, the
-signals it showed and those it could not show for want of a number (no commit at the lowest rate,
-say), where the ramp ended and why. The row of a ramp's level in the other sections holds its
-first repetition only.
+one: that level cannot be judged, so no higher rate goes to the store, and the table gives no scale.
+A ramp that ended in an earlier call sends no higher rate in a later one. **In a spec with the
+precision rule** a ramp runs one time, in round 1, at its block's place, and again on request
+(`--repeat block3:2`): each repetition starts again from the lowest rate, ends by the same rule, and
+is judged apart, from its own runs (see "The heavy parts in the rounds"). The table's section on
+ramps shows each repetition of each ramp, with how many the ramp has: each level judged, with its
+numbers, the signals it showed and those it could not show for want of a number (no commit at the
+lowest rate, say), where the ramp ended and why. The row of a ramp's level in the other sections
+holds its first repetition only.
 
-(Changed on 2026-10-12, jms_kapps 99, decided by Sören Weindel as the product owner of the tests,
-jms_kapps 85, note 1864593; interim names, jms_kapps 83. Until then the plateau was a fourth
-breaking signal: a level was broken on any of four, and the ramp stopped at its first broken level.
-But UC2 itself can be the limit, as the WarehouseManagementSystem was at 10M in iteration one, and a
-UC2-limited level usually plateaus, so the old rule stopped the ramp where its plateau said nothing
-about the store or KAPPS.)
+(Interim names.) The plateau breaks no level: UC2 itself can be the limit, as the
+WarehouseManagementSystem was at 10M in iteration one, and a UC2-limited level usually plateaus,
+so a ramp that stopped at a plateau would stop where the plateau says nothing about the store or
+KAPPS.
 
 **The judgement of a ramp.** The table gives each ramp one of three judgements:
 
@@ -1425,11 +1343,12 @@ module strategy, WMS strategy and history collection; where several match, the f
 counts. Where none matches, or the matching one has no replay level that counts, the table says
 "no replay"; where the replay broke at no level, it says "not broken up to factor F", with F the
 highest factor replayed. Each repetition of a ramp is compared with the replay's first repetition
-(jms_kapps 114, an interim reading for Sören). A record made before jms_kapps 99 holds no spawn counts: its level is neither UC2-limited nor not (`uc2_limited` is null), and the ramp cannot be told UC2-limited from it. A ramp that has not run all its levels is judged on the levels it has, so its judgement may change when the higher levels run. In `table.json` the ramp holds `judgement`, `uc2_limited_at` and
-`comparison`.
+(an interim reading). A record made before the spawn counts holds none: its level is neither
+UC2-limited nor not (`uc2_limited` is null), and the ramp cannot be told UC2-limited from it. A ramp
+that has not run all its levels is judged on the levels it has, so its judgement may change when the
+higher levels run. In `table.json` the ramp holds `judgement`, `uc2_limited_at` and `comparison`.
 
-**The licensed cores** (added on 2026-10-14, jms_kapps 108, decided by Sören as the product owner
-of the tests, jms_kapps 85, note 1866296, decision 1; interim names, jms_kapps 83). Beside the
+**The licensed cores** (interim names). Beside the
 replay's first broken level, the comparison gives the licensed cores of the server: GraphDB
 Enterprise runs at most one concurrent query for each licensed core (its license is priced per CPU
 core, "with each core supporting one concurrent query"). The compressed replay is an open loop, so
@@ -1451,9 +1370,9 @@ the section on ramps.
 `jms-eval-baseline` sends the store requests of one recorded UC2 run again, straight to the store:
 the same writes and queries, at the same store size, with nothing of KSM, the object-graph mapper
 or the triple-store interface on the way, beside the network's round trip from the client host
-(added on 2026-10-12, jms_kapps 81). It is the store-only baseline of the store decision (jms_kapps
-55): its numbers stand beside the UC2 run's, so that a reader sees what the store costs on its own.
-It is a measurement store client, as the seed is, and no participant: it starts none.
+It is the store-only baseline: its numbers stand beside the UC2 run's, so that a reader sees what
+the store costs on its own. It is a measurement store client, as the seed is, and no participant: it
+starts none.
 
 ```sh
 uv run jms-eval-baseline runs/<run id>
@@ -1463,7 +1382,7 @@ uv run jms-eval-baseline runs/iteration-one/<run id>/record.json --runs runs/bas
 - The argument is the recorded run: its folder, or its `record.json`. `--runs` (default: `runs`)
   is where the baseline makes its own folder, named by its own run id. For a heavy run,
   `--heavy-run-approval` gives the approval file and `--spec` the approved spec (below).
-- `--factor N` (default: 1; jms_kapps 98, interim name) replays the run compressed in time: the
+- `--factor N` (default: 1; interim name) replays the run compressed in time: the
   same requests in the same order, each offset from the window's start divided by the factor, so
   each gap between two requests, and the window itself, is divided by it. A factor of 1 is the
   replay on the recorded timeline, as above. **A factor above 1 is a heavy run**: it starts only
@@ -1484,8 +1403,8 @@ uv run jms-eval-baseline runs/iteration-one/<run id>/record.json --runs runs/bas
   spec (`--spec`), and the record of the replayed run must hold a configuration key that the spec
   lists (a run made from a spec, by the sweep or by `jms-eval-uc2 --spec`, records it), and the
   configuration in that record's text must be the one the key names in the spec. A replayed run
-  whose record holds no key, or whose configuration does not match its key, is refused, as is one outside the approval's period (jms_kapps
-  96).
+  whose record holds no key, or whose configuration does not match its key, is refused, as is one
+  outside the approval's period.
 
 ### What a baseline run does
 
@@ -1506,14 +1425,12 @@ uv run jms-eval-baseline runs/iteration-one/<run id>/record.json --runs runs/bas
    answer, or has had none for 60 seconds, the triple-store interface's own limit, and is timed
    out. The measured window lasts as long as the recorded one, shortened by the factor.
 5. **The end**, also after a failure or a stop signal: it deletes its repository and no other, and
-   writes its record. As for a UC2 run, by Sören's decision of 2026-10-14 as the product owner of
-   the tests, the outcome says nothing of the deletion: a baseline or a replay level whose replay
-   completed is `completed`, with its measures and its level, also where the store did not delete
-   its repository; its record says so (`repository_deletion`), and the last line names the
-   repository (changed on 2026-10-14, jms_kapps 116: until then `; the repository was not
-   deleted` was added to the outcome, and such a baseline did not count).
+   writes its record. As for a UC2 run, the outcome says nothing of the deletion: a baseline or a
+   replay level whose replay completed is `completed`, with its measures and its level, also where
+   the store did not delete its repository; its record says so (`repository_deletion`), and the last
+   line names the repository.
 
-**The run limit** (jms_kapps 106; interim names, jms_kapps 83): a baseline, at every factor, has
+**The run limit** (interim names): a baseline, at every factor, has
 the run limit of a UC2 run (above), 30 minutes by default. The time counts from its start to the
 start of its end (step 5). A baseline older than its limit ends there too, as a stop signal ends
 it. Its outcome is `failed (over time)`, then the limit and the step at which the limit came: the
@@ -1545,26 +1462,25 @@ leaves"); how many requests the replay sent (`replay`: the recorded requests, th
 out, those before the window, those of the window, and those after it left out); and its
 `measures` in the form of part 2's, so that part 3 puts them beside the UC2 run's: every request
 it sent, each with when it left, its latency, its size, its outcome (accepted; refused, with the
-kind of the refusal and the store's reason; timed out or connection dropped, with the error,
-jms_kapps 109), the statuses it writes and whether the
-store applied them, its text, and whether it is one of the window's, which alone count; those of
-the window with their offset (`offset_seconds`) and how late they left against it
-(`late_seconds`); and over the window, the requests, those refused, timed out and with their
-connection dropped and their share,
-the completed writes and their number per minute, and the refusals for want of heap, each kept
-with whether it came in the window; and `replay_level`, the numbers of the replay level (below)
-and, in a sweep, `sweep`, which says the level's key and factor. The requests before the window are kept, as part 2 keeps
-those of the warm-up, so that a refusal that left the store in another state than the recorded
-run's shows. A baseline has no commits of the object-graph mapper and no transports.
+kind of the refusal and the store's reason; timed out or connection dropped, with the error), the
+statuses it writes and whether the store applied them, its text, and whether it is one of the
+window's, which alone count; those of the window with their offset (`offset_seconds`) and how late
+they left against it (`late_seconds`); and over the window, the requests, those refused, timed out
+and with their connection dropped and their share, the completed writes and their number per minute,
+and the refusals for want of heap, each kept with whether it came in the window; and `replay_level`,
+the numbers of the replay level (below) and, in a sweep, `sweep`, which says the level's key and
+factor. The requests before the window are kept, as part 2 keeps those of the warm-up, so that a
+refusal that left the store in another state than the recorded run's shows. A baseline has no
+commits of the object-graph mapper and no transports.
 
 **The replay level.** `replay_level` holds the `factor`, the `offered_per_minute` and the
 `achieved_per_minute`, the `requests_in_window`, the `answered_in_window`, the refusals, the
 timeouts and the dropped connections in the window (`refused_in_window`, `timed_out_in_window`,
-`connection_dropped_in_window`, jms_kapps 109), the refusals for want of heap
+`connection_dropped_in_window`), the refusals for want of heap
 (`heap_refusals_in_window`), the `replay_span_seconds`, `broken` and its `signals`, and the
-`thresholds` (`refused_or_unanswered_share`, until jms_kapps 109 `refused_or_timed_out_share`). The rates, the rule that breaks a level and what the sweep does with it are in "Replay
-levels in a sweep" above. At a factor above 1 the `offset_seconds` of a request is its compressed
-offset, which its `late_seconds` is measured against.
+`thresholds` (`refused_or_unanswered_share`). The rates, the rule that breaks a level and what the
+sweep does with it are in "Replay levels in a sweep" above. At a factor above 1 the `offset_seconds`
+of a request is its compressed offset, which its `late_seconds` is measured against.
 
 **Reading it.** The replay is open: each request leaves at its time, whatever the store answered
 before. A checked write's query for its receipt leaves at its recorded offset too, so where the
@@ -1574,7 +1490,7 @@ receipt; the write then counts as not applied, as its record shows.
 ## The report of a spec
 
 `jms-eval-report` turns the runs of a spec into tables and charts that a person reads without any
-other tool, in a folder `report/` beside the records (added on 2026-10-12, jms_kapps 86). It needs
+other tool, in a folder `report/` beside the records. It needs
 no store and no network, runs nothing, and may be made again at any time. The sweep makes it after
 each run, so the report is current while a sweep goes on. Its tables are made with pandas and its
 charts with matplotlib's headless backend, both in the extra `evaluation`, which a plain install
@@ -1587,7 +1503,7 @@ uv run jms-eval-report src/jms_kapps/evaluation/specs/iteration-one.toml --runs 
 - The spec, and `--runs` and each `--set` as the sweep was given them, and `--seed` and
   `--resamples` as `jms-eval-table` takes them (the same defaults).
 - `--live-checks <log>` names the orchestrator's live-check log (below); without it, the marks of
-  the live checks say `no data` (jms_kapps 97, interim).
+  the live checks say `no data` (interim).
 - It writes into `<runs>/report/`: `report.md`, the tables and the charts for a person;
   `runs.csv`; `configurations.csv`; `steps.csv`; `unanswered.csv`; `marks.csv`, `hours.csv`,
   `page_cache.csv`, `deadlock_alarms.csv` and `dead_heartbeats.csv` (the report points, below);
@@ -1602,8 +1518,8 @@ uv run jms-eval-report src/jms_kapps/evaluation/specs/iteration-one.toml --runs 
   minute, the commits and their p50, p95 and p99, the p50 and p95 of the reads and of the writes,
   kept apart, the requests the store refused, those that timed out and those whose connection
   dropped, inside the window and outside it, kept apart (`refused_in_window`,
-  `timed_out_in_window`, `connection_dropped_in_window` and the same `_outside_window`; jms_kapps
-  109), the stuck boxes, and the client host's load in the window (below).
+  `timed_out_in_window`, `connection_dropped_in_window` and the same `_outside_window`), the stuck
+  boxes, and the client host's load in the window (below).
 - **The status** is `completed` for a valid run, `invalid` for one that a check found invalid
   (its values are shown, with the checks as its reason), `failed` and `interrupted` (a stop signal
   ended it, and a later call of the sweep makes it again). A failed or an interrupted run has no
@@ -1612,24 +1528,23 @@ uv run jms-eval-report src/jms_kapps/evaluation/specs/iteration-one.toml --runs 
   window, logins left out. The reads and the writes are told apart by the request's kind. A
   request that got no answer keeps its real wait in the record (`seconds`, with its `outcome` and
   its `reason`): the report counts it in the column of its outcome, timed out or connection
-  dropped (a request that a record written before says "timed out" by its error, jms_kapps 109),
+  dropped (a request that a record written before the split says "timed out" by its error),
   leaves it out of the latencies, and lists it (next item).
-- **The unanswered store requests** (`unanswered.csv`, and a section of `report.md`; jms_kapps 91):
+- **The unanswered store requests** (`unanswered.csv`, and a section of `report.md`):
   one row for each store request that got no answer, in the window and outside it, with its
   configuration, run kind, repetition and run, `where` (`in the window` or `outside the window`),
-  its `outcome` (`timed out` or `connection dropped`, jms_kapps 109), its `time`, its
+  its `outcome` (`timed out` or `connection dropped`), its `time`, its
   `wait_seconds` (the real wait until the failure), its `reason` (the exception as the record
   keeps it, as `ConnectionError: ... RemoteDisconnected(...)` for a dropped connection), its
   `kind` and its `participant`. A baseline run's are listed too. An error of neither class shows
-  `connection dropped` with its error. (Until 2026-10-14 the wait and the reason alone told a
-  timeout from a dropped connection.)
+  `connection dropped` with its error. (The outcome tells a timeout from a dropped connection, not
+  the wait and the reason alone.)
 - **The client load** (`runs.csv` columns `client_load`, `client_cpu_median_percent`,
-  `client_cpu_max_percent` and `client_memory_max_gib`, and a section of `report.md`; jms_kapps
-  91): the median and the highest CPU use of the client host, in percent of all its CPUs, and its
-  highest memory use in GiB, over the record's samples that lie in the measured window.
-  `client_load` is `measured`, `no data` (the record has no sample: a run of the "before" series;
-  or none lies in the window) or `not available` (the host had no `/proc`); `report.md` shows
-  those words in place of the numbers.
+  `client_cpu_max_percent` and `client_memory_max_gib`, and a section of `report.md`): the median
+  and the highest CPU use of the client host, in percent of all its CPUs, and its highest memory use
+  in GiB, over the record's samples that lie in the measured window. `client_load` is `measured`,
+  `no data` (the record has no sample: a run of the "before" series; or none lies in the window) or
+  `not available` (the host had no `/proc`); `report.md` shows those words in place of the numbers.
 - **The configurations table** (`configurations.csv`, and in `report.md` with fewer columns) is
   `jms-eval-table`'s table (`table.make_table`, not a second version), for the runs that count: one
   row for each configuration at its box rate and each run kind, with each statistic as a column
@@ -1642,35 +1557,32 @@ uv run jms-eval-report src/jms_kapps/evaluation/specs/iteration-one.toml --runs 
   only in the size of their prefill (the size is the one the file's name gives, as the `1M` of
   `grid-1M.ttl`), the throughput and the commit p95 against that size, on a log scale. `<n>` is
   the family's lowest configuration.
-- **The steps** (`steps.csv`, and `steps-family-<n>.png` in `report.md`; module `report_steps`,
-  added on 2026-10-12, jms_kapps 87) tell where the time goes, from the spans, in the measured
-  window, pooled over the valid runs of a configuration. A step is keyed by its role (`WMS` or
-  `module`) and its span name; a commit is split by its status (`(accepted)` or `(error)`); every
-  store request has the same span name, so it is keyed by its kind and a category taken from its
-  query text (`store read: all boxes (WMS next_box)`, `store write: receipt removal`, ...). The
-  categories are the two tables `READ_CATEGORIES` and `WRITE_CATEGORIES`, one line each, tried in
-  order; a query that matches none is `store read: other read` or `store write: other write`, never
-  an error. A store request the store did not accept is its own step, `(not accepted)`. One step
-  has no span, `all-boxes read end -> next Reserve call`: the WMS's client time after its read of
-  all boxes, measured from the spans around it. Only the runs of the "before" series have that
-  read and that step: since jms_kapps 92 the WMS reads no box to name a new one, and when a box
-  comes back it asks the store about that one box, in one `ASK`, a category of its own,
-  `store read: possession: ASK for one box (WMS return)`; the old records still read and sort as
-  before. The WMS is the participant of the record whose
-  command takes `--wms-strategy`, and its IRI comes from the record. `steps.csv` has one row for
-  each configuration, role and step: `runs`, `steps`, `steps_per_minute`, `median_seconds`,
-  `p95_seconds` (`stats.quantile`, as the rest of the report) and `median_response_bytes` (the
-  store's answer, where the span records one). `steps-family-<n>.png` compares the configurations
-  of one family of prefill sizes step by step, a dot at the median and a tick at the p95, on a log
-  time scale.
+- **The steps** (`steps.csv`, and `steps-family-<n>.png` in `report.md`; module `report_steps`) tell
+  where the time goes, from the spans, in the measured window, pooled over the valid runs of a
+  configuration. A step is keyed by its role (`WMS` or `module`) and its span name; a commit is
+  split by its status (`(accepted)` or `(error)`); every store request has the same span name, so it
+  is keyed by its kind and a category taken from its query text (`store read: all boxes (WMS
+  next_box)`, `store write: receipt removal`, ...). The categories are the two tables
+  `READ_CATEGORIES` and `WRITE_CATEGORIES`, one line each, tried in order; a query that matches none
+  is `store read: other read` or `store write: other write`, never an error. A store request the
+  store did not accept is its own step, `(not accepted)`. One step has no span, `all-boxes read end
+  -> next Reserve call`: the WMS's client time after its read of all boxes, measured from the spans
+  around it. Only the runs of the "before" series have that read and that step: the WMS reads no box
+  to name a new one, and when a box comes back it asks the store about that one box, in one `ASK`, a
+  category of its own, `store read: possession: ASK for one box (WMS return)`; the old records still
+  read and sort as before. The WMS is the participant of the record whose command takes
+  `--wms-strategy`, and its IRI comes from the record. `steps.csv` has one row for each
+  configuration, role and step: `runs`, `steps`, `steps_per_minute`, `median_seconds`, `p95_seconds`
+  (`stats.quantile`, as the rest of the report) and `median_response_bytes` (the store's answer,
+  where the span records one). `steps-family-<n>.png` compares the configurations of one family of
+  prefill sizes step by step, a dot at the median and a tick at the p95, on a log time scale.
 
 ### The report points
 
-Sören's decisions of 2026-10-12 (jms_kapps 85, built in jms_kapps 97; module `report_points`, all
-names interim, jms_kapps 83). The runs of the "after" series go on around the clock, and other use of
-the KIT GraphDB may overlap them. None of these files changes a column of `runs.csv`,
-`configurations.csv` or `steps.csv`. A run of the "before" series has no server watch and no log
-is given for it: every mark then says `no data`, and the report still builds.
+The module `report_points` (all names interim). The runs of the "after" series go on around the
+clock, and other use of the KIT GraphDB may overlap them. None of these files changes a column of
+`runs.csv`, `configurations.csv` or `steps.csv`. A run of the "before" series has no server watch
+and no log is given for it: every mark then says `no data`, and the report still builds.
 
 - **By hour of day** (`hours.csv`, `hours-<n>.png` for each configuration, a section of
   `report.md`): the valid runs of a configuration and run kind grouped by the hour of day, UTC, of
@@ -1703,7 +1615,7 @@ is given for it: every mark then says `no data`, and the report still builds.
   runs that gave data (`runs`) and those that did not (`runs_without_data`: a negative delta,
   because the counters reset when the server restarted, a refused view, or no watch), and the
   `hit_share`, `hits` over `hits` plus `misses`, or `no data`. The view's counters are read as
-  `cacheHit` and `cacheMiss`, the form the KIT server answers (seen in jms_kapps 95's live check),
+  `cacheHit` and `cacheMiss`, the form the KIT server answers (seen in a live check),
   and also as `cache.hit`/`cache.miss` and `graphdb_cache_hit`/`graphdb_cache_miss`; one more form
   is a line in `_cache_counts`.
 - **The deadlock alarms** (`deadlock_alarms.csv`, a section of `report.md`, the column
@@ -1738,12 +1650,11 @@ host's load in the window (`client_load`: the median and the highest CPU use, th
 use and the number of samples, or `no data` or `not available`), and, for a run that counts and has
 spans, its steps (`steps`: the minutes of the window and, for each role and step, the seconds of
 its spans in the window and the sizes of the store's answers, so that the runs can be pooled and
-the spans are read once), and, since jms_kapps 97, the report points of the run (`points`: the
+the spans are read once), and the report points of the run (`points`: the
 window and its hour, the verdict on other activity and its reasons, the page cache's deltas, the
-deadlock alarms, and the dead heartbeats, or `null` for a run without spans). Its `format` is 5
-since jms_kapps 109, which counts the dropped connections apart (4 since jms_kapps 97, 3 since
-jms_kapps 91, 2 since jms_kapps 87); a summary of an older format is made again from its record
-and its spans, so a summary that counted a dropped connection as timed out is made again.
+deadlock alarms, and the dead heartbeats, or `null` for a run without spans). Its `format` is 5,
+which counts the dropped connections apart; a summary of an older format is made again from its
+record and its spans, so a summary that counted a dropped connection as timed out is made again.
 
 ### The report in the sweep
 

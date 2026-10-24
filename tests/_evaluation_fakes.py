@@ -5,7 +5,7 @@ supervisor of the run core, the WMS's spawn rate workflow and a clock.
 Each one writes what it is asked into one shared list of events, in order, so that a test reads
 the order of the harness's actions across all of them.
 
-For the observation (jms_kapps 48), the clock does what a test schedules once its time has come,
+For the observation, the clock does what a test schedules once its time has come,
 the graph shows a transport ended from the time a test gives it, and the supervisor writes the
 spans that a test gives a participant into the file its wrapper would write them to, and a
 participant's lines of output at the times a test gives them.
@@ -93,7 +93,7 @@ class FakeGraphDB:
         states: The state it lists a repository in, RUNNING for the others.
         refusing: The paths it refuses with the status given, by GET path (or `*` and its end),
             after the login
-            (jms_kapps 95: a refused or lost watch read is kept and the run goes on).
+            (a refused or lost watch read is kept and the run goes on).
     """
 
     def __init__(
@@ -333,6 +333,9 @@ class FakeBenchGraph(GraphDBBenchGraph):
 
     def _reset(self, db: object, topology: Topology, **options: object) -> None:
         self.events.append(("write", "reset", topology, options))
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         self.events.append(("read", "services"))

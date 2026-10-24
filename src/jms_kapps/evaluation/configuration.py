@@ -32,18 +32,17 @@ is the configuration the run started from. The values of iteration one come from
 (the box rate, the warm-up, the window, the drain bound and the matcher interval); none is built
 into the harness.
 
-The warm-up and the matcher interval came with the sweep (added on 2026-10-11, jms_kapps 78): the
+The warm-up and the matcher interval belong to the sweep: the
 spawn rate is on for `warm_up_seconds` before the measured window starts, and a warm-up of 0 is a
 run without one. `matcher_interval_seconds` is how often the completion matcher reads the graph, from the load's
 start to the drain's end (`matcher`).
 
-`wrapper` came with the observation of a run (added on 2026-10-12, jms_kapps 48): with it, each
+`wrapper` belongs to the observation of a run: with it, each
 participant runs through the wrapper, which observes it from outside its code (`wrapper`); without
 it, the run has no spans, its record has the run kind `uc2-unwrapped`, and it holds only the
 measures that need no wrapper.
 
-`transit_seconds` and `retry_seconds` came with the run settings of the spec (added on 2026-10-12,
-jms_kapps 93, decided by Sören on jms_kapps 85, interim names, jms_kapps 83): the transit time of
+`transit_seconds` and `retry_seconds` are run settings of the spec (interim names): the transit time of
 every module that has none of its own in the topology, and how long a module waits before it asks
 a Reserve again. Both are keys of the configuration, so a spec can sweep them and the key of a
 configuration says them; their defaults, 3.0 s and 1.0 s, are the sweep command's (`spec`).
@@ -96,12 +95,10 @@ KEYS = (
 )
 
 # The run setting a configuration may leave out, and writes after its keys where it is given: the
-# seed of the generator the WarehouseManagementSystem picks with (added on 2026-10-12,
-# jms_kapps 93, interim name).
+# seed of the generator the WarehouseManagementSystem picks with (interim name).
 PICK_SEED = "wms_pick_seed"
 
-# The base seed of a sweep whose spec gives none (added on 2026-10-12, jms_kapps 93, interim
-# name): fixed, so that repetition k gets the same seed in every configuration, in every sweep.
+# The base seed of a sweep whose spec gives none (interim name): fixed, so that repetition k gets the same seed in every configuration, in every sweep.
 DEFAULT_BASE_SEED = 20261012
 
 # The value of `prefill` for a run without a prefill file. A file of that name is given as

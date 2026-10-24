@@ -23,7 +23,7 @@ from jms_kapps.uc1.learner import Learner
 from jms_kapps.uc1.learner_dashboard import register_box
 from jms_kapps.uc1.learner_memory import LearnerMemory
 from jms_kapps.uc1.learner_process import build, learn_every
-from jms_kapps.uc1.replay import mock_frame
+from jms_kapps.uc1.replay import example_frame
 from jms_kapps.uc1.timeseries import FrameNotFound
 from jms_kapps.uc1.vocabulary import JMS, JMS_NS
 
@@ -157,9 +157,9 @@ class Middleware:
         return _Commit()
 
 
-# The legacy mock recording `success.csv`, whose highest dynamic torque is 0.7: the placeholder
+# The example recording `success.csv`, whose highest dynamic torque is 0.7: the placeholder
 # rule gives 0.84.
-SUCCESS = mock_frame("success", start=0)
+SUCCESS = example_frame("success", start=0)
 
 
 class _NoStore:
@@ -254,7 +254,7 @@ def learner(middleware, frames, memory) -> Learner:
 def test_after_a_run_that_changed_a_value_the_box_shows_the_run_and_the_change_old_to_new(
     graph, frames, learner, clock, box
 ) -> None:
-    """`:M4` held the legacy mock 1.5. Two ScrewIntact attempts of `success.csv` give 0.84."""
+    """`:M4` held the example 1.5. Two ScrewIntact attempts of `success.csv` give 0.84."""
     for number in (1, 2):
         graph.attempt(number, held=1.5)
         frames.at[f"ref-{number}"] = SUCCESS
@@ -283,7 +283,7 @@ def disassembly(*torques: float) -> Frame:
 def test_later_runs_show_the_newest_change_first_and_how_many_attempts_were_new(
     graph, frames, learner, clock, box
 ) -> None:
-    """The first run replaces the mock 1.5 with 0.84. A run with nothing new changes nothing. A new
+    """The first run replaces the example 1.5 with 0.84. A run with nothing new changes nothing. A new
     attempt with a dynamic torque of 1.0 raises 0.84, which `:M4` now holds, to 1.2."""
     graph.attempt(1, held=1.5)
     frames.at["ref-1"] = SUCCESS
@@ -525,7 +525,7 @@ def test_while_a_run_is_under_way_the_box_says_so_in_place_of_the_next_run(
     assert ["Next run", "10:00:10, every 10 s"] in cells(box())
 
 
-def test_the_box_says_that_it_shortens_the_operation_of_the_last_error(
+def test_the_box_does_not_say_that_it_shortens_the_operation_of_the_last_error(
     graph, frames, learner, box
 ) -> None:
     graph.attempt(1, held=1.5)
@@ -534,4 +534,13 @@ def test_the_box_says_that_it_shortens_the_operation_of_the_last_error(
     with pytest.raises(ConnectionError):
         learner.learn()
 
-    assert SHORTENING_NOTE in last_error_part(box())
+    assert SHORTENING_NOTE not in last_error_part(box())
+    assert SHORTENING_NOTE not in box()
+
+
+def test_the_learner_serves_the_pages_that_its_row_on_the_page_links() -> None:
+    """The API docs, the activity page and the dashboard with its Logs tab answer."""
+    client = TestClient(build(_NoStore(), "127.0.0.1", 8000, influxdb=None).app)
+
+    for path in ("docs", "activity", "dashboard", "dashboard?tab=Logs"):
+        assert client.get("/" + path).status_code == 200, path

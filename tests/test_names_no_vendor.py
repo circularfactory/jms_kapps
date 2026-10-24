@@ -21,11 +21,11 @@ README's InfluxDB section stay.
 
 **What is scanned.**
 
-- The command line: the help of `jms-uc2`, of `jms-uc2 slice` and of the command line that every
-  process with a middleware shares.
+- The command line: the help of `jms-uc2` and of the command line that every process with a
+  middleware shares.
 - The text of every file under `SCANNED`: the package's source, which holds its command lines,
   the environment variables it reads, its names and its messages; the Launcher page and the
-  monitor page; the guide of the `evaluation` package; the README; `run-uc2`; the reviewer
+  monitor page; the guide of the `evaluation` package; the README; `run-uc2`; the user
   guide with its screenshot script; and the reference pages under `docs/reference/`. Of `scripts/`
   only that script: the release renders the mechanism's own checker there, whose text is the tool's.
 - The importable names of the package and their signatures: every public name that a module of
@@ -40,15 +40,12 @@ README's InfluxDB section stay.
   compose file loads.
 - `EXEMPT`: two paths, each with its reason. The possession-history exception, `uc2/history.py`.
   Use case 2's reset turns on the store's history plugin directly, and a person reads past
-  possessions with a query of that plugin: the one store feature above the interface (Etienne,
-  2026-10-06), so the module names the vendor and its plugin, and the store's unit as the
+  possessions with a query of that plugin: the one store feature above the interface, so the module names the vendor and its plugin, and the store's unit as the
   plugin's measurements name it. And the measurement harness, the folder `evaluation/` and its
-  modules, which belong to the map of the paper's evaluation, outside the scope of the build that added this check
-  (jms_kapps 62): its store layer creates and deletes each run's own dataset and reads the
+  modules, which belong to the map of the paper's evaluation, outside the scope of this check: its store layer creates and deletes each run's own dataset and reads the
   server's monitoring views through the backend's own REST API, on purpose, so its texts and
   names name the vendor and its unit. What it takes from the rest of the package and from the
-  siblings, it takes by their new names. Its own names are not renamed here (decided on
-  2026-10-11, by Etienne's standing decisions, through the orchestrator).
+  siblings, it takes by their new names. Its own names are not renamed here.
 - `REGIONS`: in each file listed there, the lines from a `vendor-check: off` marker to the next
   `vendor-check: on`, for the reason given there. A marker in any other file fails.
 
@@ -76,7 +73,7 @@ SCANNED = (
     "src/jms_kapps",
     "README.md",
     "run-uc2",
-    "docs/reviewer-guide.md",
+    "docs/user-guide.md",
     "scripts/take_screenshots.py",
     "docs/reference",
 )
@@ -109,6 +106,12 @@ REGIONS = {
         "the local fallback's setup steps, which start the local GraphDB of the compose file; "
         "and the deprecated variables, which the store reads until the contract release"
     ),
+    "docs/user-guide.md": (
+        "the name of the variable that moves the local store's port, which carries the vendor's "
+        "name; a GraphDB that already runs on the default port; and the store's own message about "
+        "a dataset it lacks, which says repository; and the creation of a disposable dataset, "
+        "through the local store's REST API, which says repository"
+    ),
     "docs/reference/past-possessions.md": (
         "the possession-history exception: the store's history plugin, and its queries"
     ),
@@ -118,6 +121,9 @@ REGIONS = {
     ),
     "src/jms_kapps/uc2/shapes/flexconveyor_usecase_shapes.ttl": (
         "the backend that the shapes were measured on, which decides how they are written"
+    ),
+    "src/jms_kapps/uc2/shapes/flexconveyor_usecase_sparql_shapes.ttl": (
+        "the backend that the SHACL-SPARQL rule was measured on, which decides how it is written"
     ),
 }
 
@@ -131,15 +137,10 @@ GIT_SENSE: dict[str, tuple[str, ...]] = {
     ),
     "docs/reference/assets.md": (
         "| This repository |",
-        "the name of the repository already says it",
     ),
     "docs/reference/tests.md": ("named anywhere in the repository",),
     "docs/reference/topologies.md": ("its repository. The *first iteration*",),
-    "docs/reference/triple-store.md": ("repository root:",),
-    "docs/reviewer-guide.md": (
-        "In the repository root:",
-        "shell in the repository root:",
-    ),
+    "docs/user-guide.md": ("shell in the repository root:",),
 }
 """The lines that mean a git repository, by file: a fragment of each line."""
 
@@ -231,7 +232,7 @@ def test_a_region_a_kept_spelling_and_a_git_repository_pass_and_nothing_else_doe
     text = (
         'Run `pytest -m "not graphdb"`; the `graphdb` tests clear their dataset.\n'
         "Create it from graphdb/jms-kapps-repo-config.ttl.\n"
-        "In the repository root:\n"
+        "In a second shell in the repository root:\n"
         "Set GRAPHDB_URL.\n"
         "The repository is cleared.\n"
         "<!-- vendor-check: off -->\n"
@@ -240,7 +241,7 @@ def test_a_region_a_kept_spelling_and_a_git_repository_pass_and_nothing_else_doe
         "An RDF4J graph, and a GDB token.\n"
     )
 
-    offences = offences_in("docs/reference/triple-store.md", text)
+    offences = offences_in("docs/user-guide.md", text)
 
     assert [offence.split(":")[1] for offence in offences] == ["4", "5", "9"]
     assert offences_in("elsewhere.md", "vendor-check: off\nvendor-check: on") == [
@@ -255,12 +256,11 @@ def _cli_help() -> dict[str, str]:
     from jms_kapps.uc2.__main__ import main
 
     helps = {"a process's command line": process_parser("A process.").format_help()}
-    for name, argv in (("jms-uc2", ["--help"]), ("jms-uc2 slice", ["slice", "--help"])):
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out), pytest.raises(SystemExit) as stopped:
-            main(argv)
-        assert stopped.value.code == 0
-        helps[name] = out.getvalue()
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out), pytest.raises(SystemExit) as stopped:
+        main(["--help"])
+    assert stopped.value.code == 0
+    helps["jms-uc2"] = out.getvalue()
     return helps
 
 

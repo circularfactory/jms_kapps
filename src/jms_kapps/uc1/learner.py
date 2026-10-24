@@ -10,19 +10,19 @@ learner "periodically queries" the graph. Each run:
    read spans more than one attempt;
 3. derives the maximum dynamic torque of each Screw type with the placeholder rule below;
 4. commits each value that changed to its Screw type, all of them in one `mw.commit()`. It never
-   writes to a Screw, and never a placement value: a Screw's own value overrides its type's for
-   that Screw alone, and a placement value depends on where the screw is, not on its type.
+   writes to a Screw, and never a placement value: a Screw holds no type value, and a
+   placement value depends on where the screw is, not on its type.
 
 The anomaly detector reads the effective values of a Screw afresh at each attempt, through
 `effective_values.read_effective_values`, which keeps nothing between two calls. So its next
-decision, and the decision snapshot that it records, hold the new value.
+decision, and the parameter copy that it records, hold the new value.
 
 **The rule is a placeholder, not a regression.** The new maximum dynamic torque of a Screw type is
 `PLACEHOLDER_MARGIN` (20 %) above the highest dynamic torque that the type's ScrewIntact attempts
 recorded in their Disassembly phase. It shows the loop: a threshold changes from the graph's own
 history, and the next decision uses it. A real regression, and the other thresholds, are left for
 the use case's second milestone. The first value that the learner derives for a Screw type replaces
-whatever the type held, a seeded mock value too, higher or lower. After that the value only rises.
+whatever the type held, a seeded example value too, higher or lower. After that the value only rises.
 
 **It learns from the decision tree's own outcomes.** An outcome is what the detector observed, not
 a confirmed Screw condition. So the rule takes a ScrewIntact attempt for an intact screw, and a
@@ -111,18 +111,20 @@ def intact_attempts(db: Queryable) -> list[IntactAttempt]:
     """Every unscrewing operation that is `done` with the outcome ScrewIntact, in one query.
 
     An operation counts once it is `done`, which the detector commits together with the outcome.
-    One whose Screw names no Screw type, or that holds no reference, is not found. The same query
-    reads the value of the learned threshold that each Screw type holds, one value of it, so that
-    a Screw type with two values gives no second row.
+    Only ScrewIntact ends an operation `done`; a failure outcome ends it `failed`, and it keeps the
+    outcome. The query keeps both filters, because a graph written before that rule holds operations
+    that are `done` with another outcome. One whose Screw names no Screw type, or that holds no
+    reference, is not found. The same query reads the value of the learned threshold that each Screw
+    type holds, one value of it, so that a Screw type with two values gives no second row.
     """
     rows = bindings(
         db,
         f"""
         SELECT ?operation ?screw ?type ?reference (SAMPLE(?value) AS ?held) WHERE {{
             ?operation a <{JMS.UnscrewingOperation}> ;
-                <{SVC.operationStatus}> "{OperationStatus.DONE}" ;
-                <{JMS.hasOutcome}> <{JMS.ScrewIntact}> ;
-                <{JMS.hasScrew}> ?screw ;
+                <{SVC.hasOperationStatus}> "{OperationStatus.DONE}" ;
+                <{JMS.hasDetectionResult}> <{JMS.ScrewIntact}> ;
+                <{JMS.concernsScrew}> ?screw ;
                 <{JMS.hasTimeSeriesReference}> ?reference .
             ?screw <{JMS.hasScrewType}> ?type .
             OPTIONAL {{ ?type <{LEARNED_THRESHOLD}> ?value }}
@@ -234,7 +236,7 @@ class Learner:
                 intact.setdefault(attempt.screw_type, []).append(frame)
                 learned_from.setdefault(attempt.screw_type, []).append(attempt)
 
-            what_fails = "Deriving the values with the placeholder rule failed"
+            what_fails = "Deriving the values failed"
             operation = None
             changed: dict[IRI, float] = {}
             for screw_type, frames in intact.items():

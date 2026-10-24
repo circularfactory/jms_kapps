@@ -2,14 +2,14 @@
 
 The ten properties of a Screw's effective values have a union as their domain, and each is
 functional. The mapper finds such a property by a SPARQL query that uses the `owl:` and `rdf:`
-prefixes without declaring them, so they must resolve in the dataset. These tests load the ontology with Core, seed mock
-values (see `_uc1_mock.py`: none of them is measured), and check that:
+prefixes without declaring them, so they must resolve in the dataset. These tests load the ontology with Core, seed example
+values (see `_uc1_example.py`: none of them is measured), and check that:
 
-- a Screw type, a Screw and a decision snapshot each load through a class scope with exactly
+- a Screw type, a Screw and a parameter copy each load through a class scope with exactly
   their properties, each optional and single-valued;
 - a Screw type and a Screw hydrate one value of each threshold they hold, also as a model;
 - one value of each threshold is written and changed through the middleware, as the learner
-  writes it, and a decision snapshot is written, as the detector writes it;
+  writes it, and a parameter copy is written, as the detector writes it;
 - a second value is refused before the write, and the error names the maximum;
 - an unscrewing operation that the middleware creates under its operation scope keeps the
   Capability it implements, because the class is a `cfc:Operation`.
@@ -32,12 +32,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 import pytest
-from _uc1_mock import ARBITRARY_OVERRIDE, ARBITRARY_PLACEMENT_VALUES, MOCK_M4_VALUES
+from _uc1_example import ARBITRARY_PLACEMENT_VALUES, EXAMPLE_M4_VALUES, STRAY_TYPE_VALUE
 from kapps_ogm import OGM, ClassScope, Update
 from kapps_semantic_middleware import Mode, SemanticMiddleware
 from kapps_semantic_middleware.credentials import triplestore_env_present
 from kapps_semantic_middleware.operation import operation as operation_scope
-from kapps_semantic_middleware.vocabulary import CFC, CORE_NS
+from kapps_semantic_middleware.vocabulary import CFC, CORE_NS, SVC, OperationStatus
 from kapps_triplestore_interface import IRI
 
 from jms_kapps.common.triplestore import bindings, connect, read_asset, reset
@@ -58,30 +58,30 @@ pytestmark = [
 # The mapper's refusal of a second value of a single-valued property. It names the maximum.
 OVER_THE_MAXIMUM = "at most 1 item"
 
-# A Screw with no values of its own, and one with its placement values and one override.
+# A Screw with no values of its own, and one with its placement values.
 BARE_SCREW = IRI("TestScrewWithoutValues", base=JMS_NS)
 PLACED_SCREW = IRI("TestScrewWithPlacement", base=JMS_NS)
+# A Screw that holds a type value, which the ontology's domain does not allow. A store without
+# the ontology's shapes still takes it.
+STRAY_SCREW = IRI("TestScrewWithTypeValue", base=JMS_NS)
 OPERATION = IRI("TestOperation", base=JMS_NS)
-SNAPSHOT = IRI("TestDecisionSnapshot", base=JMS_NS)
+SNAPSHOT = IRI("TestParameterCopy", base=JMS_NS)
 
-# The effective values of the placed Screw: `:M4`'s, its placement values, and its one override.
-PLACED_SCREW_VALUES = {
-    **MOCK_M4_VALUES,
-    **ARBITRARY_PLACEMENT_VALUES,
-    **ARBITRARY_OVERRIDE,
-}
+# The effective values of the placed Screw: `:M4`'s and its placement values.
+PLACED_SCREW_VALUES = {**EXAMPLE_M4_VALUES, **ARBITRARY_PLACEMENT_VALUES}
 
 # Who writes through the middleware here: a planner, built and never served, because a commit
 # needs only its object-graph mapper. Neither IRI is declared; use case 1's participants are not
 # built yet.
-# The product the test operation works on, its product type, and the two Core links that join
+# The product the test operation works on, its assembly type, and the Core links that join
 # them. `CFC` names only the terms the middleware's own code uses, and Core's product axis is not
 # among them, so these are built from the namespace the middleware exports.
 GRINDER = IRI("TestAngleGrinder", base=JMS_NS)
 PRODUCT_TYPE = IRI("TestAG1", base=JMS_NS)
 CONTAINS_WORKPIECE = IRI("containsWorkpiece", base=CORE_NS)
 HAS_PRODUCT_TYPE = IRI("hasProductType", base=CORE_NS)
-CORE_PRODUCT_TYPE = IRI("ProductType", base=CORE_NS)
+HAS_ASSEMBLY_TYPE = IRI("hasAssemblyType", base=CORE_NS)
+CORE_ASSEMBLY_TYPE = IRI("AssemblyType", base=CORE_NS)
 
 PLANNER = IRI("TestPlanner", base=JMS_NS)
 PLANNER_SERVICE = IRI("TestPlannerService", base=JMS_NS)
@@ -106,12 +106,12 @@ def turtle_values(subject: IRI, values: dict[IRI, float]) -> str:
 
 @pytest.fixture(scope="module")
 def db(dataset):
-    """The ontology, the mock values on `:M4` and on two test Screws, one value each, and a test
-    operation with a decision snapshot of the placed Screw's values.
+    """The ontology, the example values on `:M4` and on two test Screws, one value each, and a test
+    operation with a parameter copy of the placed Screw's values.
 
     The seed writes Turtle, not through the mapper, as a demonstration seed may. The seeded
-    snapshot is what the read tests read; the detector's own write is tested below. Use case 1
-    has no shapes yet, so the shapes graph is left empty.
+    snapshot is what the read tests read; the detector's own write is tested below. The fixture
+    sends no shapes of its own, so the shapes graph holds the operation-status shape alone.
     """
     db = connect(dataset)
     reset(
@@ -122,18 +122,19 @@ def db(dataset):
     db.graph_add(
         f"<{BARE_SCREW}> a <{JMS.Screw}> ; <{JMS.hasScrewType}> <{JMS.M4}> .\n"
         f"<{PLACED_SCREW}> a <{JMS.Screw}> ; <{JMS.hasScrewType}> <{JMS.M4}> .\n"
-        + turtle_values(JMS.M4, MOCK_M4_VALUES)
-        + turtle_values(
-            PLACED_SCREW, {**ARBITRARY_PLACEMENT_VALUES, **ARBITRARY_OVERRIDE}
-        )
-        + f"<{SNAPSHOT}> a <{JMS.DecisionSnapshot}> .\n"
+        + turtle_values(JMS.M4, EXAMPLE_M4_VALUES)
+        + turtle_values(PLACED_SCREW, ARBITRARY_PLACEMENT_VALUES)
+        + f"<{STRAY_SCREW}> a <{JMS.Screw}> ; <{JMS.hasScrewType}> <{JMS.M4}> .\n"
+        + turtle_values(STRAY_SCREW, {**ARBITRARY_PLACEMENT_VALUES, **STRAY_TYPE_VALUE})
+        + f"<{SNAPSHOT}> a <{JMS.ParameterCopy}> .\n"
         + turtle_values(SNAPSHOT, PLACED_SCREW_VALUES)
-        + f"<{OPERATION}> a <{JMS.UnscrewingOperation}> ; <{JMS.usedValues}> <{SNAPSHOT}> ;\n"
-        f"    <{JMS.hasScrew}> <{PLACED_SCREW}> ; <{JMS.hasWorkpiece}> <{GRINDER}> .\n"
+        + f"<{OPERATION}> a <{JMS.UnscrewingOperation}> ; <{JMS.classifiedWith}> <{SNAPSHOT}> ;\n"
+        f"    <{JMS.concernsScrew}> <{PLACED_SCREW}> ; <{JMS.concernsWorkpiece}> <{GRINDER}> ;\n"
+        f'    <{SVC.hasOperationStatus}> "{OperationStatus.QUEUED}" .\n'
         f"<{PLACED_SCREW}> <{JMS.hasOperation}> <{OPERATION}> .\n"
         f"<{GRINDER}> a <{JMS.AngleGrinder}> ; <{CONTAINS_WORKPIECE}> <{PLACED_SCREW}> ;\n"
-        f"    <{HAS_PRODUCT_TYPE}> <{PRODUCT_TYPE}> .\n"
-        f"<{PRODUCT_TYPE}> a <{CORE_PRODUCT_TYPE}> ;"
+        f"    <{HAS_PRODUCT_TYPE}> <{PRODUCT_TYPE}> ; <{HAS_ASSEMBLY_TYPE}> <{PRODUCT_TYPE}> .\n"
+        f"<{PRODUCT_TYPE}> a <{CORE_ASSEMBLY_TYPE}> ;"
         f" <{JMS.hasExpectedScrewType}> <{JMS.M4}> .\n",
         content_type="application/x-turtle",
     )
@@ -187,8 +188,8 @@ def stored(db, subject: IRI) -> list[dict]:
 
 HOLDERS = [
     (JMS.ScrewType, set(TYPE_LEVEL)),
-    (JMS.Screw, {*TEN, JMS.hasScrewType}),
-    (JMS.DecisionSnapshot, set(TEN)),
+    (JMS.Screw, {*PLACEMENT, JMS.hasScrewType}),
+    (JMS.ParameterCopy, set(TEN)),
 ]
 
 
@@ -209,7 +210,9 @@ def test_each_holder_loads_through_a_scope_with_its_properties_each_single_value
 def test_a_scope_with_a_property_another_holder_holds_is_refused(
     ogm: OGM, cls: IRI, expected: set[IRI]
 ) -> None:
-    """A Screw type holds no placement value, and a decision snapshot names no Screw type."""
+    """A Screw type holds no placement value, a Screw holds no type value (the mapper cannot read
+    one, so the effective-values reader does not ask), and a parameter copy names no Screw
+    type."""
     for other in {*TEN, JMS.hasScrewType} - expected:
         with pytest.raises(ValueError, match="not found as property"):
             ogm.get_class_spec(class_iri=cls, class_scope=scope_of({*expected, other}))
@@ -220,16 +223,15 @@ def test_a_scope_with_a_property_another_holder_holds_is_refused(
 
 def test_a_screw_type_and_a_screw_hydrate_one_value_of_each_threshold(ogm: OGM) -> None:
     assert held_by(ogm, JMS.M4, TYPE_LEVEL) == {
-        prop: [value] for prop, value in MOCK_M4_VALUES.items()
+        prop: [value] for prop, value in EXAMPLE_M4_VALUES.items()
     }
-    own = {**ARBITRARY_PLACEMENT_VALUES, **ARBITRARY_OVERRIDE}
-    assert held_by(ogm, PLACED_SCREW, TEN) == {
-        prop: [own[prop]] if prop in own else [] for prop in TEN
+    assert held_by(ogm, PLACED_SCREW, PLACEMENT) == {
+        prop: [value] for prop, value in ARBITRARY_PLACEMENT_VALUES.items()
     }
 
 
 def test_a_screw_without_values_hydrates_with_every_value_empty(ogm: OGM) -> None:
-    held = held_by(ogm, BARE_SCREW, (*TEN, JMS.hasScrewType))
+    held = held_by(ogm, BARE_SCREW, (*PLACEMENT, JMS.hasScrewType))
 
     assert held.pop(JMS.hasScrewType) == [JMS.M4]
     assert all(not values for values in held.values())
@@ -239,12 +241,12 @@ def test_a_screw_type_and_a_screw_materialize_one_value_of_each_threshold(
     ogm: OGM,
 ) -> None:
     """The model holds one value of each threshold that the Screw type and the Screw hold: the
-    Screw's placement values and its override. Each is a list of one."""
-    own = {**ARBITRARY_PLACEMENT_VALUES, **ARBITRARY_OVERRIDE}
+    Screw's placement values. Each is a list of one."""
+    own = ARBITRARY_PLACEMENT_VALUES
     on_type = materialized(ogm, JMS.M4, TYPE_LEVEL)
     on_screw = materialized(ogm, PLACED_SCREW, tuple(own))
 
-    assert on_type == {prop: [value] for prop, value in MOCK_M4_VALUES.items()}
+    assert on_type == {prop: [value] for prop, value in EXAMPLE_M4_VALUES.items()}
     assert on_screw == {prop: [value] for prop, value in own.items()}
 
 
@@ -281,7 +283,7 @@ def test_a_second_value_on_a_screw_type_is_refused_before_the_write(
         pass
 
     assert held_by(ogm, JMS.M4, (JMS.hasMaxDynamicTorque,)) == {
-        JMS.hasMaxDynamicTorque: [MOCK_M4_VALUES[JMS.hasMaxDynamicTorque]]
+        JMS.hasMaxDynamicTorque: [EXAMPLE_M4_VALUES[JMS.hasMaxDynamicTorque]]
     }
 
 
@@ -293,7 +295,9 @@ def test_one_value_of_each_threshold_is_written_through_the_middleware(
     with mw.create(
         str(JMS.ScrewType), ClassScope(), instance_iri=str(screw_type)
     ) as created:
-        created.update({str(prop): [value] for prop, value in MOCK_M4_VALUES.items()})
+        created.update(
+            {str(prop): [value] for prop, value in EXAMPLE_M4_VALUES.items()}
+        )
     with mw.commit(
         entry=[
             Update(instance_iri=screw_type, data={str(JMS.hasMaxDynamicTorque): [1.4]})
@@ -302,7 +306,7 @@ def test_one_value_of_each_threshold_is_written_through_the_middleware(
         pass
 
     assert held_by(ogm, screw_type, TYPE_LEVEL) == {
-        **{prop: [value] for prop, value in MOCK_M4_VALUES.items()},
+        **{prop: [value] for prop, value in EXAMPLE_M4_VALUES.items()},
         JMS.hasMaxDynamicTorque: [1.4],
     }
 
@@ -316,6 +320,16 @@ def test_the_effective_values_resolve_from_the_graph(db) -> None:
     assert as_properties(values) == PLACED_SCREW_VALUES
 
 
+def test_a_type_value_that_a_screw_holds_in_the_store_is_not_read_nor_used(db) -> None:
+    """The narrowed domain keeps a Screw's type value out of the reader's scope (the mapper
+    refuses a scope with a property outside the class's domain), so the reader does not see the
+    stray value: the refusal of `resolve` covers what it is given, and it is given none. The
+    Screw is judged with its type's value."""
+    values = read_effective_values(OGM(db=db), STRAY_SCREW)
+
+    assert as_properties(values) == PLACED_SCREW_VALUES
+
+
 def test_a_screw_without_placement_values_is_refused(db) -> None:
     with pytest.raises(UnresolvedValues) as refused:
         read_effective_values(OGM(db=db), BARE_SCREW)
@@ -323,13 +337,15 @@ def test_a_screw_without_placement_values_is_refused(db) -> None:
     assert len(refused.value.problems) == len(PLACEMENT)
 
 
-# --- The decision snapshot and the unscrewing operation ---------------------------------------
+# --- The parameter copy and the unscrewing operation ---------------------------------------
 
 
 def test_a_decision_snapshot_reads_back_through_its_operation(ogm: OGM) -> None:
-    scope = ClassScope.from_property_chains([[JMS.usedValues, prop] for prop in TEN])
+    scope = ClassScope.from_property_chains(
+        [[JMS.classifiedWith, prop] for prop in TEN]
+    )
     operation = ogm.fetch(instance_iri=OPERATION, class_scope=scope)
-    (used,) = (operation.data or {})[JMS.usedValues]
+    (used,) = (operation.data or {})[JMS.classifiedWith]
 
     assert {prop: (used.data or {}).get(prop) for prop in TEN} == {
         prop: [value] for prop, value in PLACED_SCREW_VALUES.items()
@@ -342,7 +358,7 @@ def test_the_detector_writes_a_decision_snapshot_through_the_middleware(
     """As the detector will write one: a snapshot of the ten values, created through the
     middleware."""
     values = as_properties(read_effective_values(OGM(db=db), PLACED_SCREW))
-    with mw.create(str(JMS.DecisionSnapshot), ClassScope()) as snapshot:
+    with mw.create(str(JMS.ParameterCopy), ClassScope()) as snapshot:
         snapshot.update({str(prop): [value] for prop, value in values.items()})
 
     assert held_by(ogm, IRI(str(snapshot.iri)), TEN) == {
@@ -361,8 +377,9 @@ def test_an_unscrewing_operation_keeps_the_capability_it_implements(
         str(JMS.UnscrewingOperation),
         operation_scope(ClassScope(), capability=str(UNSCREWING_CAPABILITY)),
         instance_iri=str(operation),
-    ):
-        pass
+    ) as created:
+        # The store's operation-status shape refuses an Operation created without a status.
+        created.update({str(SVC.hasOperationStatus): [OperationStatus.QUEUED]})
 
     read = mw.fetch(
         operation,
@@ -378,7 +395,7 @@ def test_an_unscrewing_operation_keeps_the_capability_it_implements(
 
 
 def test_an_operation_that_names_a_screw_carries_that_screws_back_link(db) -> None:
-    """`:hasScrew` and `:hasOperation` are two explicit triples and no `owl:inverseOf`. This
+    """`:concernsScrew` and `:hasOperation` are two explicit triples and no `owl:inverseOf`. This
     dataset would in fact entail an inverse — it runs `rdfsplus-optimized`, which is how Core's
     `cfc:isContainedIn` appears beside `cfc:containsWorkpiece` without anyone writing it — but a
     dataset with a weaker ruleset would hold no back-link, and no caller can read a dataset's
@@ -388,11 +405,11 @@ def test_an_operation_that_names_a_screw_carries_that_screws_back_link(db) -> No
         db,
         f"""
         SELECT ?operation ?screw WHERE {{
-          {{ ?operation <{JMS.hasScrew}> ?screw .
+          {{ ?operation <{JMS.concernsScrew}> ?screw .
              FILTER NOT EXISTS {{ ?screw <{JMS.hasOperation}> ?operation }} }}
           UNION
           {{ ?screw <{JMS.hasOperation}> ?operation .
-             FILTER NOT EXISTS {{ ?operation <{JMS.hasScrew}> ?screw }} }}
+             FILTER NOT EXISTS {{ ?operation <{JMS.concernsScrew}> ?screw }} }}
         }}
         """,
     )
@@ -411,8 +428,8 @@ def test_a_screw_names_the_operation_that_worked_on_it(ogm: OGM) -> None:
 def test_the_walk_from_an_operation_reaches_the_screw_type_the_design_expects(
     db,
 ) -> None:
-    """The walk of Etienne Hoffmann's redirect of 2026-10-07: from the unscrewing operation to the
-    workpiece it works on, from the workpiece to its product type, and from the product type to the
+    """The walk from the unscrewing operation to the
+    workpiece it works on, from the workpiece to its assembly type, and from the assembly type to the
     Screw type the design calls for. It is what tells the detector which Screw type the Screw
     *should* be, for a recovered product whose Screw carries no record of its own. Every step is a
     term this ticket declares or a Core term; none is invented here."""
@@ -420,8 +437,8 @@ def test_the_walk_from_an_operation_reaches_the_screw_type_the_design_expects(
         db,
         f"""
         SELECT ?expected WHERE {{
-          <{OPERATION}> <{JMS.hasWorkpiece}> ?product .
-          ?product <{HAS_PRODUCT_TYPE}> ?type .
+          <{OPERATION}> <{JMS.concernsWorkpiece}> ?product .
+          ?product <{HAS_ASSEMBLY_TYPE}> ?type .
           ?type <{JMS.hasExpectedScrewType}> ?expected .
         }}
         """,

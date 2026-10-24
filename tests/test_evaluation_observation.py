@@ -1,4 +1,4 @@
-"""The observation of a UC2 run of the measurement harness, part 2 (jms_kapps 48): from the spans of
+"""The observation of a UC2 run of the measurement harness, part 2: from the spans of
 its participants, the completion matcher's reads and each participant's stamped output, a run's
 record gets its measures, and a run that fails a check is marked invalid, with the check.
 
@@ -436,7 +436,7 @@ def test_with_the_wrapper_off_the_run_has_no_spans_and_only_the_measures_that_ne
         "window",
         "transports_ended_in_window",
         "transports_ended_per_minute",
-        # The spawns of the window need no wrapper (jms_kapps 99).
+        # The spawns of the window need no wrapper.
         "spawns_offered_in_window",
         "spawns_accepted_in_window",
         "spawns_accepted_share",
@@ -562,7 +562,7 @@ REFUSED = (
 def test_the_offered_and_accepted_spawns_are_counted_in_the_window_by_the_lines_time_stamps(
     tmp_path,
 ):
-    """jms_kapps 99, interim names. The window runs from 30 s to 90 s: a spawn in the warm-up, one
+    """The window runs from 30 s to 90 s: a spawn in the warm-up, one
     in the drain and a line with no stamp are none of its spawns. A box is named by a UUID, and no
     number is read from its name."""
     wms = "WarehouseManagementSystem1"

@@ -6,7 +6,7 @@ GraphDB, with its record. Iteration one of the measurement harness. Its command 
                  [--runs <folder>] [--heavy-run-approval <approval file>]
 
 It reads the configuration (`configuration`): from a configuration file, or from a spec and the
-configuration's number, as the spec's sweep resolves it (`spec`; jms_kapps 96, interim). A run made
+configuration's number, as the spec's sweep resolves it (`spec`; interim). A run made
 from a spec records its configuration key and which run of the spec it is, as a sweep's run does,
 and takes repetition k's pick seed (default 1), so it is the sweep's run. It refuses a heavy run
 that no approval covers (`approval`): an approval covers the configurations of one spec for one
@@ -18,12 +18,10 @@ OpenTelemetry, the extra `evaluation`, is not installed (`wrapper`), and makes t
 configuration, which `jms-eval-uc2` runs again; and `output/`, each participant's output and the
 harness's own log. It exits with 0 once the run completed, 1 if it failed, and 2 if it refused to
 start: nothing reached a store then. A run that completed exits with 0 also where the store did
-not delete its repository; its last line then names the repository, so that a person deletes it
-(changed on 2026-10-14, jms_kapps 116: until then such a run exited with 1).
+not delete its repository; its last line then names the repository, so that a person deletes it.
 
 The connection to the configured GraphDB comes from `TRIPLESTORE_URL`, `TRIPLESTORE_USERNAME` and
-`TRIPLESTORE_PASSWORD`, as for every use case (changed on 2026-10-11, jms_kapps 62: until then
-`GRAPHDB_URL`, `GRAPHDB_USERNAME` and `GRAPHDB_PASSWORD`); the login needs the right to create and delete
+`TRIPLESTORE_PASSWORD`, as for every use case; the login needs the right to create and delete
 repositories and to read the server's monitoring views. The repository never comes from the
 environment: each run creates its own, `eval-` plus its run id, and deletes it at its end.
 """

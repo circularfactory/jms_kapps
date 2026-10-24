@@ -1,6 +1,7 @@
-"""`jms-live-store`: the store chores of a /land live check on the KIT GraphDB (jms_kapps 121;
-interim name, listed on jms_kapps 83). Development tooling, not part of the paper's artifact: the
-release allowlist decision (jms_kapps 13) says whether it ships.
+"""`jms-live-store`: the store chores of a /land live check on the KIT GraphDB (interim name).
+Development tooling, not part of the paper's artifact. It ships with the package all the same, as
+the console script `jms-live-store`, because the release allowlist ships all of `src/` and names
+no exception for it.
 
 Four subcommands, one line of output each, exit code 0 on success and 1 on a refusal, so that a
 /land script reads them:

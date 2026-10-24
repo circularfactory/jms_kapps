@@ -3,7 +3,7 @@
 The rule is a placeholder, not a regression: the new maximum dynamic torque of a Screw type is 20 %
 above the highest dynamic torque that the given ScrewIntact attempts recorded in their Disassembly
 phase. Each expected value below is worked out by hand from the curves the test gives. The curves
-that `frame` makes are arbitrary test values, not measured; the one recording is legacy mock data.
+that `frame` makes are arbitrary test values, not measured; the one recording is example data.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import pytest
 
 from jms_kapps.uc1.frame import AXIAL_FORCE, ROBOT_POSITION, UNSCREWING_TORQUE, Frame
 from jms_kapps.uc1.learner import placeholder_max_dynamic_torque
-from jms_kapps.uc1.replay import mock_frame
+from jms_kapps.uc1.replay import example_frame
 
 
 def frame(phases_and_torques: list[tuple[str | None, float]]) -> Frame:
@@ -74,9 +74,9 @@ def test_the_rule_gives_no_value_for_a_frame_without_an_unscrewing_torque() -> N
     assert placeholder_max_dynamic_torque([no_torque]) is None
 
 
-def test_the_rule_on_the_legacy_mock_success_recording() -> None:
-    """The recording's Disassembly torques are 0.7, 0.6, 0.5, 0.4 and 0.3 (`success.csv`, legacy
-    mock data, units unknown), so the rule gives 0.84, not the legacy mock 1.5 of `:M4`."""
+def test_the_rule_on_the_example_success_recording() -> None:
+    """The recording's Disassembly torques are 0.7, 0.6, 0.5, 0.4 and 0.3 (`success.csv`, example
+    data), so the rule gives 0.84, not the example 1.5 of `:M4`."""
     assert placeholder_max_dynamic_torque(
-        [mock_frame("success", start=0)]
+        [example_frame("success", start=0)]
     ) == pytest.approx(0.84)

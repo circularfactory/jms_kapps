@@ -1,7 +1,7 @@
-"""A frame, and the frame replay that makes one from a legacy mock CSV.
+"""A frame, and the frame replay that makes one from an example recording.
 
 No network and no store: these tests prove what a frame accepts and refuses, and what the replay
-reads from the two mock recordings that ship with the package.
+reads from the two example recordings that ship with the package.
 """
 
 from __future__ import annotations
@@ -19,10 +19,10 @@ from jms_kapps.uc1.frame import (
     Frame,
 )
 from jms_kapps.uc1.replay import (
-    MOCK_RECORDINGS,
-    MOCK_SOURCE,
+    EXAMPLE_RECORDINGS,
+    EXAMPLE_SOURCE,
     PHASE_OF_LABEL,
-    mock_frame,
+    example_frame,
 )
 
 T0 = 1_758_800_000_000_000_000
@@ -70,7 +70,7 @@ def test_a_frame_without_phases_is_unphased():
         ({"phases": (None,)}, "2 sample times"),
         ({"phases": ("Retract", None)}, "phase"),
         ({"source": ""}, "source"),
-        ({"source": "legacy mock"}, "source"),
+        ({"source": "example data"}, "source"),
         ({"source": "a,b=c"}, "source"),
     ],
 )
@@ -86,12 +86,12 @@ def test_a_frame_refuses_a_value_that_is_not_a_number():
         frame(signals={AXIAL_FORCE: (0.0, "0.2")})
 
 
-def test_the_replay_ships_the_two_legacy_mock_recordings():
-    assert MOCK_RECORDINGS == ("success", "missing_screw")
+def test_the_replay_ships_the_two_example_recordings():
+    assert EXAMPLE_RECORDINGS == ("success", "missing_screw")
 
 
-def test_the_replay_reads_a_mock_frame_with_its_three_signals():
-    f = mock_frame("success", start=T0)
+def test_the_replay_reads_an_example_frame_with_its_three_signals():
+    f = example_frame("success", start=T0)
 
     assert set(f.signals) == set(SIGNALS)
     assert len(f.times) == 14
@@ -103,7 +103,7 @@ def test_the_replay_reads_a_mock_frame_with_its_three_signals():
 
 
 def test_the_replay_takes_the_success_frame_s_phases_from_its_labels():
-    f = mock_frame("success", start=T0)
+    f = example_frame("success", start=T0)
 
     assert f.phases == (
         ("Approach",) * 2
@@ -118,14 +118,14 @@ def test_the_replay_takes_the_success_frame_s_phases_from_its_labels():
 
 
 def test_the_replay_gives_the_missing_screw_no_form_fit():
-    f = mock_frame("missing_screw", start=T0)
+    f = example_frame("missing_screw", start=T0)
 
     # "form-fit - touches screw head --> Nope" is the touching sample, so it is the Approach's,
     # though it touches nothing. No label, then "Status: Missing screw": no phase.
     assert f.phases == ("Approach", "Approach", "Approach", None, None)
 
 
-def test_the_touching_sample_of_each_mock_frame_is_the_approach_s():
+def test_the_touching_sample_of_each_example_frame_is_the_approach_s():
     """The decision tree finds contact in the Approach, so the sample where the tool reaches the
     screw head belongs to it, though the recordings' labels call it form-fit."""
     touching = [label for label in PHASE_OF_LABEL if "touches screw head" in label]
@@ -142,30 +142,30 @@ def test_the_replay_refuses_a_label_that_it_cannot_map(monkeypatch):
     monkeypatch.delitem(PHASE_OF_LABEL, "retract")
 
     with pytest.raises(ValueError, match="'retract'"):
-        mock_frame("success", start=T0)
+        example_frame("success", start=T0)
 
 
-def test_the_replay_stamps_a_mock_frame_from_its_start():
-    f = mock_frame("missing_screw", start=T0)
+def test_the_replay_stamps_an_example_frame_from_its_start():
+    f = example_frame("missing_screw", start=T0)
 
     assert f.times == tuple(T0 + n * 500_000_000 for n in range(5))
     assert f.signals[ROBOT_POSITION] == (1.0, 0.5, 0.0, -0.5, -1.0)
 
 
-def test_a_replayed_mock_frame_says_that_it_is_mock():
-    assert MOCK_SOURCE == "legacy-mock-d320118"
-    assert mock_frame("success", start=T0).source == "legacy-mock-d320118/success"
+def test_a_replayed_example_frame_names_its_recording():
+    assert EXAMPLE_SOURCE == "example-d320118"
+    assert example_frame("success", start=T0).source == "example-d320118/success"
 
 
-def test_the_replay_stamps_a_mock_frame_now_by_default():
+def test_the_replay_stamps_an_example_frame_now_by_default():
     import time
 
     before = time.time_ns()
-    f = mock_frame("success")
+    f = example_frame("success")
 
     assert before <= f.start <= time.time_ns()
 
 
 def test_the_replay_refuses_a_recording_it_does_not_ship():
     with pytest.raises(ValueError, match="success, missing_screw"):
-        mock_frame("rounded_head")
+        example_frame("rounded_head")

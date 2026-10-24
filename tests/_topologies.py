@@ -3,16 +3,14 @@
 `topologies/` holds two files. `modules_preview_cross.json` is the first iteration's cross,
 copied unchanged from the `paper` branch of the old use-case repository, at commit
 d32011805be9199291eec0731acab241e5bd74f1. `shipped_as_seeded_before.json` is what the seed wrote
-for each shipped topology before the shipped topologies became module lists (jms_kapps 44): every
+for each shipped topology before the shipped topologies became module lists: every
 module's types, label and connections, as `Topology.graph()` on main at c432426 wrote them from
 the short topology documents of that time, one module to a line, with one change since: the
-cross's modules are each a FlexConveyorModule.
+cross's Modules 1 and 2 are entry modules and Modules 4 and 5 exit modules, as the first
+iteration's cross has them. The `line` came later, as a module list: its entry is written by hand
+from the topology's description, four modules one after another, each connected East to the next.
 
-(Changed on 2026-10-06, jms_kapps 45, decided by Etienne: the shipped cross names no roles, "in
-the current topologies already the cross topology would make sense to have this". Until then
-`shipped_as_seeded_before.json` held the cross as it was seeded at c432426, with Modules 1 and 2
-typed "EntryModule" and Modules 4 and 5 "ExitModule", and this paragraph ended at "one module to
-a line".)
+The shipped cross names the roles of the first iteration's cross; Module 3 has none.
 """
 
 from __future__ import annotations

@@ -1,14 +1,12 @@
 """The Launcher's Clear: stop every process, then empty the run's dataset graph by graph, and
-say what it holds then (jms_kapps 5).
+say what it holds then.
 
 Nothing reaches a store. The clear itself, `triplestore.clear_graph_by_graph`, runs on a stand-in
 of the interface's store that holds a number of statements in each graph and records every call
 it is sent; a call the clear has no business sending, as a clear of the whole dataset, fails the
 test. The Launcher's Clear runs through its JSON API, FastAPI's test client, over children that
 only sleep and a fake graph that records each clear and what the processes were then, and answers
-which services are live, as the guard of a launch reads them. (Added on 2026-10-10, jms_kapps 5,
-decided by Etienne on 2026-10-05: "a clear button that kills every process and clears the whole
-dataset", graph by graph.)
+which services are live, as the guard of a launch reads them. The clear goes graph by graph.
 """
 
 from __future__ import annotations
@@ -65,7 +63,7 @@ WRITTEN = IRI("http://example.org/another-program/records")
 # A named graph that no run made, as one a person loaded by hand.
 BY_HAND = IRI("http://example.org/someone/notes")
 # The graph in which the middleware keeps the receipts of writes that a stopped process left: a
-# name that is no http(s) IRI, which the interface takes since kapps_triplestore_interface 32.
+# name that is no http(s) IRI, which the interface takes.
 RECEIPTS = IRI("urn:x-kapps:write-receipts")
 
 REPORT = (Path(__file__).parent / "reports" / "skip-reserve.nq").read_text(
@@ -244,7 +242,7 @@ def test_shapes_the_store_refuses_to_remove_stop_the_clear_and_are_named_with_wh
         clear_graph_by_graph(store)
 
     assert str(refused.value) == (
-        "the store did not remove the shapes of test-dataset: the store is busy"
+        "the triple store did not remove the shapes of test-dataset: the store is busy"
     )
     assert refused.value.nothing_cleared is False
     assert clears(store)[-1] == "shapes"
@@ -269,7 +267,7 @@ def test_a_graph_the_store_refuses_to_clear_stops_the_clear_and_is_named_with_wh
         clear_graph_by_graph(store)
 
     assert str(refused.value) == (
-        f"the store did not clear the graph <{WRITTEN}> of test-dataset: "
+        f"the triple store did not clear the graph <{WRITTEN}> of test-dataset: "
         f"Failed to clear graph <{WRITTEN}> in dataset 'test-dataset' (500) - the "
         "store is busy"
     )
@@ -288,7 +286,7 @@ def test_a_default_graph_the_store_refuses_to_clear_is_named_too():
         clear_graph_by_graph(store)
 
     assert str(refused.value) == (
-        "the store did not clear the default graph of test-dataset: the store is away"
+        "the triple store did not clear the default graph of test-dataset: the store is away"
     )
     assert refused.value.nothing_cleared is True
     assert clears(store) == [None]
@@ -305,7 +303,7 @@ def test_a_clear_the_store_s_shapes_refuse_names_the_rules_not_the_whole_report(
         clear_graph_by_graph(store)
 
     assert str(refused.value) == (
-        f"the store did not clear the graph <{CORE_GRAPH}> of test-dataset: its shapes "
+        f"the triple store did not clear the graph <{CORE_GRAPH}> of test-dataset: its shapes "
         "refused it, by FlexConveyorModulePossessionShape at Module3"
     )
 
@@ -318,7 +316,7 @@ def test_a_store_that_does_not_list_its_graphs_has_nothing_cleared_and_says_why(
         clear_graph_by_graph(store)
 
     assert str(refused.value) == (
-        "the store did not list the named graphs of test-dataset, so nothing was cleared: "
+        "the triple store did not list the named graphs of test-dataset, so nothing was cleared: "
         "the store went away"
     )
     assert refused.value.nothing_cleared is True
@@ -328,9 +326,7 @@ def test_a_store_that_does_not_list_its_graphs_has_nothing_cleared_and_says_why(
 def test_the_middleware_s_receipts_graph_is_listed_and_cleared_as_any_other():
     """The middleware keeps the receipts of writes that a stopped process left in a graph whose
     name is no http(s) IRI, `urn:x-kapps:write-receipts`. The interface takes every absolute IRI
-    as the name of a graph since kapps_triplestore_interface 32, so the clear lists it and clears
-    it as any other graph. (Changed on 2026-10-11, jms_kapps 62: until then the interface refused
-    the name, the listing raised, nothing was cleared, and the page said so.)"""
+    as the name of a graph, so the clear lists it and clears it as any other graph."""
     store = StandInStore({RECEIPTS: 2})
 
     assert clear_graph_by_graph(store) == 0
@@ -394,6 +390,9 @@ class FakeGraph:
         self, topology: Topology, transit_seconds: float, *, collect_history: bool
     ) -> None:
         self.seeded.append(topology)
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         if self.away is not None:
@@ -570,7 +569,7 @@ def test_a_clear_is_refused_when_the_graph_cannot_say_which_services_are_live(
 def test_a_graph_the_store_refuses_to_clear_is_said_with_its_reason(client, graph):
     launched(client)
     graph.refusal = (
-        f"the store did not clear the graph <{WRITTEN}> of test-dataset: "
+        f"the triple store did not clear the graph <{WRITTEN}> of test-dataset: "
         "the store is busy"
     )
 
@@ -587,7 +586,7 @@ def test_a_clear_the_store_refuses_before_any_graph_is_cleared_leaves_the_topolo
 ):
     launched(client)
     graph.refusal = (
-        "the store did not list the named graphs of test-dataset, so nothing was "
+        "the triple store did not list the named graphs of test-dataset, so nothing was "
         "cleared: the store went away"
     )
     graph.refused_first = True

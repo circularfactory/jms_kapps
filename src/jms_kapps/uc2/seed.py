@@ -3,14 +3,11 @@
 Every module can give and take a box actively (`mes:Pass` and `mes:Retrieve`, the both-active
 pair of the middleware's handover), and so can the WarehouseManagementSystem, which a launch
 seeds beside every topology: it creates each box on its origin and takes it back, so a box has a
-possessor all its journey, as Core's exactly-one possession requires. (Changed on 2026-10-06,
-jms_kapps 41, decided by Etienne: the WarehouseManagementSystem hands no box onto the station with
-the middleware's handover any more, so its `mes:Pass` goes unused. Until then "it gives each box
-to the FlexConveyor station and takes it back, so a box has a possessor at both ends of its
-journey".) The
-vertical slice seeds module 1, connected to module 2, and the WarehouseManagementSystem as an
-individual only, with no handover ability: it runs no WarehouseManagementSystem, so no box goes
-back to it, and its destination module keeps each box.
+possessor all its journey, as Core's exactly-one possession requires. It hands no box onto the
+station with the middleware's handover, so its `mes:Pass` goes unused. The
+two-module seed has module 1, connected to module 2, and the WarehouseManagementSystem as an
+individual only, with no handover ability: no box goes back to it, and a destination module keeps
+each box.
 """
 
 from __future__ import annotations
@@ -52,20 +49,37 @@ DEFAULT_TRANSIT_SECONDS = 3.0
 Triple = tuple[IRI, IRI, IRI]
 
 
+def shapes_document(*, sparql_shapes: bool) -> str:
+    """The shapes that the store receives as one document: the Core file, followed by the
+    SHACL-SPARQL file when `sparql_shapes`.
+
+    The store's `shapes_set` replaces every shape, so two files must go as one document. `reset`
+    adds the middleware's operation-status shape in front of it.
+    """
+    document = read_asset("jms_kapps.uc2", "shapes", "flexconveyor_usecase_shapes.ttl")
+    if sparql_shapes:
+        document += "\n" + read_asset(
+            "jms_kapps.uc2", "shapes", "flexconveyor_usecase_sparql_shapes.ttl"
+        )
+    return document
+
+
 def reset_uc2(
     db: TripleStore,
     *,
     individuals: str = "",
     collect_history: bool = False,
     with_shapes: bool = True,
+    sparql_shapes: bool = False,
 ) -> None:
     """Empty the dataset and load use case 2's ontology and shapes, then `individuals`.
 
     The shapes are set through the store's `shapes_set`, so a dataset without SHACL validation
     refuses the reset, before it loads anything: shapes stored there would validate nothing.
     Only with `with_shapes` False does the reset send no shapes, and seed such a dataset without
-    them: the measurement harness sets it for its SHACL-off twin, and nothing else does. (Added
-    on 2026-10-11, jms_kapps 62.)
+    them: the measurement harness sets it for its SHACL-off twin, and nothing else does. The
+    SHACL-SPARQL rule is loaded only with `sparql_shapes`, which the shape tests, the audit and the
+    SHACL-SPARQL demo ask for and a launch does not.
 
     With `collect_history`, the launch option, the reset then turns on the store's history
     collection, with no filter, after it loaded the ontology: its last step
@@ -74,17 +88,12 @@ def reset_uc2(
     else in the reset changes: with the collection on, the store refuses only a clear of the whole
     dataset, and the reset clears the default graph and each graph it loads by name. It never
     turns the collection off around a clear, because a clear is then not logged, and the cleared
-    data disappears from every earlier point in time. (Added on 2026-10-10, jms_kapps 22, decided
-    by Etienne on 2026-10-01, 2026-10-06 and 2026-10-07.)
+    data disappears from every earlier point in time.
     """
     reset(
         db,
         ontology=read_asset("jms_kapps.uc2", "ontology", "flexconveyor_usecase.ttl"),
-        shapes=(
-            read_asset("jms_kapps.uc2", "shapes", "flexconveyor_usecase_shapes.ttl")
-            if with_shapes
-            else None
-        ),
+        shapes=shapes_document(sparql_shapes=sparql_shapes) if with_shapes else None,
         individuals=individuals,
     )
     if collect_history:
@@ -99,19 +108,19 @@ def seed_topology(
     resources: Mapping[IRI, str] | None = None,
     collect_history: bool = False,
     with_shapes: bool = True,
+    sparql_shapes: bool = False,
 ) -> None:
     """Empty the dataset, then seed every module of `topology`, the WarehouseManagementSystem,
     and each of `resources`. With `collect_history`, the launch option, the reset then turns on the
-    store's history collection (`reset_uc2`; added on 2026-10-10, jms_kapps 22). With
+    store's history collection (`reset_uc2`). With
     `with_shapes` False, the reset sends no shapes, for a dataset without SHACL validation; by
-    default a dataset without it refuses the seed (`reset_uc2`; added on 2026-10-11, jms_kapps 62).
+    default a dataset without it refuses the seed (`reset_uc2`). The SHACL-SPARQL rule is loaded
+    only with `sparql_shapes`, which the shape tests, the audit and the SHACL-SPARQL demo ask for.
 
     Every module gets exactly one `fc:hasTransitTime`: its own from the topology, else
     `transit_seconds`, the launch's. Each of `resources` is a plain `cfc:Resource` with the label
     it maps to: a participant that the caller starts beside every run, as the demo Launcher starts
-    the monitor. (Changed on 2026-10-10, jms_kapps 31, decided by Etienne: the run core starts no
-    monitor, so the seed names none. Until then the first line also named the monitor among
-    what the seed writes.)
+    the monitor. The run core starts no monitor, so the seed names none.
 
     One import, so the triple store checks the modules and their connections together: a
     connection's shape needs the module it leads to. It is the launch's last import, and the reset
@@ -141,27 +150,24 @@ def seed_topology(
         individuals=graph.serialize(format="turtle"),
         collect_history=collect_history,
         with_shapes=with_shapes,
+        sparql_shapes=sparql_shapes,
     )
 
 
-def seed_two_modules(db: TripleStore, *, transit_seconds: float) -> tuple[IRI, IRI]:
+def seed_two_modules(
+    db: TripleStore, *, transit_seconds: float, sparql_shapes: bool = False
+) -> tuple[IRI, IRI]:
     """Seed module 1, connected east to module 2, and the WarehouseManagementSystem, with both
-    modules at `transit_seconds`.
+    modules at `transit_seconds`. The SHACL-SPARQL rule is loaded only with `sparql_shapes`, which
+    the shape tests ask for.
 
     Returns:
         The two module IRIs, upstream first.
     """
-    reset_uc2(db)
+    reset_uc2(db, sparql_shapes=sparql_shapes)
     upstream, downstream = MODULES
     for n, module in enumerate(MODULES, start=1):
-        db.triple_add((module, RDF.type, FC.FlexConveyorModule))
-        # A name for whatever shows the module later, as the middleware's demo seeds its units.
-        db.triple_add((module, RDFS.label, Literal(f"Module {n}")))
-        db.triple_add(
-            (module, FC.hasTransitTime, transit_time_literal(transit_seconds))
-        )
-        db.triple_add((module, MES.hasHandoverAbility, MES.Pass))
-        db.triple_add((module, MES.hasHandoverAbility, MES.Retrieve))
+        _add_module(db, module, n, transit_seconds)
     db.triple_add((WMS, RDF.type, FC.WarehouseManagementSystem))
     db.triple_add((WMS, RDFS.label, Literal("Warehouse Management System")))
 
@@ -180,6 +186,34 @@ def seed_two_modules(db: TripleStore, *, transit_seconds: float) -> tuple[IRI, I
     )
     db.triple_add((upstream, FC.hasConnection, connection))
     return upstream, downstream
+
+
+def seed_three_modules(
+    db: TripleStore, *, transit_seconds: float, sparql_shapes: bool = False
+) -> tuple[IRI, IRI, IRI]:
+    """Seed the two modules of `seed_two_modules`, and a third, which no connection reaches or
+    leaves, at `transit_seconds` like the other two. The SHACL-SPARQL rule is loaded only with
+    `sparql_shapes`, which the SHACL-SPARQL demonstration asks for.
+
+    Returns:
+        The three module IRIs: module 1, connected to module 2, and module 3 apart.
+    """
+    upstream, downstream = seed_two_modules(
+        db, transit_seconds=transit_seconds, sparql_shapes=sparql_shapes
+    )
+    apart = module_iri(3)
+    _add_module(db, apart, 3, transit_seconds)
+    return upstream, downstream, apart
+
+
+def _add_module(db: TripleStore, module: IRI, n: int, transit_seconds: float) -> None:
+    """Add module `n`: its type, a label, its transit time and both handover abilities."""
+    db.triple_add((module, RDF.type, FC.FlexConveyorModule))
+    # A name for whatever shows the module later, as the middleware's demo seeds its units.
+    db.triple_add((module, RDFS.label, Literal(f"Module {n}")))
+    db.triple_add((module, FC.hasTransitTime, transit_time_literal(transit_seconds)))
+    db.triple_add((module, MES.hasHandoverAbility, MES.Pass))
+    db.triple_add((module, MES.hasHandoverAbility, MES.Retrieve))
 
 
 def _create(ogm: OGM, class_iri: IRI, instance: IRI, data: dict) -> None:
@@ -265,7 +299,7 @@ def place_box(
             (transport, FC.hasBox, box),
             (transport, FC.hasOrigin, origin),
             (transport, FC.hasDestination, destination),
-            (transport, SVC.operationStatus, Literal(OperationStatus.RUNNING)),
+            (transport, SVC.hasOperationStatus, Literal(OperationStatus.RUNNING)),
             (transport, CFC.executedOn, on),
         ]
     )

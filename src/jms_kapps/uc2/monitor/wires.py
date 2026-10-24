@@ -7,21 +7,9 @@ connections alone, on one of the monitor's reads, so a page that shows it causes
 store.
 
 A wire says nothing of the way boxes go over it: the monitor computes no route. Only the module
-that holds a box knows where it goes next, and it decides that again at every hop. (Changed on
-2026-10-10, jms_kapps 24, decided by Etienne on 2026-10-06: "all information at the monitor must
-stem from graph polling ... no one but the module holding a box knows the planned route at the
-moment. calculating one on your own is not useful ... we can map destinations but not routes".
-Until then the first sentence ended "and the way a box from an entry module to an exit module hops
-over it", and the second paragraph went on: "The hops are those a box from an entry module to an
-exit module makes on a shortest path (`routing.hops_from_entries_to_exits`), found on one of the
-monitor's reads with the search every module makes, so a page that shows them causes no read of
-the store. A connection that no such hop takes leads where no box from an entry to an exit goes:
-back toward an entry module, or on past an exit.", and then to a box that takes such a
-connection as its detour, with a note of jms_kapps 43. A third paragraph, added on 2026-10-06 by
-jms_kapps 45, read: "Roles are optional: where the graph names no entry module, every module counts
-as one, and where it names no exit module, every module counts as an exit
-(`topology.entries_and_exits`), as the WarehouseManagementSystem's spawns do. So on the cross,
-which names no roles, every connection carries a hop both ways.")
+that holds a box knows where it goes next, and it decides that again at every hop. All
+information at the monitor stems from graph polling, so the monitor maps destinations, not
+routes.
 """
 
 from __future__ import annotations

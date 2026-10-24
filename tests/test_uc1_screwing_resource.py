@@ -15,14 +15,10 @@ InfluxDB answers at `INFLUXDB_URL` (without it, at the local service that
 `--dataset` names, and the screwing resource writes its frames into the InfluxDB database
 `Tests`, whatever the dataset. InfluxDB keeps those frames.
 
-Changed on 2026-10-05, after Etienne Hoffmann decided that the local stack is only the fallback
-(the ticket "jms_kapps' demos run on the configured live GraphDB (422)" in
-kapps_semantic_middleware); the parenthesis read "(default: the local service that
-`docker compose up -d --wait` starts)".
+The local stack is only the fallback.
 
-Changed on 2026-10-15 (jms_kapps 103), after Sören Weindel decided on 2026-10-12 that all UC1 live
-tests share one InfluxDB database, `Tests` (`_uc1_influx.py`): each test wrote its frames into a
-database of the dataset's name, which filled the five that InfluxDB 3 Core allows.
+All UC1 live tests share one InfluxDB database, `Tests` (`_uc1_influx.py`), since InfluxDB 3 Core
+allows five databases only.
 """
 
 from __future__ import annotations
@@ -38,6 +34,7 @@ from _uc1_parties import (
     dispatch,
     planner,
     seed_parties,
+    seed_screw_type_values,
     served,
 )
 from _wait import eventually
@@ -50,7 +47,7 @@ from kapps_triplestore_interface import IRI
 from jms_kapps.common.triplestore import connect as connect_store
 from jms_kapps.common.triplestore import read_asset, reset
 from jms_kapps.uc1 import classify_call
-from jms_kapps.uc1.replay import mock_frame
+from jms_kapps.uc1.replay import example_frame
 from jms_kapps.uc1.screwing_resource import (
     NOT_REACHED,
     attempt_failed_record,
@@ -74,7 +71,7 @@ SCREW = IRI("TestScrew", base=JMS_NS)
 
 # What a test reads back of an operation after the attempt.
 READ_BACK_SCOPE = ClassScope.from_property_chains(
-    [[SVC.operationStatus], [SVC.executionResult], [JMS.hasTimeSeriesReference]]
+    [[SVC.hasOperationStatus], [SVC.hasExecutionResult], [JMS.hasTimeSeriesReference]]
 )
 
 # How long an attempt may take, from the dispatch to the call of the detector.
@@ -95,7 +92,7 @@ def influxdb():
 
 @pytest.fixture
 def dataset_with_screw(dataset: str) -> str:
-    """The dataset, cleared, with use case 1's ontology, the parties and one Screw."""
+    """The dataset, cleared, with use case 1's ontology, the parties and one Screw of the type `:M4`, which holds its seven values."""
     db = connect_store(dataset)
     reset(
         db,
@@ -103,6 +100,7 @@ def dataset_with_screw(dataset: str) -> str:
         shapes="",
     )
     db.graph_add(seed_parties([SCREW]), content_type="application/x-turtle")
+    seed_screw_type_values(db)
     return dataset
 
 
@@ -143,10 +141,10 @@ def test_a_notification_from_the_planner_makes_one_attempt_and_calls_the_detecto
         eventually(lambda: detector.calls == [str(operation)], timeout=ATTEMPT_SECONDS)
 
     data = read_operation(dataset, operation)
-    assert data[SVC.operationStatus] == [OperationStatus.RUNNING]
+    assert data[SVC.hasOperationStatus] == [OperationStatus.RUNNING]
     (reference,) = data[JMS.hasTimeSeriesReference]
     frame = FrameReader(influxdb).read(str(reference))
-    recording = mock_frame("success")
+    recording = example_frame("success")
     assert frame.signals == recording.signals
     assert frame.phases == recording.phases
     assert frame.source == recording.source
@@ -158,7 +156,7 @@ def test_an_attempt_that_fails_in_its_body_ends_the_operation_failed(
     dataset = dataset_with_screw
     detector = FakeDetector(dataset)
 
-    def slipping(screw: IRI):
+    def slipping(screw: IRI, values):
         raise RuntimeError("the screwdriver slipped off the head")
 
     with (
@@ -172,8 +170,8 @@ def test_an_attempt_that_fails_in_its_body_ends_the_operation_failed(
         )
 
     data = read_operation(dataset, operation)
-    assert data[SVC.operationStatus] == [OperationStatus.FAILED]
-    (result,) = data[SVC.executionResult]
+    assert data[SVC.hasOperationStatus] == [OperationStatus.FAILED]
+    (result,) = data[SVC.hasExecutionResult]
     assert "the screwdriver slipped off the head" in str(result)
     assert JMS.hasTimeSeriesReference not in data
     assert detector.calls == []
@@ -206,7 +204,7 @@ def test_a_second_notification_of_an_operation_makes_no_second_attempt(
         )
 
     data = read_operation(dataset, operation)
-    assert data[SVC.operationStatus] == [OperationStatus.RUNNING]
+    assert data[SVC.hasOperationStatus] == [OperationStatus.RUNNING]
     assert data[JMS.hasTimeSeriesReference] == [first]
     assert detector.calls == [str(operation)]
 
@@ -217,19 +215,19 @@ def assert_failed_unreached_with_its_curves(
     """The operation is `failed` because the detector was not reached, and still holds the
     reference to the attempt's curves, which read back as the recording. Gives the reason."""
     data = read_operation(dataset, operation)
-    assert data[SVC.operationStatus] == [OperationStatus.FAILED]
-    (result,) = data[SVC.executionResult]
+    assert data[SVC.hasOperationStatus] == [OperationStatus.FAILED]
+    (result,) = data[SVC.hasExecutionResult]
     assert str(result).startswith(NOT_REACHED)
     (reference,) = data[JMS.hasTimeSeriesReference]
     assert (
         FrameReader(influxdb).read(str(reference)).signals
-        == mock_frame("success").signals
+        == example_frame("success").signals
     )
     return str(result)
 
 
 def is_failed(dataset: str, operation: IRI) -> bool:
-    status = read_operation(dataset, operation).get(SVC.operationStatus)
+    status = read_operation(dataset, operation).get(SVC.hasOperationStatus)
     return status == [OperationStatus.FAILED]
 
 
@@ -343,7 +341,7 @@ def test_a_detector_that_ended_the_operation_keeps_its_end_when_the_call_fails(
     def end_then_refuse(middleware: SemanticMiddleware, operation: IRI) -> None:
         done = Update(
             instance_iri=operation,
-            data={str(SVC.operationStatus): [OperationStatus.DONE]},
+            data={str(SVC.hasOperationStatus): [OperationStatus.DONE]},
         )
         with middleware.commit(entry=[done]):
             pass
@@ -367,8 +365,8 @@ def test_a_detector_that_ended_the_operation_keeps_its_end_when_the_call_fails(
         )
 
     data = read_operation(dataset, operation)
-    assert data[SVC.operationStatus] == [OperationStatus.DONE]
-    assert SVC.executionResult not in data
+    assert data[SVC.hasOperationStatus] == [OperationStatus.DONE]
+    assert SVC.hasExecutionResult not in data
     assert len(data[JMS.hasTimeSeriesReference]) == 1
 
 

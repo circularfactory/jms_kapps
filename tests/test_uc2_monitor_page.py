@@ -14,11 +14,7 @@ modules' squares, where a wire runs and where its heads stand. A head is wider t
 
 The connections are all a wire draws: the monitor computes no route, so no hop is drawn strong and
 no box has a path ahead. Each box's destination, and the switch, the interval and "Queries sent",
-are tested in `test_uc2_monitor_page_reading.py`. (Changed on 2026-10-10, jms_kapps 24, decided by
-Etienne on 2026-10-06: "we can map destinations but not routes". Until then: "Only the heads that
-the connections give are tested. The strong arrows of the hops that boxes from entry modules to
-exit modules make, and each box's path ahead, are left untested on purpose: both go in the
-monitor's rework (jms_kapps 24).")
+are tested in `test_uc2_monitor_page_reading.py`. The monitor maps destinations but not routes.
 """
 
 from __future__ import annotations
@@ -284,7 +280,7 @@ def test_each_wire_has_a_head_where_a_connection_leads_and_two_where_they_lead_b
 def test_each_module_is_drawn_from_above_with_a_green_frame_rollers_and_belts(
     page: Page, monitor_url
 ):
-    """The look of a real FlexConveyor module (the module top view, jms_kapps 4): a green frame, silver motor rollers
+    """The look of a real FlexConveyor module (the module top view): a green frame, silver motor rollers
     that lie east-west, dark belt strips between them, and no light barrier drawn."""
     page.goto(monitor_url)
     drawing = page.get_by_role(

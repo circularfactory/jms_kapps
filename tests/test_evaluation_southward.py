@@ -1,4 +1,4 @@
-"""The southward benchmark strategies of jms_kapps 80, offline on the shipped grid: the module
+"""The southward benchmark strategies, offline on the shipped grid: the module
 strategy asks only the southern neighbour, the WMS strategy sends each box to the exit straight
 below its origin, and a spawn without such a pair ends in the WMS's refusal. Both are found
 through their entry-point groups under the name `southward`.

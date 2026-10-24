@@ -32,7 +32,7 @@ from _station import (
 )
 from fastapi.testclient import TestClient
 from kapps_semantic_middleware import Mode, SemanticMiddleware
-from kapps_semantic_middleware.dashboard import enable_dashboard
+from kapps_semantic_middleware.dashboard import SHORTENING_NOTE, enable_dashboard
 from kapps_semantic_middleware.vocabulary import OperationStatus
 from kapps_triplestore_interface import IRI
 
@@ -279,7 +279,7 @@ def test_a_module_that_cannot_go_on_still_holds_the_box(world, station):
 def test_the_drawing_shows_a_box_named_by_a_uuid_by_the_first_four_characters_of_its_uuid(
     world, station
 ):
-    """A box the WMS spawns is named `Box-<UUID>` (jms_kapps 92): the drawing's box, a square of
+    """A box the WMS spawns is named `Box-<UUID>`: the drawing's box, a square of
     its own, shows `Box-` and the first four characters of the UUID, as the monitor's disc shows
     those four; the box's whole name is its title, and the sentence below the drawing names it
     whole. A box named by a number shows its whole name, as before."""
@@ -400,6 +400,7 @@ def test_routing_decisions_shows_each_decision_with_its_refusals_and_retries(
     tasks.run()  # Module 2, the destination, gives Box 1 back
 
     [(time_of_day, *decision)] = rows(box(dashboard_of(m1), "routing-decisions"))
+    assert SHORTENING_NOTE not in box(dashboard_of(m1), "routing-decisions")
     assert len(time_of_day) == len("12:34:56")
     assert decision == [
         "Box1",
@@ -437,7 +438,7 @@ def test_routing_decisions_shows_a_detour_that_a_declined_reserve_led_to(
     world, tasks, station
 ):
     """Module 2, the next module, holds a box: Module 1 asks Module 3, the module it ties with,
-    which accepts, and the box takes the detour (Etienne, 2026-10-06, jms_kapps 43)."""
+    which accepts, and the box takes the detour."""
     world.connections = {(M1, M3), (M1, M2), (M2, M4), (M3, M4)}
     m1, *_ = station(M1, M2, M3, M4)
     world.place(B2, M2)

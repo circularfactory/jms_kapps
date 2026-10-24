@@ -1,4 +1,4 @@
-"""The two test strategies of jms_kapps 52, registered in the tests only, and a fake set of entry
+"""The two test strategies, registered in the tests only, and a fake set of entry
 points to register them in.
 
 `SouthOnly` is a module strategy that asks only the southern neighbour, from the connections'

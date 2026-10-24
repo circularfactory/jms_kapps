@@ -1,5 +1,4 @@
-"""The run limit (jms_kapps 106, decided by Sören on jms_kapps 85, note 1866296): a run older than
-its limit ends as failed (over time), through the end that a stop signal takes: its participants
+"""The run limit: a run older than its limit ends as failed (over time), through the end that a stop signal takes: its participants
 stop, its repository is deleted and its record is written.
 
 The runs here are those of the bench launcher's and the baseline's tests, against stand-ins only
@@ -370,7 +369,7 @@ def test_the_limit_is_a_run_setting_of_30_minutes_that_the_record_keeps(tmp_path
 
 # The configuration keys of the two shipped specs as `main` gave them before the run limit
 # (13a0869), in the specs' order. The limit is a run setting, so none of them changes, and the
-# runs the "after" series has made stay its repetitions (jms_kapps 85, note 1866296).
+# runs the "after" series has made stay its repetitions.
 KEYS_BEFORE_THE_LIMIT = {
     "iteration-one.toml": [
         "c47c56a71876d187", "9fcf03ae9c495ab4", "fa129651371f0569", "10d538f2c44d2e00",

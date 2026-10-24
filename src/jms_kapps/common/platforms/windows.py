@@ -58,6 +58,6 @@ def command_line(command: Sequence[str]) -> str:
 def interrupt_main_thread() -> None:
     """The handler of SIGINT, run on the main thread at its next step, as if the signal arrived
     there (`_thread.interrupt_main`). Windows cannot send a signal to one thread, so a call that
-    waits there may not be cut short: the handler then runs once the call returns. (Added on
-    2026-10-13, jms_kapps 106, for the run limit of the measurement harness.)"""
+    waits there may not be cut short: the handler then runs once the call returns. It serves the
+    run limit of the measurement harness."""
     _thread.interrupt_main(signal.SIGINT)

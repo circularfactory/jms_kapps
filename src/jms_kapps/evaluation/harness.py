@@ -1,7 +1,5 @@
 """`jms-eval`: one command takes a spec to the report and the table. Iteration one of the measurement
-harness (added on 2026-10-12, jms_kapps 100, decided by Sören Weindel as the product owner of the
-tests, jms_kapps 85, note 1864593; interim names, jms_kapps 83: the command, its options, its
-output and this module's API).
+harness (interim names: the command, its options, its output and this module's API).
 
     jms-eval [spec.toml] [--output <folder>] [--prefills <folder>]
              [--heavy-run-approval <approval file>] [--stop-at <time>] [--repeat block3:2]
@@ -26,7 +24,7 @@ composes what the other commands do and does none of it twice:
 4. **The runs**, as `jms-eval-sweep` makes them (`sweep`): the runs and replay levels without a
    record, one by one, each record below `--output`, the report made again after each run. A
    spec with the precision rule runs in rounds, and the call goes on round after round until no
-   configuration is open (`sweep.sweep_rounds`; jms_kapps 111, which replaced one pass per call).
+   configuration is open (`sweep.sweep_rounds`).
    It takes the sweep's stop time, `--stop-at`, and obeys its stop file, `STOP` in `--output`:
    before each run it stops at the stop time or where the stop file is there, and removes the
    stop file.
@@ -39,17 +37,15 @@ option `--heavy-run-approval` the command runs everything that needs none, and a
 the heavy parts it skipped, with how to give an approval. With an approval file the heavy parts run
 too, each through `approval.cover` at its start (`sweep.make_runs`): a heavy run that the approval
 does not cover then (another spec, a spec changed since, a period that is not now) is skipped, the
-normal runs are made, and at the end the call lists each heavy run it skipped with the reason
-(jms_kapps 112; until 2026-10-14 such an approval refused the call before its first run, with exit
-code 2). This command adds no way to run a heavy part. In a spec with the precision
+normal runs are made, and at the end the call lists each heavy run it skipped with the reason. This command adds no way to run a heavy part. In a spec with the precision
 rule each heavy part runs one time, in round 1, and `--repeat` makes sure a target repetition of
-a part exists, as the sweep's option does (`sweep.repetitions_on_request`, jms_kapps 114).
+a part exists, as the sweep's option does (`sweep.repetitions_on_request`).
 
 **The dry run** (`--dry-run`) needs no store and makes nothing: it shows the sweep's listing
 (`sweep.listing`), the store it would pick, the prefill files it would make and the runs it would
 make, and the heavy parts it would skip or run.
 
-**Removed configurations** (Sören's decision of 2026-10-14 on jms_kapps 111, note 1866695): the
+**Removed configurations:** the
 command has no selection, and it leaves out each configuration that `jms-eval-sweep --remove`
 removed in `--output` (`sweep.REMOVED_FILE`), until `jms-eval-sweep --put-back` puts it back.
 
@@ -57,7 +53,7 @@ It exits with 0 once every run it made completed, its runs ended or stopped at t
 the stop file, and the report and the table were made; 1 when a run it made failed, it stopped at a
 run that a stop signal ended or at the third failed run in a row, a round had nothing to make, or
 the report or the table could not be made; and 2 when it refused to start: nothing reached a store
-then. A heavy part that it skipped changes no exit code (jms_kapps 112).
+then. A heavy part that it skipped changes no exit code.
 """
 
 from __future__ import annotations
@@ -332,7 +328,7 @@ def make_prefills(
 def configurations_to_make(call: Call) -> list[SpecConfiguration]:
     """The configurations of the call that have a run or a replay level without a record, in the
     spec's order, and the open configurations under the precision rule, which its later rounds
-    make (jms_kapps 111): the ones whose prefill files the call needs."""
+    make: the ones whose prefill files the call needs."""
     needed = {c.key for c, r in call.chosen if not has_run(call.done, c.key, r)}
     needed |= {c.key for c in call.open}
     needed |= {

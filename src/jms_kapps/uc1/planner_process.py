@@ -34,6 +34,10 @@ in the tab "System", and the planner's own box in the tab "Planner" (`planner_da
 offers the Screws and shows how each one's operation ended, all from the planner's memory and its
 current offer.
 
+The process also serves the planner's memory read-only as JSON, at `GET /presses`: each Screw
+pressed, its status, and for a Screw whose operation the store refused, the rules, their messages
+and the validation report. `jms-uc1 infeasible-operation` polls it for the store's answer.
+
 A notification that is not the planner's own feedback is logged and nothing is done with it: the
 planner takes no Operation of anyone else. The handler also keeps the middleware from warning at
 each start that the instance has neither a notification handler nor a callback. Feedback of an
@@ -50,6 +54,7 @@ import asyncio
 import logging
 import threading
 
+from fastapi import FastAPI
 from kapps_ogm import OGM, Node
 from kapps_semantic_middleware import Mode, SemanticMiddleware
 from kapps_semantic_middleware.dashboard import enable_dashboard
@@ -60,7 +65,7 @@ from jms_kapps.common.process import process_parser, run_process
 from jms_kapps.common.triplestore import connect
 from jms_kapps.uc1.planner import DEFAULT_TIMEOUT_SECONDS, unscrew_one
 from jms_kapps.uc1.planner_dashboard import TAB, register_box
-from jms_kapps.uc1.planner_memory import PlannerMemory
+from jms_kapps.uc1.planner_memory import PlannerMemory, ScrewEntry
 from jms_kapps.uc1.planner_reads import (
     ScrewOnProduct,
     read_failure_reason,
@@ -73,6 +78,10 @@ from jms_kapps.uc1.vocabulary import JMS
 # `__main__`. A logger of that name is not below `jms_kapps`, so its INFO lines would be
 # dropped at the root's WARNING (`common.process` lets `jms_kapps` log from INFO up).
 logger = logging.getLogger("jms_kapps.uc1.planner_process")
+
+
+# The route that serves the planner's memory as JSON.
+PRESSES_ROUTE = "/presses"
 
 
 class UnscrewRequest(BaseModel):
@@ -214,6 +223,50 @@ class Press:
             self._offer.refresh()
 
 
+class PressRecord(BaseModel):
+    """One Screw pressed, as the record route serves it: an entry of the planner's memory."""
+
+    screw: str
+    status: str
+    operation: str | None
+    outcome: str | None
+    why: str | None
+    at: str | None
+    rules: list[str]
+    messages: list[str]
+    report: str | None
+
+
+class Presses(BaseModel):
+    """Every Screw pressed, in the order of its first press."""
+
+    screws: list[PressRecord]
+
+
+def _record(entry: ScrewEntry) -> PressRecord:
+    """`entry` as the record route serves it."""
+    return PressRecord(
+        screw=str(entry.screw),
+        status=entry.status,
+        operation=None if entry.operation is None else str(entry.operation),
+        outcome=entry.outcome,
+        why=entry.why,
+        at=None if entry.at is None else entry.at.isoformat(),
+        rules=list(entry.rules),
+        messages=list(entry.messages),
+        report=entry.report,
+    )
+
+
+def mount_presses(app: FastAPI, memory: PlannerMemory) -> None:
+    """Serve `memory` on `app` at `GET /presses`, read-only, as JSON."""
+
+    @app.get(PRESSES_ROUTE, response_model=Presses)
+    def presses() -> Presses:
+        """Each Screw pressed and what became of it, as the planner's dashboard box shows it."""
+        return Presses(screws=[_record(entry) for entry in memory.state().screws])
+
+
 def build(
     ogm: OGM,
     host: str,
@@ -234,13 +287,14 @@ def build(
         ogm=ogm,
         host=host,
         port=port,
+        activity_feed=True,
     )
     memory = PlannerMemory()
     offer = Offer(ogm)
     press = Press(middleware, ogm, memory, offer, timeout=timeout)
 
     def not_taken(operation: Node) -> None:
-        logger.info(
+        logger.debug(
             "The planner takes no Operation of another resource, and does nothing with %s",
             IRI(str(operation.id)).fragment,
         )
@@ -260,6 +314,7 @@ def build(
 
     # It opens on the planner's own tab, where a person presses Unscrew.
     register_box(enable_dashboard(middleware, first_tab=TAB), memory, offer.screws)
+    mount_presses(middleware.app, memory)
     return middleware
 
 

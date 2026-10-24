@@ -1,5 +1,6 @@
-# The local services of jms_kapps: a GraphDB with the `jms-kapps` repository already created, and
-# the InfluxDB of use case 1. `docker compose up -d --wait` in the repository root starts them and
+# The local services of jms_kapps: a GraphDB with the repositories `jms-kapps`, for the use
+# cases, and `kapps-demo`, for the TransferUnit factory demo of kapps-semantic-middleware, already
+# created, and the InfluxDB of use case 1. `docker compose up -d --wait` in the repository root starts them and
 # returns once both answer, `docker compose stop` stops them, and `docker compose down -v` also
 # deletes their data.
 #
@@ -49,8 +50,11 @@ services:
       GDB_JAVA_OPTS: "-Ddefault.min.distinct.threshold=0"
     ports:
       # Bound to the loopback address. GraphDB runs here with its security off, so anyone who can
-      # reach the port can clear the repository.
-      - "127.0.0.1:7200:7200"
+      # reach the port can clear the repository. The host side is 7200 unless
+      # `JMS_KAPPS_GRAPHDB_PORT` names another, for a machine on which 7200 is taken; `run-uc2`
+      # reads the same variable. The container's own port stays 7200, which the health check and
+      # the init container below use.
+      - "127.0.0.1:${JMS_KAPPS_GRAPHDB_PORT:-7200}:7200"
     volumes:
       # Version-dependent path; /opt/graphdb/home is correct for 10.x.
       - graphdb-data:/opt/graphdb/home
@@ -66,7 +70,7 @@ services:
     # race. There is no deadlock: the init container waits for the server on its own, and this
     # check turns green as a result of what the init container did.
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:7200/repositories/jms-kapps/size || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:7200/repositories/jms-kapps/size && curl -sf http://localhost:7200/repositories/kapps-demo/size || exit 1"]
       interval: 3s
       timeout: 5s
       # Generous: a first start unpacks and initialises, and exhausting the retries would stop the
@@ -74,29 +78,35 @@ services:
       retries: 60
       start_period: 10s
 
-  # Creates the repository through the REST API, and is safe to run again: it checks first and
-  # exits without touching an existing repository. That matters because the data in it belongs to
-  # whoever ran the tests last, and this container must never be the thing that clears it.
+  # Creates the two repositories through the REST API, and is safe to run again: it checks each
+  # one first and leaves an existing one alone. That matters because the data in a repository
+  # belongs to whoever ran the tests or the demo last, and this container must never be the thing
+  # that clears it. The two are checked separately, so a volume that holds only `jms-kapps` gets
+  # `kapps-demo` on its next start. `$$id` is Compose's spelling of the shell's `$id`.
   graphdb-init:
     image: curlimages/curl:8.11.0
     container_name: jms-kapps-graphdb-init
     depends_on:
       - graphdb
     volumes:
-      # The file the reference page on the triple store points a reader at, so the repository
-      # created here and the one a reader creates on their own GraphDB are the same.
+      # The files the reference page on the triple store points a reader at, so the repositories
+      # created here and the ones a reader creates on their own GraphDB are the same.
       - ./graphdb/jms-kapps-repo-config.ttl:/config/jms-kapps-repo-config.ttl:ro
+      - ./graphdb/kapps-demo-repo-config.ttl:/config/kapps-demo-repo-config.ttl:ro
     command: >-
       /bin/sh -c "
         until curl -sf http://graphdb:7200/rest/repositories >/dev/null 2>&1; do
           echo 'waiting for graphdb...';
           sleep 2;
         done;
-        if curl -sf http://graphdb:7200/repositories/jms-kapps/size >/dev/null 2>&1; then
-          echo 'repository jms-kapps already exists';
-          exit 0;
-        fi;
-        curl -sf -X POST http://graphdb:7200/rest/repositories -H 'Content-Type: multipart/form-data' -F 'config=@/config/jms-kapps-repo-config.ttl' && echo 'repository jms-kapps created';
+        for id in jms-kapps kapps-demo; do
+          if curl -sf http://graphdb:7200/repositories/$$id/size >/dev/null 2>&1; then
+            echo \"repository $$id already exists\";
+          else
+            curl -sf -X POST http://graphdb:7200/rest/repositories -H 'Content-Type: multipart/form-data' -F \"config=@/config/$$id-repo-config.ttl\" || exit 1;
+            echo \"repository $$id created\";
+          fi;
+        done;
       "
     restart: "no"
 

@@ -1,12 +1,11 @@
-"""The southward benchmark strategies (jms_kapps 80, iteration one of the evaluation's harness).
+"""The southward benchmark strategies (iteration one of the evaluation's harness).
 
 On a grid with its entries on the top row and its exits on the bottom row, every module asks only
 its southern neighbour, and the WarehouseManagementSystem sends each box to the exit straight below
 its origin: traffic that is known and repeatable, which a benchmark needs. Both strategies are named
 `southward`, in the entry-point group of their kind (`pyproject.toml`), and are labelled
 "Southward (synthetic)". Neither writes, reads the store or waits: each chooses from what its asker
-passes in. (Decided by Etienne on 2026-10-07, note on jms_kapps 36; the name `southward` and the
-label on 2026-10-11.)
+passes in.
 """
 
 from __future__ import annotations

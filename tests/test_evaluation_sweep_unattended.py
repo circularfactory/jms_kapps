@@ -1,6 +1,4 @@
-"""The sweep runs with no person present (jms_kapps 112, from Sören's decisions of 2026-10-13 as the
-product owner of the tests, jms_kapps 85, note 1866296, "The series must run with no person
-present", and his appended decisions of 2026-10-14, notes 1866704 and 1866813): a failed run does
+"""The sweep runs with no person present: a failed run does
 not stop the sweep, 3 failed runs in a row do, and a heavy run that no approval covers at its start
 is skipped and listed, so that the sweep goes on with the next run.
 
@@ -388,7 +386,7 @@ def test_under_the_precision_rule_the_rounds_go_on_after_a_failed_run(
     assert night.runs() == [f"run {n}.{r}" for r in (1, 2, 3) for n in (1, 2, 3)]
 
 
-# --- a run whose record the call cannot find (note 1866704) --------------------------------------
+# --- a run whose record the call cannot find --------------------------------------
 
 
 def test_one_missing_record_does_not_end_the_call_and_leaves_its_configuration_out(
@@ -471,7 +469,7 @@ def test_a_record_gone_before_the_next_round_counts_as_a_failed_run_and_the_call
 ):
     """The guard between rounds no longer stops the call. A record that was found
     after its run, and is gone when the next round is chosen, counts as a failed run: the call
-    leaves its configuration out for the rest of the call and goes on (note 1866704)."""
+    leaves its configuration out for the rest of the call and goes on."""
     night = stand_in(monkeypatch, Night())
     monkeypatch.setattr(
         sweep,
@@ -523,7 +521,7 @@ def test_records_gone_before_the_next_round_count_toward_the_three_in_a_row(
     assert "the call stops" not in out
 
 
-# --- a left repository counts toward the 3 (note 1866813) ---------------------------------------
+# --- a left repository counts toward the 3 ---------------------------------------
 
 
 def test_one_left_repository_between_two_completed_runs_does_not_end_the_call(
@@ -932,15 +930,19 @@ def test_jms_eval_with_an_approval_that_does_not_cover_the_spec_makes_the_normal
 # --- the documentation -----------------------------------------------------------------------
 
 
-def test_the_readme_says_the_new_rules_with_a_dated_note_of_soeren_s_decision():
+def test_the_readme_says_the_new_rules():
     text = " ".join(README.read_text(encoding="utf-8").split())
 
     assert "3 failed runs in a row" in text
-    assert "jms_kapps 112" in text
+    assert "jms_kapps 112" not in text
     assert "skipped and listed" in text
-    # The dated note keeps the old rules.
-    assert "until then the sweep stopped at each run that did not complete" in text
-    assert "until then a heavy run that no approval covered stopped the sweep" in text
+    # The page keeps no dated note of the old rules, and says why a single failure goes on.
+    assert "until then the sweep stopped" not in text
+    assert "One failed run at 01:00 must not end the night" in text
+    assert (
+        "an approval that ends at 02:00 does not stop the normal runs after it"
+        in text.replace("So an", "an")
+    )
     # What the guard between rounds does now.
     assert (
         "a record that was there after its run and is gone when the next round is chosen "

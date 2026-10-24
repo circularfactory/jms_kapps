@@ -5,7 +5,7 @@ command lines of the processes each launch starts, which the run core builds.
 The children are real processes that only sleep, or, where a test says so, the real module
 process; the graph is a fake that seeds nothing and calls no process live, as in
 `test_uc2_launcher_api.py`. The test strategies are registered through a fake set of entry points
-(`_strategies`). (Added on 2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07.)
+(`_strategies`).
 """
 
 from __future__ import annotations
@@ -46,6 +46,9 @@ class FakeGraph:
         collect_history: bool = False,
     ) -> None:
         self.seeded.append(topology)
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return []
@@ -166,8 +169,7 @@ def test_a_launch_runs_real_for_both_unless_it_names_others(client):
     assert (state["module_strategy"], state["wms_strategy"]) == ("real", "real")
     lines = commands(client)
     pair = load_topology("pair")
-    # Each module's line ends with the deadlock alarm time after its strategy (changed on
-    # 2026-10-11, jms_kapps 77, decided by Etienne; it ended with `--module-strategy real`).
+    # Each module's line ends with the deadlock alarm time after its strategy.
     for module in pair.modules:
         assert lines[str(module.resource)].endswith(
             "--module-strategy real --deadlock-alarm-seconds 300.0"
@@ -185,8 +187,7 @@ def test_a_launch_passes_the_chosen_names_to_every_module_and_to_the_wms(client)
     lines = commands(client)
     grid = load_topology("grid")
     assert len(lines) == len(grid.modules) + 2
-    # Each module's line ends with the deadlock alarm time after its strategy (changed on
-    # 2026-10-11, jms_kapps 77, decided by Etienne; it ended with `--module-strategy south`).
+    # Each module's line ends with the deadlock alarm time after its strategy.
     for module in grid.modules:
         line = lines[str(module.resource)]
         assert line.endswith("--module-strategy south --deadlock-alarm-seconds 300.0")

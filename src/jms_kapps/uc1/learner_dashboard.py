@@ -12,7 +12,6 @@ from datetime import datetime
 from typing import Any
 
 from kapps_semantic_middleware.dashboard import (
-    SHORTENING_NOTE,
     DashboardRegistry,
     escape,
     hint,
@@ -112,8 +111,7 @@ def _row(change: Change) -> str:
 
 def _changes(state: LearnerState) -> str:
     """Each value the learner changed, newest first: when, on which Screw type, which threshold,
-    and the value the Screw type held before and after. The note that identifiers are shortened
-    stands above this table, the first of the box that shortens one."""
+    and the value the Screw type held before and after."""
     rule = hint(
         "The rule is a placeholder. The first value it derives for a Screw type replaces the "
         "value the type held, higher or lower. After that the value only rises."
@@ -136,23 +134,15 @@ def _changes(state: LearnerState) -> str:
         _heading("Values it changed")
         + rule
         + newest
-        + hint(SHORTENING_NOTE)
         + f'<div class="table-scroll"><table><tr>{header}</tr>{body}</table></div>'
     )
 
 
 def _last_error(state: LearnerState) -> str:
-    """The last thing that went wrong: when, at which Operation's attempt, and why. The note that
-    identifiers are shortened stands above it when the table of changes is not there to carry
-    it."""
+    """The last thing that went wrong: when, at which Operation's attempt, and why."""
     error = state.last_error
     if error is None:
         return _heading("Last error") + hint("No error since the learner started.")
-    note = (
-        hint(SHORTENING_NOTE)
-        if error.operation is not None and not state.changes
-        else ""
-    )
     rows = [
         ("When", escape(_time(error.at))),
         ("Operation", _short(error.operation)),
@@ -161,7 +151,6 @@ def _last_error(state: LearnerState) -> str:
     table = "".join(f"<tr><th>{label}</th><td>{cell}</td></tr>" for label, cell in rows)
     return (
         _heading("Last error")
-        + note
         + f'<div class="error-box"><table class="kv">{table}</table></div>'
     )
 

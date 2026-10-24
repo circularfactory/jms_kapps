@@ -2,10 +2,9 @@
 
 The WarehouseManagementSystem's opening of a transport and the seed's placing of a box mint the
 IRI of the transport they create, with `transport_iri`, and so does the prefill of the measurement
-harness, which creates the transports of past journeys as the seed creates its own (added on
-2026-10-11, jms_kapps 79). Nothing else under `src/` calls it, and nothing else spells the name it
-gives: a party that holds a box reads the box's transport through the box, and the vertical slice
-uses the IRI that its opening returns. Decided by Etienne on 2026-10-06 (jms_kapps 39).
+harness, which creates the transports of past journeys as the seed creates its own. Nothing else under `src/` calls it, and nothing else spells the name it
+gives: a party that holds a box reads the box's transport through the box, and a test
+uses the IRI that its opening returns.
 
 Read from the source under `src/`, without a store.
 """
@@ -20,8 +19,7 @@ from _source import SOURCE, sources
 
 # Where a transport's IRI is minted, by file: the functions that may call `transport_iri`. The
 # prefill of the measurement harness creates the transports of past journeys before any participant
-# starts, as the seed does, and names each as the opening would. (Added on 2026-10-11, jms_kapps
-# 79, by the ticket's rule that the prefill is written as the seed is.)
+# starts, as the seed does, and names each as the opening would, since the prefill is written as the seed is.
 MINTERS = {
     Path("uc2/transport.py"): {"open"},
     Path("uc2/seed.py"): {"place_box"},

@@ -1,5 +1,5 @@
 """The processes of this machine as `ps` shows them, for a live test that checks the command line
-of each process a run started (jms_kapps 52).
+of each process a run started.
 
 `ps` is told to show each line whole (`-ww`): without it, under pytest, it cuts each line at 80
 columns, and a module process's `--resource-iri`, `--dataset` and `--module-strategy` fall off.

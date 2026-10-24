@@ -41,8 +41,6 @@ function centre(module) {
 
 // The arrowheads of the wires, by class: how long and how wide each is. A wire stops short of a
 // square by WIRE_GAP, so that its head stands in the gap between two modules, clear of both.
-// (Changed on 2026-10-10, jms_kapps 24: the strong arrows of the hops went, and with them the
-// class "hop", whose heads were 14 long and 12 wide.)
 const HEADS = { wire: [11, 9] };
 const WIRE_GAP = 3;
 
@@ -121,9 +119,6 @@ function arrow(kind, from, to, heads) {
 
 // Each wire with an arrowhead where each of its connections leads, and a double head where they
 // lead both ways: the connections as the graph holds them, and nothing the monitor computed.
-// (Changed on 2026-10-10, jms_kapps 24, decided by Etienne on 2026-10-06: "we can map
-// destinations but not routes". Until then a strong arrow over the wire drew each hop that boxes
-// from entry modules to exit modules make on it, and the tooltip named them.)
 function drawWires(drawing, wires, byId) {
   for (const wire of wires) {
     const [a, b] = wire.between.map((id) => byId[id]);
@@ -138,9 +133,7 @@ function drawWires(drawing, wires, byId) {
 
 // One colour for each box, from its UUID, so that a box keeps its colour from poll to poll: its
 // square's outline and the disc on its destination have it. None of them is red, which means
-// failed, green, which means live, or the orange of a box. (Changed on 2026-10-12, jms_kapps 92,
-// the ticket's interim reading of Sören's decision on jms_kapps 85: a box is named by a UUID,
-// `Box-<UUID>`. Until then the colour came from the box's number.)
+// failed, green, which means live, or the orange of a box. A box is named by a UUID, `Box-<UUID>`.
 const BOX_COLOURS = ["#1565c0", "#6a1b9a", "#00838f", "#ad1457", "#5d4037", "#37474f"];
 // Where the discs of the boxes bound for a module stand, from its centre: in a row along its foot,
 // the first box's on the right, so that up to four of them never overlap.
@@ -152,7 +145,7 @@ function boxId(id) {
 }
 
 // What a box's square and the disc on its destination say: the first four characters of its UUID
-// (interim, jms_kapps 92; until 2026-10-12 its whole name without "Box", its number).
+// (interim).
 function boxLabel(id) {
   return boxId(id).slice(0, 4);
 }
@@ -269,7 +262,7 @@ function drawBoxes(boxes, modules) {
   document.getElementById("box-count").textContent = boxes.length;
   const body = document.querySelector("#boxes tbody");
   if (boxes.length === 0) {
-    body.replaceChildren(el("tr", {}, el("td", { colspan: 5, class: "muted", text: "No box in the graph." })));
+    body.replaceChildren(el("tr", {}, el("td", { colspan: 5, class: "muted", text: "No box in the knowledge graph." })));
     return;
   }
   const held = onAModule(modules);
@@ -303,23 +296,24 @@ let refusalsDrawnOnce = false;
 // again, after "graph only", is not new, and is not highlighted.
 const shownRefusals = new Set();
 
-// The monitor's two modes, as `/api/state` names them.
+// The monitor's two modes, as `/api/state` and `/api/mode` name them. The switch at Refusals is on
+// in GRAPH_AND_STREAMS.
 const GRAPH_ONLY = "graph only";
+const GRAPH_AND_STREAMS = "graph + streams";
 
-// Why the Refusals view is empty in "graph only". (Added on 2026-10-10, jms_kapps 24, decided by
-// Etienne on 2026-10-05.)
+// Why the Refusals view is empty in "graph only".
 const NO_REFUSALS_IN_GRAPH_ONLY =
-  'In "graph only" the monitor follows no handover event stream, and a refused write leaves no ' +
-  "trace in the graph: the store refused it, so nothing of it was written. Only the refusing " +
-  "participant's handover event stream reports it (see the glossary entry \"Handover event " +
-  'stream"), so switch to "graph + streams" to see the refusals.';
+  "The monitor follows no handover event stream, and a refused write leaves no trace in the " +
+  "knowledge graph: the triple store refused it, so nothing of it was written. " +
+  "Only the refusing service's handover event stream reports it (see the glossary entry " +
+  '"Handover event stream"), so turn on "Follow the services\' handover event streams" to see ' +
+  "the refusals.";
 
-// Why the notice of a possible deadlock is not shown in "graph only". (Added on 2026-10-11,
-// jms_kapps 77, decided by Etienne.)
+// Why the notice of a possible deadlock is not shown in "graph only".
 const NO_DEADLOCK_IN_GRAPH_ONLY =
-  'In "graph only" the monitor follows no handover event stream, and a deadlock alarm leaves no ' +
-  "trace in the graph: only the module that raised it reports it, on its handover event stream " +
-  'and in its output, so switch to "graph + streams" to see a possible deadlock.';
+  "The monitor follows no handover event stream, and a deadlock alarm leaves no trace in the " +
+  "knowledge graph: only the module that raised it reports it, on its handover event stream, " +
+  'so turn on "Follow the services\' handover event streams" to see a possible deadlock.';
 
 // A list of names as a person reads it: "Module1", "Module1 and Module2", "Module1, Module2 and
 // Module3".
@@ -328,7 +322,7 @@ function listed(names) {
 }
 
 // The one notice of a possible deadlock: every module involved, and each alarm with its reason; or
-// why there is none. (Added on 2026-10-11, jms_kapps 77, decided by Etienne.)
+// why there is none.
 function drawDeadlock(notice, mode) {
   const shown = document.getElementById("deadlock");
   if (mode === GRAPH_ONLY) {
@@ -444,8 +438,7 @@ function drawRefusals(refusals, mode) {
   });
 }
 
-// -- How the monitor reads: its mode and the interval of its graph read ------------------------ //
-// (Added on 2026-10-10, jms_kapps 24, decided by Etienne on 2026-10-05.)
+// -- How the monitor reads: the streams switch at Refusals and the interval of its graph read -- //
 
 // How many changes a person made are on their way: meanwhile a poll does not put back what the
 // monitor answered before them.
@@ -456,9 +449,10 @@ function drawReading(reading) {
   interval.min = reading.shortest_graph_seconds;
   interval.max = reading.longest_graph_seconds;
   if (changing) return;
-  for (const radio of document.querySelectorAll('input[name="mode"]')) {
-    radio.checked = radio.value === reading.mode;
-  }
+  // Disabled until the monitor has said which mode it runs in.
+  const streamsSwitch = document.getElementById("follow-streams");
+  streamsSwitch.checked = reading.mode === GRAPH_AND_STREAMS;
+  streamsSwitch.disabled = false;
   // Not while a person edits the field.
   if (document.activeElement !== interval) interval.value = reading.graph_seconds;
 }
@@ -472,8 +466,8 @@ function refusedBecause(answer, status) {
 }
 
 // Send a change of how the monitor reads, show why if it is refused, and draw what holds then.
-async function change(path, body) {
-  const message = document.getElementById("reading-message");
+async function change(path, body, messageId) {
+  const message = document.getElementById(messageId);
   changing += 1;
   try {
     const response = await fetch(path, {
@@ -503,7 +497,7 @@ function applyInterval() {
     message.hidden = false;
     return;
   }
-  change("api/graph-read-interval", { seconds: interval.valueAsNumber });
+  change("api/graph-read-interval", { seconds: interval.valueAsNumber }, "reading-message");
 }
 
 // -- The queries the monitor sends ------------------------------------------------------------ //
@@ -511,10 +505,10 @@ function applyInterval() {
 // What each read of the monitor reads, for a person; the read's own name stands beside it.
 const READS = {
   modules: "The modules and their connections",
-  live_resources: "The live participants: a service with an address and a fresh heartbeat",
+  live_resources: "The live services: those with an address and a fresh heartbeat",
   boxes: "Every box, with its transport and who possesses it",
   wms: "The WarehouseManagementSystem, by its class",
-  streams: "Where each participant serves its handover event stream",
+  streams: "Where each service serves its handover event stream",
 };
 
 // The card of each query drawn, by its read: a card is kept from poll to poll, so that a text a
@@ -613,7 +607,7 @@ async function refresh() {
       state.modules.reduce((sum, m) => sum + m.boxes.length, 0);
     document.getElementById("updated").textContent = `read ${new Date().toLocaleTimeString()}`;
     if (state.error) {
-      error.textContent = `Could not read the graph: ${state.error}`;
+      error.textContent = `Could not read the knowledge graph: ${state.error}`;
       error.hidden = false;
     } else {
       error.hidden = true;
@@ -634,9 +628,9 @@ function schedule() {
 document.getElementById("live").addEventListener("change", schedule);
 document.getElementById("rate").addEventListener("change", schedule);
 document.getElementById("refresh").addEventListener("click", refresh);
-for (const radio of document.querySelectorAll('input[name="mode"]')) {
-  radio.addEventListener("change", () => change("api/mode", { mode: radio.value }));
-}
+const follow = document.getElementById("follow-streams");
+follow.addEventListener("change", () =>
+  change("api/mode", { mode: follow.checked ? GRAPH_AND_STREAMS : GRAPH_ONLY }, "mode-message"));
 document.getElementById("graph-seconds").addEventListener("change", applyInterval);
 refresh();
 schedule();

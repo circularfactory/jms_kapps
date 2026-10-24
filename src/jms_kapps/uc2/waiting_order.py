@@ -13,20 +13,19 @@ module finds the rest in the graph (`FlexConveyorModule`). A box that has not as
 waiting for something else first, such as the module before this one: it keeps its place, but comes
 first no more until it asks again, so that it cannot hold a free module for a box that cannot come.
 
-Decided by Etienne on 2026-10-06, jms_kapps 43: "A module that becomes free serves the asker that
-has waited longest. A box refused through a look-ahead keeps its place in the order of the module
-that refused it, the inner ask included, and a spawn's Reserve waits behind every box already in
-that order. An asker leaves the order when its box moves elsewhere or its transport ends." That a
-box which has stopped asking comes first no more is the build's reading: without it, a free module
-would wait for a box whose own way here is held by a box that waits for this module. So is the
-forgetting of a box that has asked no more for long, and its leaving the order when the
+A module that becomes free serves the asker that has waited longest. A box refused through a
+look-ahead keeps its place in the order of the module that refused it, the inner ask included, and
+a spawn's Reserve waits behind every box already in that order. An asker leaves the order when its
+box moves elsewhere or its transport ends. A box that has stopped asking comes first no more:
+without that, a free module would wait for a box whose own way here is held by a box that waits
+for this module. A box that has asked no more for long is forgotten, and leaves the order when the
 reservation it was given lapses.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from kapps_triplestore_interface import IRI
 
@@ -35,13 +34,16 @@ from kapps_triplestore_interface import IRI
 class Asker:
     """A box in the waiting order: when it first asked (its place) and last asked, where it was
     at its last ask (`at`), and which module asked (`via`): the module the box is on, or the
-    module that asked on its behalf, in a look-ahead."""
+    module that asked on its behalf, in a look-ahead. `warned_left_out` holds each next module
+    that the module's look-ahead has left out for the box and warned about, and that has not
+    answered since."""
 
     box: IRI
     place: float
     last: float
     at: IRI
     via: IRI
+    warned_left_out: set[IRI] = field(default_factory=set)
 
     def moved_from(self, at: IRI) -> bool:
         """Whether a box that is now at `at` has moved elsewhere since it took its place: neither
@@ -91,6 +93,26 @@ class WaitingOrder:
                 return
             if now - asker.last <= self.asking_seconds:
                 yield asker
+
+    def first_left_out(self, box: IRI, module: IRI) -> bool:
+        """Whether the look-ahead for `box` leaves `module` out for the first time since `box`
+        took its place, or since `module` last answered: the module warns about it only then. It
+        is kept with the box's place, and so forgotten when the box leaves the order. A box with
+        no place, the WarehouseManagementSystem's, is always left out for the first time."""
+        asker = self._askers.get(box)
+        if asker is None:
+            return True
+        if module in asker.warned_left_out:
+            return False
+        asker.warned_left_out.add(module)
+        return True
+
+    def answered(self, box: IRI, module: IRI) -> None:
+        """`module` answered the look-ahead for `box`: once it is left out again, that is a first
+        time again."""
+        asker = self._askers.get(box)
+        if asker is not None:
+            asker.warned_left_out.discard(module)
 
     def leave(self, box: IRI) -> None:
         """`box` leaves the order: it has arrived, moved elsewhere, or its transport ended."""

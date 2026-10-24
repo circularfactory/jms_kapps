@@ -142,15 +142,15 @@ def test_a_time_keeps_its_nanoseconds_both_ways():
 
 
 def test_each_sample_is_one_line_with_the_frame_its_phase_and_its_source_as_tags():
-    frame = two_samples(phases=("Approach", None), source="legacy-mock-d320118/success")
+    frame = two_samples(phases=("Approach", None), source="example-d320118/success")
 
     assert lines_of(frame, "0f3a") == [
         (
-            "unscrewing,frame=0f3a,phase=Approach,source=legacy-mock-d320118/success "
+            "unscrewing,frame=0f3a,phase=Approach,source=example-d320118/success "
             f"robot_position=1.0,axial_force=0.0 {T0}"
         ),
         (
-            "unscrewing,frame=0f3a,source=legacy-mock-d320118/success "
+            "unscrewing,frame=0f3a,source=example-d320118/success "
             f"robot_position=0.5,axial_force=0.2 {T0 + HALF_SECOND}"
         ),
     ]
@@ -320,14 +320,14 @@ def test_the_reader_answers_the_curves_the_phases_and_the_source(fake, influxdb)
                     "frame": "0f3a",
                     "phase": "Approach",
                     "robot_position": 1.0,
-                    "source": "legacy-mock-d320118/success",
+                    "source": "example-d320118/success",
                     "time": "2025-09-25T11:33:20",
                 },
                 {
                     "axial_force": 0.2,
                     "frame": "0f3a",
                     "robot_position": 0.5,
-                    "source": "legacy-mock-d320118/success",
+                    "source": "example-d320118/success",
                     "time": "2025-09-25T11:33:20.500",
                 },
             ],
@@ -337,7 +337,7 @@ def test_the_reader_answers_the_curves_the_phases_and_the_source(fake, influxdb)
     frame = FrameReader(influxdb).read(REFERENCE)
 
     assert frame == two_samples(
-        phases=("Approach", None), source="legacy-mock-d320118/success"
+        phases=("Approach", None), source="example-d320118/success"
     )
 
 

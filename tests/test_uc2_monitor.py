@@ -107,9 +107,7 @@ def test_the_page_asks_for_everything_by_a_relative_path(name):
 
 
 def test_every_module_is_placed_and_shown_live_or_offline(client, memory):
-    """(Changed on 2026-10-06, jms_kapps 45, decided by Etienne: the shipped cross names no
-    roles, so each of its modules is a FlexConveyorModule. Until then Modules 1 and 2 were
-    "EntryModule" and Modules 4 and 5 "ExitModule".)"""
+    """The shipped cross names Modules 1 and 2 entry modules and Modules 4 and 5 exit modules."""
     memory.read_graph()
 
     modules = client.get("/api/state").json()["modules"]
@@ -117,11 +115,11 @@ def test_every_module_is_placed_and_shown_live_or_offline(client, memory):
     assert [
         (m["id"], m["label"], m["type"], m["place"], m["live"]) for m in modules
     ] == [
-        (str(module_iri(1)), "Module 1", "FlexConveyorModule", [1, 0], True),
-        (str(module_iri(2)), "Module 2", "FlexConveyorModule", [0, 1], False),
+        (str(module_iri(1)), "Module 1", "EntryModule", [1, 0], True),
+        (str(module_iri(2)), "Module 2", "EntryModule", [0, 1], False),
         (str(module_iri(3)), "Module 3", "FlexConveyorModule", [1, 1], True),
-        (str(module_iri(4)), "Module 4", "FlexConveyorModule", [2, 1], False),
-        (str(module_iri(5)), "Module 5", "FlexConveyorModule", [1, 2], False),
+        (str(module_iri(4)), "Module 4", "ExitModule", [2, 1], False),
+        (str(module_iri(5)), "Module 5", "ExitModule", [1, 2], False),
     ]
     assert modules[2]["connections"][0] == {
         "direction": "North",
@@ -133,10 +131,7 @@ def test_every_module_is_placed_and_shown_live_or_offline(client, memory):
 
 def test_each_wire_says_where_its_connections_lead(client, memory):
     """On the cross every connection runs both ways. A wire says nothing of the way boxes go:
-    the monitor computes no route. (Changed on 2026-10-08, jms_kapps 24, decided by Etienne on
-    2026-10-06: "we can map destinations but not routes". Until then each wire also named the
-    hops that boxes from entry to exit modules make over it, `hops_to`, which the drawing drew
-    strong.)"""
+    the monitor computes no route."""
     memory.read_graph()
 
     wires = client.get("/api/state").json()["wires"]
@@ -208,11 +203,9 @@ def test_a_box_of_a_running_transport_is_on_its_module_and_one_of_a_done_transpo
 
 
 def test_the_boxes_are_listed_by_their_name(client, reads, memory):
-    """The interim reading of jms_kapps 92 (Sören's decision on jms_kapps 85): a box is named by a
+    """The interim reading: a box is named by a
     UUID, which has no order a person counts in, so the Boxes table orders the boxes by name, as
-    text sorts them, a box named by a number among them. (Changed on 2026-10-12. Until then: "Box 2
-    before Box 10, as a person counts, and not as text sorts them. A box that the WMS did not name
-    is listed after every box it named.")"""
+    text sorts them, a box named by a number among them."""
     elsewhere = IRI("Crate", base="http://example.org/plant#")
     late = uuid_box_iri(UUID("f3a1c2d4-0b5e-4c6f-8a7b-9c0d1e2f3a4b"))
     early = uuid_box_iri(UUID("0a9f77d2-6e41-4b13-b8c5-d2e07a31f9b4"))
@@ -423,8 +416,8 @@ def test_a_refusal_shows_each_result_of_its_report_for_a_person_to_read(
             "focus": {"short": "Module3", "full": str(M3)},
             "path": {
                 "short": "(hasPossessor/^hasPossessedWorkpiece)",
-                "full": "(<https://w3id.org/circularfactory/Core#hasPossessor>"
-                "/^<https://w3id.org/circularfactory/Core#hasPossessedWorkpiece>)",
+                "full": "(<http://w3id.org/circularfactory/Core#hasPossessor>"
+                "/^<http://w3id.org/circularfactory/Core#hasPossessedWorkpiece>)",
             },
             "value": None,
             "shape": {
@@ -758,8 +751,7 @@ def test_the_background_task_reads_the_graph_and_finds_the_streams_with_no_tab_o
 
 def test_the_only_routes_that_change_anything_set_how_the_monitor_reads(app):
     """Its mode and the interval of its graph read, which the monitor holds in memory; nothing it
-    holds of the graph. (Changed on 2026-10-08, jms_kapps 24: the switch and the interval are
-    settings on the page. Until then every route answered GET only.)"""
+    holds of the graph. The switch and the interval are settings on the page."""
     added = [r for r in app.routes if getattr(r, "path", "").startswith("/api")]
 
     assert added

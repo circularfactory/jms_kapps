@@ -1,5 +1,5 @@
 """The decision tree of use case 1: the signals of one unscrewing attempt and the effective values
-in, one Unscrewing outcome out, where the first failing node decides.
+in, one Detection result out, where the first failing node decides.
 
 Every signal here is synthetic. One intact attempt is the base, and each test changes the one
 phase that sends it to another exit.
@@ -19,11 +19,11 @@ import pytest
 
 from jms_kapps.uc1 import decision_tree
 from jms_kapps.uc1.decision_tree import (
-    UNSCREWING_OUTCOMES,
+    DETECTION_RESULTS,
     AttemptSignals,
+    DetectionResult,
     EffectiveValues,
     PhaseSignals,
-    UnscrewingOutcome,
     classify,
 )
 
@@ -190,7 +190,7 @@ def test_a_dynamic_torque_above_its_maximum_is_a_thread_fault():
     ],
 )
 def test_a_torque_counts_by_its_magnitude_in_either_sense(
-    attempt: AttemptSignals, outcome: UnscrewingOutcome
+    attempt: AttemptSignals, outcome: DetectionResult
 ):
     assert classify(attempt, VALUES) == outcome
 
@@ -234,7 +234,7 @@ THREAD_FAULT = phase(torque=[2.0])
     ],
 )
 def test_the_first_failing_node_decides(
-    attempt: AttemptSignals, outcome: UnscrewingOutcome
+    attempt: AttemptSignals, outcome: DetectionResult
 ):
     assert classify(attempt, VALUES) == outcome
 
@@ -309,7 +309,7 @@ BOUNDARIES: dict[
     str,
     tuple[
         Callable[[float], AttemptSignals],
-        tuple[UnscrewingOutcome, UnscrewingOutcome, UnscrewingOutcome],
+        tuple[DetectionResult, DetectionResult, DetectionResult],
     ],
 ] = {
     "min_approach_axial_force": (
@@ -368,7 +368,7 @@ BOUNDARIES: dict[
 def test_each_threshold_is_an_inclusive_bound(
     attempt: Callable[[float], AttemptSignals],
     sample: float,
-    outcome: UnscrewingOutcome,
+    outcome: DetectionResult,
 ):
     assert classify(attempt(sample), VALUES) == outcome
 
@@ -376,7 +376,7 @@ def test_each_threshold_is_an_inclusive_bound(
 def test_the_boundary_cases_reach_every_exit_of_the_tree():
     reached = {outcome for _, outcomes in BOUNDARIES.values() for outcome in outcomes}
 
-    assert reached == set(UNSCREWING_OUTCOMES)
+    assert reached == set(DETECTION_RESULTS)
 
 
 def test_every_threshold_has_its_boundary_cases():
@@ -443,3 +443,47 @@ def test_importing_the_tree_loads_no_graph_ogm_or_middleware_package():
     ).stdout.split()
 
     assert not [m for m in loaded if m.startswith(GRAPH_PACKAGES)]
+
+
+# What the detector's dashboard shows of a classification: the rule of the exit it reached, and
+# the values the tree asked on its way there. The tree never reads a value it did not ask, so
+# changing any other value leaves the outcome as it was.
+
+MISSING_HEAD = phase(force=[0.0, 8.0], position=[-5.0, -7.0])
+
+
+@pytest.mark.parametrize(
+    ("attempt", "outcome"),
+    [
+        (INTACT, "ScrewIntact"),
+        (replace(INTACT, approach=TOO_DEEP), "MissingScrew"),
+        (replace(INTACT, approach=MISSING_HEAD), "MissingHead"),
+        (replace(INTACT, approach=OCCLUDED), "HeadOccluded"),
+        (replace(INTACT, form_fit=NO_COUNTER_TORQUE), "RoundedHeadOrWrongType"),
+        (replace(INTACT, preparation=STUCK_AND_NO_RISE), "StuckAtBreakaway"),
+        (replace(INTACT, preparation=NO_RISE), "LooseAnchor"),
+        (replace(INTACT, disassembly=THREAD_FAULT), "ThreadFault"),
+    ],
+)
+def test_a_value_the_tree_did_not_ask_on_the_way_to_an_exit_changes_nothing(
+    attempt: AttemptSignals, outcome: DetectionResult
+):
+    assert classify(attempt, VALUES) == outcome
+    asked = decision_tree.ASKED[outcome]
+    for field in fields(EffectiveValues):
+        if field.name in asked:
+            continue
+        for extreme in (-1e9, 1e9):
+            assert (
+                classify(attempt, replace(VALUES, **{field.name: extreme})) == outcome
+            )
+
+
+def test_every_exit_names_its_rule_and_the_values_it_asked():
+    assert set(decision_tree.EXIT_RULE) == set(DETECTION_RESULTS)
+    assert set(decision_tree.ASKED) == set(DETECTION_RESULTS)
+    names = {field.name for field in fields(EffectiveValues)}
+    for outcome in DETECTION_RESULTS:
+        assert decision_tree.EXIT_RULE[outcome]
+        assert set(decision_tree.ASKED[outcome]) <= names
+        assert "preparation_turning_angle" not in decision_tree.ASKED[outcome]

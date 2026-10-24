@@ -15,7 +15,7 @@ writer gives back on the operation. The detector and the learner read a frame ba
 - The tag `phase`: the sample's phase. A sample without a known phase has no `phase` tag, because
   InfluxDB has no empty tag value. So a frame recorded without phases has the same layout as one
   recorded with them, and a query by phase does not find it. One frame can hold both kinds of
-  sample: a legacy mock frame has no phase after the disassembly.
+  sample: a frame replayed from an example recording has no phase after the disassembly.
 - The tag `source`: only on a replayed frame, and it names the recording.
 
 The writer creates the database and the table with these tags, in this order, before its first
@@ -33,13 +33,8 @@ connect to the local service that `compose.yaml` starts, which asks for no token
 is only the fallback. The database is never read from the environment. The caller names it, and
 it defaults to `jms-kapps`, the name of the dataset of these use cases.
 
-Changed on 2026-10-05, after Etienne Hoffmann decided that every demo runs on the configured
-store and that the local one is only the fallback; the ticket of that decision, on jms_kapps'
-demos on the configured live store (kapps_semantic_middleware 422), asks that no text call the
-local stack the default. Which server the client connects to did not change. Until then
-the paragraph began: "**The connection** comes from the environment. `INFLUXDB_URL` defaults to
-the local service that `compose.yaml` starts, which asks for no token. A shared server is the
-opt-in: set `INFLUXDB_URL`, and `INFLUXDB_TOKEN` if the server asks for a token."
+`INFLUXDB_URL` alone names the server the client connects to; no text calls the local
+stack the default.
 """
 
 from __future__ import annotations

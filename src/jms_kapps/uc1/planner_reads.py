@@ -5,27 +5,27 @@ and reads nothing itself. The planner's process gives them to it; a test gives i
 
 **The planner finds its grinders in the graph with one SPARQL query**, because the object-graph
 mapper cannot enumerate a class: `OGM.fetch` takes one `instance_iri`. Everything else it reads
-stays an object-graph projection, which decision 4 of jms_kapps 60 asks for: reads go through one
-projection, not hand-written SPARQL. Neither writes anything.
+stays an object-graph projection: reads go through one projection, not hand-written SPARQL.
+Neither writes anything.
 
 **The planner reads each grinder's Screws with the OGM projections**, and no longer needs to be
 told which grinders it works on. It finds them itself. Every Screw the grinder contains is
 offered — until it has an operation. The projection types each one by the range of
 `cfc:containsWorkpiece`, which is `cfc:Workpiece`, and not by its own class, so a Screw and any
 other contained workpiece cannot be told apart here. UC1's grinders hold one Screw and nothing
-else (one Screw per grinder, jms_kapps 60), so the list is exactly its Screws. A grinder with
+else (one Screw per grinder), so the list is exactly its Screws. A grinder with
 mixed contents would need the instance's own class, which the mapper does not give through a
 projection.
 
 **A Screw that holds `:hasOperation` is no longer offered.** The planner writes that back-link at
-each press (see `planner._write_back_link`), whatever the operation's status, so it is the one
-fact that says "this Screw is taken". The offer therefore leaves it out, and a press on it is
-refused. This is read per Screw, not in one chain from the grinder: the mapper types a nested
+each press, in the operation's own commit (see `planner.dispatch`), whatever the operation's
+status, so it is the one fact that says "this Screw is taken". The offer therefore leaves it out,
+and a press on it is refused. This is read per Screw, not in one chain from the grinder: the mapper types a nested
 object by the property's range, `cfc:Workpiece`, which has no `:hasOperation` — measured, see
 below. So the offer needs one fetch per Screw in addition to the one per grinder.
 
 **One fetch per Screw is what the mapper can do.** A single chain `[[cfc:containsWorkpiece,
-jms:hasOperation]]` would have the mapper type the nested object by the *range* of
+uns:hasOperation]]` would have the mapper type the nested object by the *range* of
 `cfc:containsWorkpiece`, which is `cfc:Workpiece`, and that class has no `:hasOperation` — the
 mapper then returns nothing for the property. This was measured in development, which is why the
 offer does one projection from each Screw instead.
@@ -59,8 +59,8 @@ CONTAINS_WORKPIECE = IRI("containsWorkpiece", base=CORE_NS)
 
 # The one chain each read needs.
 CONTENTS_SCOPE = ClassScope.from_property_chains([[CONTAINS_WORKPIECE]])
-OUTCOME_SCOPE = ClassScope.from_property_chains([[JMS.hasOutcome]])
-FAILURE_SCOPE = ClassScope.from_property_chains([[SVC.executionResult]])
+OUTCOME_SCOPE = ClassScope.from_property_chains([[JMS.hasDetectionResult]])
+FAILURE_SCOPE = ClassScope.from_property_chains([[SVC.hasExecutionResult]])
 OPERATION_LINK_SCOPE = ClassScope.from_property_chains([[JMS.hasOperation]])
 
 
@@ -68,7 +68,7 @@ OPERATION_LINK_SCOPE = ClassScope.from_property_chains([[JMS.hasOperation]])
 class ScrewOnProduct:
     """One Screw the planner offers, and the product it sits in.
 
-    The product is what the operation names as its `:hasWorkpiece`, and the step from which the
+    The product is what the operation names as its `:concernsWorkpiece`, and the step from which the
     detector reaches the Screw type the design expects.
     """
 
@@ -79,9 +79,9 @@ class ScrewOnProduct:
 def read_grinders(db: Queryable) -> list[IRI]:
     """The grinders in the graph, ordered by their IRI.
 
-    The planner needs no `--product`: it reads what it works on from the graph itself)Skip the
-    object-graph mapper because `OGM.fetch` takes one `instance_iri` and cannot enumerate a
-    class. An empty graph gives an empty list; it does not raise.
+    The planner needs no `--product`: it reads what it works on from the graph itself. This read
+    skips the object-graph mapper because `OGM.fetch` takes one `instance_iri` and cannot enumerate
+    a class. An empty graph gives an empty list; it does not raise.
     """
     logger.info(
         "Planner reads the grinders with one SPARQL query, because the mapper cannot list a "
@@ -164,9 +164,10 @@ def read_outcome(ogm: OGM, operation: IRI) -> str | None:
     none.
 
     The local name is what the planner's dashboard shows, for example `ScrewIntact`. An operation
-    that ended `failed` holds no outcome, and one that ended `done` holds exactly one; a second
-    would be a fault of the detector, and the first the mapper returns is taken rather than
-    refusing, because the planner only displays it.
+    that ended `done` holds exactly one, and so does one that ended `failed` with a failure outcome,
+    such as `MissingScrew`; one that failed for another reason holds none. A second would be a fault
+    of the detector, and the first the mapper returns is taken rather than refusing, because the
+    planner only displays it.
     """
     log_scope(
         logger,
@@ -175,10 +176,10 @@ def read_outcome(ogm: OGM, operation: IRI) -> str | None:
         operation,
         "OUTCOME_SCOPE",
         OUTCOME_SCOPE,
-        "it wants the outcome that the detector committed (hasOutcome)",
+        "it wants the outcome that the detector committed (hasDetectionResult)",
     )
     node = ogm.fetch(instance_iri=operation, class_scope=OUTCOME_SCOPE)
-    values = (node.data or {}).get(JMS.hasOutcome) or []
+    values = (node.data or {}).get(JMS.hasDetectionResult) or []
     if not values:
         return None
     first = values[0]
@@ -186,7 +187,7 @@ def read_outcome(ogm: OGM, operation: IRI) -> str | None:
 
 
 def read_failure_reason(ogm: OGM, operation: IRI) -> str | None:
-    """Why `operation` ended `failed`: its `svc:executionResult`, or None when it holds none.
+    """Why `operation` ended `failed`: its `svc:hasExecutionResult`, or None when it holds none.
 
     The screwing resource and the detector each write the reason there when they end an operation
     `failed`. Several reasons are joined with "; ", because the planner only displays them.
@@ -198,8 +199,8 @@ def read_failure_reason(ogm: OGM, operation: IRI) -> str | None:
         operation,
         "FAILURE_SCOPE",
         FAILURE_SCOPE,
-        "it wants the reason of the failure (executionResult)",
+        "it wants the reason of the failure (hasExecutionResult)",
     )
     node = ogm.fetch(instance_iri=operation, class_scope=FAILURE_SCOPE)
-    values = (node.data or {}).get(SVC.executionResult) or []
+    values = (node.data or {}).get(SVC.hasExecutionResult) or []
     return "; ".join(str(value) for value in values) or None

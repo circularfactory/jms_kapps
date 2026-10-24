@@ -1,12 +1,11 @@
-"""The seam of jms_kapps 52: the two kinds of strategy, `real`, and the discovery of strategies from
+"""The seam of the strategies: the two kinds of strategy, `real`, and the discovery of strategies from
 their two entry-point groups.
 
 A module strategy answers which neighbours a module asks for a box, in order, at most two; a WMS
 strategy answers the origin and the destination of a spawn among its candidates. `real` is one
 strategy of each kind, and is today's behaviour exactly. Strategies are found by two Python
 entry-point groups; here a fake set of entry points stands in for the installed ones, except where
-a test reads what jms_kapps itself registers. (Added on 2026-10-10, jms_kapps 52, decided by
-Etienne on 2026-10-07.)
+a test reads what jms_kapps itself registers.
 """
 
 from __future__ import annotations

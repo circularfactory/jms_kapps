@@ -84,7 +84,7 @@ def test_a_planner_with_no_screws_says_so_instead_of_offering_an_empty_select() 
     page = render(PlannerMemory().state(), [])
 
     assert "No Screw is offered" in page
-    assert "the graph holds no grinder with a Screw that" in page
+    assert "the knowledge graph holds no grinder with a Screw that" in page
     assert "Seed the dataset with `jms-uc1 seed` or start `jms-uc1`." in page
     assert "<select" not in page
 
@@ -128,6 +128,15 @@ def test_a_reason_is_shown_as_a_tooltip_not_as_a_wall_of_text() -> None:
     assert 'title="A FlexConveyorModule may possess at most one Box"' in page
 
 
+def test_a_failed_press_shows_its_outcome_and_its_reason() -> None:
+    memory = a_press()
+    memory.ended(SCREW_2, FAILED, outcome="MissingScrew", why="ANOMALY: MissingScrew")
+    page = render(memory.state(), OFFERED)
+
+    assert "<td>MissingScrew</td>" in page
+    assert 'title="ANOMALY: MissingScrew"' in page
+
+
 def test_the_box_renders_from_memory_with_no_read_of_the_graph() -> None:
     """An open tab must cause no load."""
     graph = Graph()
@@ -142,3 +151,24 @@ def test_an_iri_is_shown_by_its_local_name_with_the_whole_one_as_its_tooltip() -
 
     assert f'title="{SCREW_1}"' in page
     assert ">Screw1<" in page
+
+
+def test_a_screw_the_store_refused_shows_the_rule_and_its_message_readable() -> None:
+    """The store's answer is shown in the row, not only as a tooltip: the rule by its name, and
+    what it says."""
+    memory = PlannerMemory()
+    memory.pressed(SCREW_2)
+    memory.refused(
+        SCREW_2,
+        why="the triple store refused the unscrewing operation",
+        rules=("UnscrewingOperationScrewShape at UnscrewingOperation1",),
+        messages=("An unscrewing operation concerns exactly one Screw & its type.",),
+        report="<the report>",
+    )
+
+    page = render(memory.state(), OFFERED)
+
+    assert "refused" in page
+    assert "UnscrewingOperationScrewShape at UnscrewingOperation1" in page
+    assert "An unscrewing operation concerns exactly one Screw &amp; its type." in page
+    assert "<the report>" not in page

@@ -2,8 +2,8 @@
 
 The middleware refuses to clear a dataset, or to reload its shared ontologies, on a store whose
 host is neither loopback nor a container alias, unless `TRIPLESTORE_ALLOW_DESTRUCTIVE` is `1`
-(the wipe guard, kapps_semantic_middleware 290). jms_kapps adds no guard of its own: the person's
-environment carries the consent, as for the other store variables (jms_kapps 129). These tests
+(the wipe guard). jms_kapps adds no guard of its own: the person's
+environment carries the consent, as for the other store variables. These tests
 drive `reset` and `clear_graph_by_graph` with a fake store that keeps its URL where the
 interface's own store keeps it, `_endpoint.url`, because that is where the guard reads it. The
 variable is set only through `monkeypatch`, here, and never by any code of jms_kapps.

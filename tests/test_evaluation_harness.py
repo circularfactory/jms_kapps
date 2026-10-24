@@ -1,5 +1,4 @@
-"""`jms-eval`: one command takes a spec to the report and the table (jms_kapps 100, from the
-decisions of jms_kapps 85, note 1864593).
+"""`jms-eval`: one command takes a spec to the report and the table.
 
 No test here makes a run: the UC2 runs and the replay levels are fabricated records, written by
 stand-ins for a run on the configured store, and the start of the local GraphDB is a stand-in too
@@ -111,7 +110,7 @@ class FabricatedRuns:
     sweep fields it was given, and keeps which run it was and the covered record it was given.
     Its throughput swings from one repetition to the next, so a configuration under the precision
     rule never meets it; with `zero_median` no transport ends, and a configuration stops at
-    its minimum of valid runs (jms_kapps 113)."""
+    its minimum of valid runs."""
 
     def __init__(self, failing: set[int] | None = None) -> None:
         self.failing = failing or set()
@@ -622,8 +621,7 @@ def test_the_heavy_parts_run_under_an_approval_that_covers_the_spec(
 def test_an_approval_of_another_spec_skips_the_heavy_parts_with_the_reason(
     tmp_path, configured, stand_ins, capsys
 ):
-    """The normal runs are made, and each heavy run is listed as skipped (jms_kapps 112: until
-    2026-10-14 the call was refused before its first run, with exit code 2)."""
+    """The normal runs are made, and each heavy run is listed as skipped ."""
     spec = validation_copy(tmp_path)
     other = spec_file(tmp_path, SPEC, "other.toml")
 
@@ -743,7 +741,7 @@ def test_the_dry_run_lists_the_runs_that_are_left_after_a_first_call(
     assert "0 runs and 0 replay levels to make without an approval" in said
 
 
-# The rounds (jms_kapps 111): the command goes on round after round, takes the sweep's stop time
+# The rounds: the command goes on round after round, takes the sweep's stop time
 # and obeys its stop file.
 
 PRECISION_SPEC = """\
@@ -823,7 +821,7 @@ def test_the_command_stops_a_configuration_whose_throughput_median_is_0(
     tmp_path, configured, stand_ins, monkeypatch, capsys
 ):
     """No transport ends in a run: each configuration stops at its minimum of 2 valid runs, the
-    command makes no third round, and its table marks both (jms_kapps 113)."""
+    command makes no third round, and its table marks both."""
     clock = Clock()
     stand_ins[0].zero_median = True
     timed(monkeypatch, stand_ins[0], clock)
@@ -905,7 +903,7 @@ def test_the_command_removes_a_stop_file_made_during_a_failed_run(
     tmp_path, configured, stand_ins, monkeypatch, capsys
 ):
     """A stop file never outlives the call: the next call is not stopped before its first run.
-    The call ends at the third failed run in a row (jms_kapps 112)."""
+    The call ends at the third failed run in a row."""
     clock = Clock()
     stand_ins[0].failing = {1, 2}
 
@@ -926,7 +924,7 @@ def test_the_command_leaves_out_a_configuration_that_the_sweep_removed(
     tmp_path, configured, stand_ins, monkeypatch, capsys
 ):
     """Removed configurations are stored in the output folder, and the one command, which has
-    no selection, leaves them out until they are put back (jms_kapps 111, note 1866695)."""
+    no selection, leaves them out until they are put back."""
     clock = Clock()
     timed(monkeypatch, stand_ins[0], clock)
     spec = spec_file(tmp_path, PRECISION_SPEC)

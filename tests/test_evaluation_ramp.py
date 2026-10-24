@@ -1,5 +1,4 @@
-"""The broken rule of the measurement harness and how far a ramp goes (jms_kapps 49, the numbers
-decision of jms_kapps 56): a load level is broken at the first of four store-side signals, and
+"""The broken rule of the measurement harness and how far a ramp goes: a load level is broken at the first of four store-side signals, and
 stuck or failed boxes alone never break it. Judged on fabricated records with known numbers; no
 store, no run.
 """
@@ -109,7 +108,7 @@ def test_a_p95_commit_latency_over_ten_times_the_lowest_rate_s_alone_breaks_a_le
 )
 def test_a_plateau_of_the_completed_writes_is_still_shown_as_a_signal(writes, broken):
     """The step before completed 100 writes a minute: 104 is a rise of less than 5 %, 105 is
-    5 %. Since jms_kapps 99 a plateau breaks no level (see below), but the record shows it."""
+    5 %. A plateau breaks no level (see below), but the record shows it."""
     before = numbers_of(healthy("a", 10, completed_writes_per_minute=100.0))
     level = numbers_of(healthy("b", 20, completed_writes_per_minute=writes))
 
@@ -168,8 +167,7 @@ def test_a_ramp_stops_at_its_first_broken_level_and_its_scale_is_the_level_befor
 
 
 def test_a_plateau_alone_no_longer_breaks_a_level_or_stops_a_ramp():
-    """jms_kapps 99, Sören's decision of 2026-10-12: the old rule stopped the ramp here. Now the
-    ramp goes on to its top level, and the plateau stays in the record of the level."""
+    """A plateau does not stop the ramp here: the ramp goes on to its top level, and the plateau stays in the record of the level."""
     judged = judge(
         ramp(
             healthy("a", 10),
@@ -340,7 +338,7 @@ def test_a_level_below_the_accepted_share_threshold_is_marked_uc2_limited(
 
 
 def test_a_level_of_a_record_with_no_spawn_counts_is_neither_limited_nor_unlimited():
-    """Records before jms_kapps 99 hold no counts in the window: the level says it cannot tell."""
+    """Records of an earlier form hold no counts in the window: the level says it cannot tell."""
     judged = judge(ramp(healthy("a", 10)))
 
     [level] = judged.levels

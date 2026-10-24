@@ -49,12 +49,12 @@ ONTOLOGY = f"""\
 @prefix fci: <{FCI_NS}> .
 
 fc:BoxTransportOperation a owl:Class .
-svc:operationStatus a owl:DatatypeProperty , owl:FunctionalProperty ;
+svc:hasOperationStatus a owl:DatatypeProperty , owl:FunctionalProperty ;
     rdfs:domain fc:BoxTransportOperation ;
     rdfs:range xsd:string .
 fc:hasBox a owl:ObjectProperty .
 fci:Box1_transport a fc:BoxTransportOperation ;
-    svc:operationStatus "queued" ;
+    svc:hasOperationStatus "queued" ;
     fc:hasBox fci:Box1 .
 """
 
@@ -111,7 +111,7 @@ def main(argv: list[str]) -> int:
             if step in ("running", "done", "failed"):
                 ogm.commit(
                     instance_iri=OPERATION,
-                    data={f"{SVC_NS}operationStatus": [step]},
+                    data={f"{SVC_NS}hasOperationStatus": [step]},
                 )
             elif step == "heap":
                 store.query(

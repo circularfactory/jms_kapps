@@ -1,13 +1,12 @@
-"""The heavy parts of a spec with the precision rule, in its rounds (jms_kapps 114, Sören's decision
-of 2026-10-13 on jms_kapps 85, note 1866296, decision 6): each ramp, each replay and each
+"""The heavy parts of a spec with the precision rule, in its rounds: each ramp, each replay and each
 sustained load runs one time, in round 1, at its place in the spec's order; a later round makes no
 level of one that ended, and goes on with one that round 1 left unfinished; a person asks for one
 more repetition with `--repeat`.
 
 Each run and each replay level is a fabricated record, written by a stand-in for a run on the
-configured store: no store, no run. The approvals are for the spec of a temporary folder (jms_kapps
-96). The report, which a sweep makes after each run, is a stand-in too, so that the tests stay
-short. The connection variables of a store are removed first.
+configured store: no store, no run. The approvals are for the spec of a temporary folder. The
+report, which a sweep makes after each run, is a stand-in too, so that the tests stay short. The
+connection variables of a store are removed first.
 """
 
 from __future__ import annotations
@@ -229,7 +228,7 @@ def spec_file(folder: Path, text: str = SPEC) -> Path:
 
 def approval_of_the_clock(folder: Path, spec_path: Path) -> Path:
     """The approval of the spec for two days from an hour before the stand-in clock's start: the
-    sweep covers each heavy run at its start, by the call's clock (jms_kapps 112)."""
+    sweep covers each heavy run at its start, by the call's clock."""
     return approval_file(
         folder,
         spec_path,
@@ -637,7 +636,7 @@ def test_a_spec_of_fixed_repetitions_replays_its_first_valid_run_as_before(
     tmp_path, fabricated
 ):
     """A spec without the precision rule replays the first valid run that each
-    call finds, as before jms_kapps 114, and not the run that its levels before replayed."""
+    call finds, as it always did, and not the run that its levels before replayed."""
     made = fabricated(Fabricated(invalid={(1, 1)}, during=stop_file_in(3)))
     assert call(tmp_path, text=FIXED_REPLAYED) == 0
     assert made.replayed == [("replay 1 x1.1", "run-0002")]
@@ -672,8 +671,7 @@ def test_a_repetition_on_request_of_a_ramp_runs_only_under_an_approval_that_cove
     made.log.clear()
     made.covered.clear()
 
-    # Without an approval each level is skipped and listed, and nothing else is made (jms_kapps
-    # 112: until then the call was refused before its first run).
+    # Without an approval each level is skipped and listed, and nothing else is made.
     assert call(tmp_path, "--repeat", "block3:2", approve=False) == 0
     assert made.log == []
     out = capsys.readouterr().out
@@ -712,7 +710,7 @@ def test_a_request_that_names_no_heavy_part_is_refused_before_the_first_run(
 def test_a_restart_with_the_same_request_before_during_and_after_the_target_repetition(
     tmp_path, fabricated, capsys
 ):
-    """Sören's ruling of 2026-10-14 on jms_kapps 114: `--repeat block3:2` makes sure that
+    """`--repeat block3:2` makes sure that
     repetition 2 of the ramp exists. A restart with the same command line goes on, and makes
     nothing more once the repetition exists."""
     made = fabricated()
@@ -1096,7 +1094,7 @@ def test_without_an_approval_the_one_command_skips_and_lists_the_heavy_levels_of
 # --- the README and the glossary ---------------------------------------------------------------
 
 
-def test_the_readme_says_the_rules_of_the_heavy_parts_with_a_dated_note_of_soeren_s_decision():
+def test_the_readme_says_the_rules_of_the_heavy_parts():
     import jms_kapps
 
     text = (Path(jms_kapps.__file__).parent / "evaluation" / "README.md").read_text(
@@ -1110,9 +1108,8 @@ def test_the_readme_says_the_rules_of_the_heavy_parts_with_a_dated_note_of_soere
     replay = section("### Replay levels in a sweep", "### The iteration-one spec")
     rounds = section("### The precision rule and the rounds", "## The table of a spec")
     for said in (ramp, replay, rounds):
-        assert "jms_kapps 114" in said
-        assert "Sören's decision of 2026-10-13" in said
-        assert "note 1866296, decision 6" in said
+        assert "jms_kapps 114" not in said
+        assert "Sören" not in said and "note 1866296" not in said
     assert "runs one time, in round 1" in ramp and "--repeat block3" in ramp
     assert "right after its configuration's first valid run" in replay
     heavy = rounds.split("### The heavy parts in the rounds")[1]
@@ -1120,25 +1117,8 @@ def test_the_readme_says_the_rules_of_the_heavy_parts_with_a_dated_note_of_soere
     assert "A later round makes no level of a heavy part that ended" in heavy
     assert "goes on in the next round from its lowest level without a record" in heavy
     assert "A repeated replay replays the same run" in heavy
-    assert "Until 2026-10-14" in heavy
-
-
-def test_the_module_docs_name_soeren_s_rulings_with_the_dated_note_of_the_house():
-    """The docstrings rewritten after a review keep the old rule in the
-    house form, "(Changed on 2026-10-14, jms_kapps 114: until then ...)"."""
-    import ast
-
-    from jms_kapps.evaluation import heavy_parts, table
-
-    for module in (heavy_parts, sweep, table):
-        doc = " ".join(
-            (
-                ast.get_docstring(ast.parse(Path(module.__file__).read_text())) or ""
-            ).split()
-        )
-        assert "(Changed on 2026-10-14, jms_kapps 114: until then " in doc, module
-        assert "Sören's ruling of 2026-10-14)" not in doc, module
-        assert "Sören's ruling of 2026-10-14;" not in doc, module
+    assert "Until 2026-10-14" not in heavy
+    assert "a restart with the same command line is safe" in heavy
 
 
 def test_the_glossary_defines_the_heavy_part_and_the_repetition_on_request():

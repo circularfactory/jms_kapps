@@ -1,4 +1,4 @@
-"""The statistics of the table of a spec (jms_kapps 49): a quantile by linear interpolation, the
+"""The statistics of the table of a spec: a quantile by linear interpolation, the
 median and the interquartile range, and a bootstrap interval that resamples whole repetitions
 from a recorded seed. Each value here is computed by hand.
 """

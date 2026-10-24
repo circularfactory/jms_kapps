@@ -81,3 +81,58 @@ logging.getLogger().warning("handlers " + ",".join(names))
     handlers = lines[0].removeprefix("WARNING:root:handlers ").split(",")
     assert "_Handler" in handlers
     assert handlers.count("StreamHandler") == 1
+
+
+# The activity feed sets the middleware's package logger to INFO; a stand-in for that here.
+MIDDLEWARE_AT_INFO = (
+    'logging.getLogger("kapps_semantic_middleware").setLevel(logging.INFO)\n'
+)
+
+
+def test_the_middleware_s_info_record_writes_no_line_where_its_logger_is_at_info():
+    lines = stderr_lines(
+        MIDDLEWARE_AT_INFO
+        + 'logging.getLogger("kapps_semantic_middleware.activity").info("heartbeat")'
+    )
+
+    assert lines == []
+
+
+def test_the_middleware_s_warning_record_still_writes_one_line_where_its_logger_is_at_info():
+    lines = stderr_lines(
+        MIDDLEWARE_AT_INFO
+        + 'logging.getLogger("kapps_semantic_middleware").warning("slow")'
+    )
+
+    assert lines == ["WARNING:kapps_semantic_middleware:slow"]
+
+
+def test_this_package_s_info_record_writes_one_line_where_the_middleware_s_logger_is_at_info():
+    lines = stderr_lines(
+        MIDDLEWARE_AT_INFO + 'logging.getLogger("jms_kapps.uc2.wms").info("step")'
+    )
+
+    assert lines == ["INFO:jms_kapps.uc2.wms:step"]
+
+
+def test_a_handler_on_the_root_logger_after_the_setup_still_gets_the_middleware_s_info_record():
+    # As the middleware's Logs-tab handler is attached at build time.
+    body = (
+        MIDDLEWARE_AT_INFO
+        + """
+seen = []
+
+
+class Collect(logging.Handler):
+    def emit(self, record):
+        seen.append(record.getMessage())
+
+
+logging.getLogger().addHandler(Collect())
+logging.getLogger("kapps_semantic_middleware").info("heartbeat")
+logging.getLogger().warning("seen " + ",".join(seen))
+"""
+    )
+    lines = stderr_lines(body)
+
+    assert lines == ["WARNING:root:seen heartbeat"]

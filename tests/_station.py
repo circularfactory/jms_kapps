@@ -40,8 +40,7 @@ from jms_kapps.uc2.vocabulary import FC, FC_NS, transport_iri, uuid_box_iri
 def spawned_box(n: int) -> IRI:
     """The `n`-th box that a test's WarehouseManagementSystem spawns with `BoxNames`: named by a
     UUID, as the WarehouseManagementSystem names every box it spawns, but one made from `n`, so
-    that the test knows it beforehand. (Added on 2026-10-12, jms_kapps 92: until then a test's
-    WarehouseManagementSystem numbered its boxes Box 1, Box 2 and on.)"""
+    that the test knows it beforehand."""
     return uuid_box_iri(UUID(int=n))
 
 

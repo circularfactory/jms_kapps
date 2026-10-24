@@ -10,24 +10,14 @@ three of its own, which draw the module from above and show its routing decision
 connections it read (`module_dashboard`). Uvicorn runs on the main thread, so that a signal reaches
 it and the middleware deregisters on the way out. From the stop signal on, the module waits, the
 graceful-shutdown bound at most, for the box it reserved itself for and for its own work, and ends
-the transport that is its to end; the shutdown waits for that (added on 2026-10-06, jms_kapps 42,
-decided by Etienne).
-
-Changed on 2026-10-05, at Etienne Hoffmann's request after his hands-on test of use case 2 (the
-ticket "Each UC2 module's dashboard shows the module, its routing decisions and the adjacency matrix
-it read (424)" in kapps_semantic_middleware). Until then the dashboard had the library's boxes
-only, and the paragraph above read: "Its activity feed is on, and so is the middleware's state
-dashboard, with the library's own boxes only."
+the transport that is its to end; the shutdown waits for that.
 
 The move of a box off the module, its convey, is simulated: it waits the module's own transit time,
 which the module reads from the graph once, when it starts (`fc:hasTransitTime`, written by the
 launch's seed), and not at all where that is 0. A module whose graph holds none, or more than one,
-does not start: its process ends with the reason. (Changed on 2026-10-07, jms_kapps 8, decided by
-Etienne. Until then: "it waits the transit time, which is set per run", given on the command line.)
+does not start: its process ends with the reason.
 A real FlexConveyor passes a move that drives its motor, and nothing else changes. Convey
-is no workflow of a module: no peer calls it. (Changed on 2026-10-06, jms_kapps 40, decided by
-Etienne. Until then the module registered four workflows, Convey among them, which the receiving
-module of a hop called.)
+is no workflow of a module: no peer calls it.
 
 Run it as `python -m jms_kapps.uc2.process --resource-iri <module IRI>`, the command line
 `module_command` builds. The Launcher does.
@@ -35,15 +25,14 @@ Run it as `python -m jms_kapps.uc2.process --resource-iri <module IRI>`, the com
 The WarehouseManagementSystem and the monitor run the same way, each behind a middleware instance
 of its own. The three share the command line and the start of `common.process`, `process_parser`
 and `run_process`, and the WarehouseManagementSystem also takes the module's call of a peer and
-its notification helper. (Changed on 2026-10-06, jms_kapps 41: the WarehouseManagementSystem
-moves no box, decided by Etienne. Until then it took "the module's transit time and notification
-helpers".)
+its notification helper.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import functools
 import logging
 import math
 import sys
@@ -54,7 +43,7 @@ from typing import cast
 import httpx
 from fastapi import FastAPI, HTTPException
 from kapps_ogm import OGM, Node
-from kapps_semantic_middleware import Mode, SemanticMiddleware
+from kapps_semantic_middleware import Mode, SemanticMiddleware, possession
 from kapps_semantic_middleware.dashboard import enable_dashboard
 from kapps_triplestore_interface import IRI
 from pydantic import BaseModel
@@ -104,8 +93,7 @@ from jms_kapps.uc2.transport import TRANSPORT_SCOPE, TransportRecords, transport
 from jms_kapps.uc2.vocabulary import FC
 
 # A handshake step answers at once: Reserve from the graph, and Receive before the receiving module
-# carries the box on. (Changed on 2026-10-06, jms_kapps 41, decided by Etienne. Until then: "Only
-# the WarehouseManagementSystem's Convey, which the origin of a spawn calls, waits".)
+# carries the box on.
 STEP_TIMEOUT_SECONDS = 30.0
 
 FAULTS_ROUTE = "/faults"
@@ -255,14 +243,12 @@ def build(
 
     Args:
         retry_seconds: How long the module waits before it asks again the Reserve of a module
-            that refused to reserve itself, once its detour has refused too (changed on
-            2026-10-06, jms_kapps 43: until then "an occupied or reserved module's Reserve").
+            that refused to reserve itself, once its detour has refused too.
         move: The move of a box off the module, in place of the simulated one.
         strategy: The module strategy, which names the neighbours the module asks for a box.
         strategy_name: Its name, `--module-strategy`.
         deadlock_alarm_seconds: How long a box the module holds may wait for a Reserve before
-            the module raises the deadlock alarm for it, `--deadlock-alarm-seconds` (added on
-            2026-10-11, jms_kapps 77, decided by Etienne).
+            the module raises the deadlock alarm for it, `--deadlock-alarm-seconds`.
 
     Raises:
         TransitTimeError: If the graph holds no transit time for the module, or more than one.
@@ -291,7 +277,7 @@ def build(
     module = FlexConveyorModule(
         IRI(resource_iri),
         graph=graph,
-        handover=middleware.handover,
+        handover=functools.partial(possession.handover, middleware),
         call=call_peer,
         records=TransportRecords(middleware),
         notify=notify_with(middleware),
@@ -409,7 +395,7 @@ def module_parser() -> argparse.ArgumentParser:
 
 def alarm_time_problem(seconds: float) -> str | None:
     """Why `seconds` is no deadlock alarm time, or None where it is one: a positive number of
-    seconds. (Added on 2026-10-11, jms_kapps 77, decided by Etienne.)"""
+    seconds."""
     if math.isfinite(seconds) and seconds > 0:
         return None
     return f"--deadlock-alarm-seconds must be a positive number of seconds, not {seconds:g}"
@@ -425,7 +411,6 @@ def main() -> None:
         parser.error(problem)
     # Before the store is read: a module given a strategy it does not know does not start. Its
     # process ends with the reason, which the Launcher page shows with the state `failed`.
-    # (Added on 2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07.)
     try:
         strategy = chosen(ModuleStrategy, args.module_strategy, found(ModuleStrategy))
     except UnknownStrategy as unknown:

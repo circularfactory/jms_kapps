@@ -10,13 +10,13 @@ writes `report/` into that folder: `report.md`, the tables and the charts for a 
 `runs.csv`, `configurations.csv`, `steps.csv`, `unanswered.csv` and one PNG for each chart. It needs no store and no network, and
 runs nothing. The sweep makes it again after each run, whatever the run's end (`update_report`).
 
-**The series** (jms_kapps 110, interim names). `report.md`, the chart titles and the chart labels
+**The series** (interim names). `report.md`, the chart titles and the chart labels
 show each configuration number with the spec's series (`spec.Spec.series`), such as "before 7",
 and a label that joins the number and the run kind, "after 7 unwrapped"; each CSV file keeps the
 number and gains a column `series`. The file names stay by number.
 
-**The report points** (`report_points`, jms_kapps 97; interim names, jms_kapps 83) come after the
-tables of jms_kapps 86, 87 and 91 and change none of their values: `marks.csv` (the hour of each
+**The report points** (`report_points`; interim names) come after the
+tables and change none of their values: `marks.csv` (the hour of each
 run, whether it overlaps a live check of the log `--live-checks` names or the server watch shows
 other activity, its deadlock alarms and its dead heartbeats), `hours.csv` and one `hours-<n>.png`
 for each configuration, `page_cache.csv`, `deadlock_alarms.csv` and `dead_heartbeats.csv`. A mark
@@ -26,8 +26,7 @@ says `no data` where the log, the server watch or the spans are missing.
 SHACL, strategies, box rate, wrapper), its run kind, its status and the reason, the transports
 ended per minute, the commits and their p50, p95 and p99, the p50 and p95 of the reads and of the
 writes, apart, the requests the store refused, those that timed out and those whose connection
-dropped, inside the window and outside it, apart (jms_kapps 109: until 2026-10-14 a dropped
-connection was counted as timed out), the stuck boxes, and the client host's load in the window
+dropped, inside the window and outside it, apart, the stuck boxes, and the client host's load in the window
 (below). The status is `completed` (a valid run), `invalid` (a
 check found it so), `failed` or `interrupted`. A failed or an interrupted run has no values.
 
@@ -42,9 +41,9 @@ until the failure, which is listed beside it (below).
 
 **The unanswered store requests** (`unanswered.csv`, and a section of `report.md`): one row for
 each store request that got no answer, in the window and outside it, with its run, the place
-(`in the window` or `outside the window`), its outcome (`timed out` or `connection dropped`,
-jms_kapps 109), its time, its wait in seconds (the real one) and its reason, the error as the
-record keeps it. A baseline run's are listed too. (jms_kapps 91.)
+(`in the window` or `outside the window`), its outcome (`timed out` or `connection dropped`),
+its time, its wait in seconds (the real one) and its reason, the error as the
+record keeps it. A baseline run's are listed too.
 
 **The client load** (columns `client_load`, `client_cpu_median_percent`, `client_cpu_max_percent`
 and `client_memory_max_gib` of `runs.csv`, and a section of `report.md`): the median and the highest
@@ -52,7 +51,6 @@ CPU use of the client host, in percent of all its CPUs, and its highest memory u
 the record's samples (`client_load`) in the measured window. `client_load` says `measured`, `no
 data` (a record of the "before" series holds no sample, or none lies in the window) or `not
 available` (the host had no `/proc`); the report shows those words in place of the numbers.
-(jms_kapps 91.)
 
 **The configurations table** is the table of `jms-eval-table` (`table.make_table`), made from the
 same summaries in the same order with the same seed and resamples, so that its numbers are that
@@ -65,13 +63,11 @@ the valid runs; and, for each family of configurations that differ only in the s
 prefill, the throughput and the commit p95 against that size, on a log scale. A failed or an
 interrupted run is listed in the runs table and not plotted.
 
-**The steps** (`report_steps`, jms_kapps 87): `steps.csv` has one row for each configuration, role
+**The steps** (`report_steps`): `steps.csv` has one row for each configuration, role
 (WMS or module) and step, with the steps per minute, the median and the p95 seconds and the median
 size of the store's answer, pooled over the valid runs' spans in the measured window; for each
 family of prefill sizes, a steps chart compares the configurations step by step on a log time
 scale. The steps are read from the spans once, and kept in the run's summary.
-
-(Added on 2026-10-12, jms_kapps 86; interim, jms_kapps 83.)
 """
 
 from __future__ import annotations
@@ -249,14 +245,14 @@ def prefill_size(prefill: Any) -> float | None:
 
 def _label(series: str, number: int, run_kind: str) -> str:
     """The label of a configuration and a run kind in a chart: its number with the spec's series,
-    and the run kind unless `uc2`, such as `after 7 unwrapped` (jms_kapps 110)."""
+    and the run kind unless `uc2`, such as `after 7 unwrapped`."""
     name = f"{series} {number}" if series else str(number)
     return name if run_kind == RUN_KIND else f"{name} {run_kind.removeprefix('uc2-')}"
 
 
 def _with_series(frame: pd.DataFrame, series: str) -> pd.DataFrame:
     """`frame` with the spec's series in a column `series` after its configuration's number, so
-    that the CSV keeps the number and gains the series (jms_kapps 110); unchanged where it has no
+    that the CSV keeps the number and gains the series; unchanged where it has no
     configuration column or a series already."""
     if "series" in frame.columns:
         return frame
@@ -684,7 +680,7 @@ def make_report(
     configurations_frame = configurations_table(
         spec, found, figures, runs=runs, seed=seed, resamples=resamples
     )
-    # Each CSV keeps the configuration's number and gains the spec's series (jms_kapps 110).
+    # Each CSV keeps the configuration's number and gains the spec's series.
     steps = _with_series(steps_frame(found, figures), spec.series)
     unanswered = unanswered_table(found, figures)
     runs_frame.to_csv(folder / RUNS_CSV, index=False)
@@ -896,8 +892,7 @@ class _Points:
         )
 
     def with_series(self, series: str) -> _Points:
-        """The tables with the spec's series beside each configuration's number (jms_kapps
-        110)."""
+        """The tables with the spec's series beside each configuration's number."""
         return _Points(
             *(
                 _with_series(frame, series)
@@ -1079,7 +1074,7 @@ def _client_load_table(runs_frame: pd.DataFrame) -> str:
 def _table(frame: pd.DataFrame, columns: Sequence[str]) -> str:
     """`frame`'s `columns` as a Markdown table; a number with four significant digits. A
     configuration's number shows with the spec's series where `frame` holds it, such as
-    `before 7` (jms_kapps 110)."""
+    `before 7`."""
     shown = [c for c in columns if c in frame.columns and c != "series"]
     lines = ["| " + " | ".join(shown) + " |", "|" + "---|" * len(shown)]
     for _, row in frame.iterrows():

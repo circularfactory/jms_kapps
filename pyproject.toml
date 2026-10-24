@@ -10,7 +10,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jms-kapps"
-version = "0.0.1"
+version = "0.0.2"
 description = "The two KAPPS use cases of the JMS paper, built on kapps-semantic-middleware"
 readme = "README.md"
 license = "MIT"
@@ -41,14 +41,19 @@ classifiers = [
 # declares the five third-party packages use case 2 imports itself; their floors are the versions
 # the lock already resolved through the siblings.
 dependencies = [
-    "kapps-semantic-middleware~=0.2.1",
-    "kapps-triplestore-interface~=2.2.1",
-    "kapps-ogm~=0.3.1",
+    "kapps-semantic-middleware~=0.2.6",
+    "kapps-triplestore-interface~=2.2.2",
+    "kapps-ogm~=0.3.2",
     "fastapi>=0.111",
     "httpx>=0.27",
     "pydantic>=2.13",
     "rdflib>=7.1",
     "uvicorn>=0.41",
+    # Use case 1's robot speaks MQTT: the screwing resource hosts the broker in its own process
+    # (amqtt), and the robot controller stand-in is an MQTT client (aiomqtt). The middleware's
+    # MQTT connectors use aiomqtt as well.
+    "amqtt>=0.12.1",
+    "aiomqtt>=2.5.1",
 ]
 
 [project.scripts]
@@ -112,6 +117,15 @@ evaluation = [
     "matplotlib>=3.11.2",
 ]
 
+# The packages of the TransferUnit factory demo that ships inside kapps-semantic-middleware
+# (`transferunits-demo`; an interim name): the middleware's own extra `examples`, which brings
+# the in-process MQTT broker `amqtt`. The same range as the dependency above, so that both name
+# one release. `uv sync --extra transferunits-demo` installs it, and `kapps-transferunit-factory`
+# is on the path of the middleware's install already.
+transferunits-demo = [
+    "kapps-semantic-middleware[examples]~=0.2.6",
+]
+
 [dependency-groups]
 dev = [
     "jms-kapps[evaluation]",
@@ -155,6 +169,7 @@ addopts = ["--strict-markers"]
 filterwarnings = [
     "error:.* is deprecated; (use|set|pass) :DeprecationWarning",
     "error:SemanticMiddleware\\.request\\(\\) is deprecated:DeprecationWarning",
+    "error:Pydantic serializer warnings:UserWarning",
 ]
 markers = [
     "graphdb: needs a live GraphDB, and clears the dataset it runs against",
@@ -169,7 +184,7 @@ markers = [
 [tool.mypy]
 # The same two lines the sibling repositories carry, over the one source root this repository
 # has, and the scripts beside it, which do not ship in the wheel: the screenshot script of the
-# reviewer guide. Neither sibling configures ruff at all, so
+# user guide. Neither sibling configures ruff at all, so
 # neither does this one.
 python_version = "3.12"
 files = ["src", "scripts"]
@@ -180,4 +195,18 @@ files = ["src", "scripts"]
 # without this its import is an import-untyped error. Only the report imports pandas; this
 # suppresses the missing marker and nothing of this repository's annotations.
 module = ["pandas", "pandas.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# amqtt ships no py.typed marker. Only the screwing resource's transport hook imports it, for its
+# broker class; this suppresses the missing marker and nothing of this repository's annotations.
+module = ["amqtt", "amqtt.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# transitional_sync_middleware, the framework kapps-semantic-middleware serves its workflows with,
+# ships no py.typed marker. Only the robot binding of use case 1 imports it, for the sync layer's
+# `ConnectionInfo`, `SyncDirection` and `DataModel`, which the setpoint write names; this
+# suppresses the missing marker and nothing of this repository's annotations.
+module = ["transitional_sync_middleware", "transitional_sync_middleware.*"]
 ignore_missing_imports = true

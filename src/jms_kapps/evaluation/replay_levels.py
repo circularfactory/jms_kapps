@@ -1,6 +1,5 @@
 """The replay levels of the store-only baseline: a recorded run replayed compressed in time, one
-factor at a time (jms_kapps 98, decided by Sören on 2026-10-12, as the product owner of the tests,
-jms_kapps 85; interim names, jms_kapps 83). Pure functions: no store, no clock.
+factor at a time (interim names). Pure functions: no store, no clock.
 
 **A level** is one replay of one recorded run at one **factor**: the same requests in the same
 order, with every offset from the window's start, and so every gap between two of them, divided by
@@ -14,20 +13,17 @@ divided by the window's length in minutes over the factor. The *achieved rate* i
 answered requests, those the store gave an answer, a refusal too and a request that timed out or
 whose connection dropped not, divided by the
 level's *replay span* in minutes, but **the replay span is at least the window**: the larger of
-the span and the window's length over the factor (jms_kapps 107, decided by Sören on 2026-10-13 as
-the product owner of the tests, jms_kapps 85, note 1866296, the changed reading "The replay span is
-read literally"). The span runs from the level's window start to its last answer, the drain
+the span and the window's length over the factor. The span runs from the level's window start to its last answer, the drain
 included, and the record keeps it as it is (`replay_span_seconds`). So the achieved rate is never
 more than the offered rate, and 100 % means that the store kept up: where every request is
 answered and the last answer comes before the window's end, the achieved rate is the offered rate.
-A level whose last answer comes after the window's end has the rate it had before. (Until
-2026-10-14 the span was read literally, so a fast last answer before the window's end gave an
-achieved rate above the offered rate, such as 103 % for a last answer at 290 s of 300.)
+A level whose last answer comes after the window's end has the rate it had before. Reading the
+span literally would give an achieved rate above the offered rate for a fast last answer, such as
+103 % for a last answer at 290 s of 300.
 
 **Broken** (`signals`): a level is broken when the store refuses a request for want of heap, when
 more than 1 % of the window's requests are refused or unanswered, timed out or with their connection
-dropped (the share of the ramp's broken rule, `ramp`; the signal was named `refused or timed out`
-until 2026-10-14, jms_kapps 109, for the same sum), or when the achieved rate is below 90 % of the
+dropped (the share of the ramp's broken rule, `ramp`), or when the achieved rate is below 90 % of the
 offered rate. A replay has no
 commits, so the ramp's commit-latency signal and its plateau do not apply. The thresholds are
 judgement settings outside the configuration's key. The sweep stops the replay of a configuration
@@ -146,8 +142,8 @@ def level_record(
     connection_dropped: int = 0,
 ) -> dict[str, Any]:
     """The record of one replay level: its factor, its offered and achieved rates per minute (the
-    answered requests over the larger of the replay span and the window, jms_kapps 107), the
-    refusals, the timeouts and the dropped connections in the window (jms_kapps 109), the
+    answered requests over the larger of the replay span and the window), the
+    refusals, the timeouts and the dropped connections in the window, the
     refusals for want of heap, the replay span, and whether it is broken, with the signals that
     broke it.
 
@@ -170,7 +166,7 @@ def level_record(
         if moment is not None
     ]
     span = (max(answers) - window_start).total_seconds() if answers else None
-    # The replay span is at least the window (jms_kapps 107); the record keeps the literal span.
+    # The replay span is at least the window; the record keeps the literal span.
     over = None if span is None else max(span, minutes * 60)
     if not count:
         achieved: float | None = None

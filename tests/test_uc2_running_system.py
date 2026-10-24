@@ -28,38 +28,38 @@ from the Launcher page:
   over Module 3, the steps of each module A passed and of the WMS, and Module 5's refusal of box
   B, with the store's reason; and Module 4's refusal of box C.
 - It stops the run with Ctrl+C, and finds that `jms-uc2` exited cleanly, that no process of the
-  run is left, and that no service in the graph is live.
+  run is left, and that no service in the graph is live: at once, and with each live service's
+  address, heartbeat age and its process's last lines if one is.
 
 A second scripted run, on the cross, sets a high spawn rate and presses Ctrl+C while a module
 moves a box onto the next one. It finds that every process stopped before the Launcher's kill, and
 that no transport is left running or queued: each one the stop cut ended failed, "the system is
-stopping", written once, by the module it is assigned to or by the WarehouseManagementSystem
-(added on 2026-10-06, jms_kapps 42).
+stopping", written once, by the module it is assigned to or by the WarehouseManagementSystem.
 
 A third, the load run, runs the grid with every transit time 0 and sets the spawn rate to 600
 boxes a minute for 60 s, then to 0. It finds one record of the WarehouseManagementSystem for each
 spawn due, a box spawned or a spawn refused with why; every transport ended, done or failed with a
 reason, within 5 minutes after the rate is 0; and a clean end of the run. It prints the counts by
-reason (added on 2026-10-07, jms_kapps 51).
+reason.
 
 A fourth, the run of the strategies, starts on the pair and launches the grid from the Launcher,
 as the page does, with `real` for both strategies and every transit time 0, then sets the spawn
 rate to 30 boxes a minute for 2 minutes, then to 0. It finds every process on the dataset the
 run names, with its strategy on its command line; every spawned box arrived, or its transport
 ended failed with a reason, within 5 minutes after the rate is 0; and the state naming `real` for
-both (added on 2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07).
+both.
 
 The two take a few minutes, with the default transit time of a few seconds per move, which a person
 watching the pages follows. The Launcher binds its fixed port, so no other `jms-uc2` may run on
 this machine meanwhile.
 
-(Changed on 2026-10-06, jms_kapps 43, decided by Etienne: the origin of a spawn looks ahead, and
+The origin of a spawn looks ahead, and
 `skip-reserve` skips the look-ahead of the module it is armed on. On the cross, every box then
 passes Module 3 alone, and Module 3 is reserved for the box on an entry module, so no handover
-without asking meets an occupied module there. Until then the first run used the cross, with
-`skip-reserve` on Module 1, and pairs of boxes A, from Module 2 toward Module 4, and B, from Module
-1 toward Module 5, 0.7 transit times after it, so that Module 1 handed B to Module 3 while Module 3
-held A, three pairs at most.)
+without asking meets an occupied module there.
+
+Each test starts `jms-uc2` only once no service is live in the dataset, so that a service an
+earlier test left live fails only that test, not the next one.
 
 This test clears the dataset it runs against. It runs only when the store's connection
 variables are set, against the dataset `--dataset` names (there is no default).
@@ -82,22 +82,23 @@ from contextlib import contextmanager
 
 import httpx
 import pytest
+from _live_services import assert_no_service_is_live, wait_until_no_service_is_live
 from _ps import children_of, shown_processes
 from _sse import hold
+from _uc2_run import POSSESSION_PATH, lines_of
 from _wait import eventually
 from kapps_semantic_middleware.credentials import triplestore_env_present
 from kapps_semantic_middleware.vocabulary import CFC, SVC, OperationStatus
 from kapps_triplestore_interface import IRI
 
-from jms_kapps.common.services import live_resources
+from jms_kapps.common.passthrough import process_path
+from jms_kapps.common.services import reader
 from jms_kapps.common.supervision import STOP_TIMEOUT_SECONDS
 from jms_kapps.common.triplestore import bindings, connect
 from jms_kapps.uc2.handshake import acceptance_record, conveyed_record, reserved_record
-from jms_kapps.uc2.launcher.passthrough import process_path
 from jms_kapps.uc2.launcher.runner import LAUNCHER_HOST, LAUNCHER_PORT
 from jms_kapps.uc2.topology import shipped_topology
 from jms_kapps.uc2.transport import status_record
-from jms_kapps.uc2.vertical_slice import POSSESSION_PATH, lines_of
 from jms_kapps.uc2.vocabulary import (
     FC,
     FCI_NS,
@@ -119,7 +120,7 @@ pytestmark = [
 
 M1, M2, M3, M4, M5, M6 = (module_iri(n) for n in range(1, 7))
 
-# The merge of two streams is the shipped topology `merge-fault-demo` (jms_kapps 46): the live
+# The merge of two streams is the shipped topology `merge-fault-demo`: the live
 # suite no longer keeps a copy of its own. Two streams into Module 4, the exit: Module 2 over
 # Module 3, and Module 1 over Module 5 and Module 6. Module 3 and Module 6 hand boxes to Module 4,
 # and only Module 5 to Module 6.
@@ -170,6 +171,8 @@ class Run:
             start_new_session=True,
         )
         self.lines: list[str] = []
+        # What the Launcher called each process, by its resource, over every state it showed.
+        self.names: dict[IRI, str] = {}
         threading.Thread(target=self._read, daemon=True).start()
 
     def _read(self) -> None:
@@ -221,6 +224,9 @@ class Run:
             except httpx.HTTPError:
                 state = {}
             if state and processes_live(state, self.processes):
+                self.names |= {
+                    IRI(p["resource"]): p["name"] for p in state["processes"]
+                }
                 return state
             time.sleep(0.5)
         states = {p["name"]: p["state"] for p in state.get("processes", [])}
@@ -232,7 +238,7 @@ def running(
     dataset: str, topology: str, processes: int, *options: str
 ) -> Iterator[Run]:
     """`jms-uc2` on `topology`, a shipped name or a file, with the command line's further
-    `options`, until the block ends."""
+    `options`, until the block ends. It starts once no service is live in `dataset`."""
     with httpx.Client() as client:
         try:
             client.get(LAUNCHER, timeout=1)
@@ -240,6 +246,8 @@ def running(
             pass
         else:
             pytest.fail(f"{LAUNCHER} answers already: another jms-uc2 runs here")
+    # A service an earlier run left live would make this one refuse to clear the dataset.
+    wait_until_no_service_is_live(reader(connect(dataset)))
     started = Run(dataset, topology, processes, *options)
     try:
         yield started
@@ -263,8 +271,7 @@ def run(dataset) -> Iterator[Run]:
 
 @pytest.fixture
 def merge_run(dataset) -> Iterator[Run]:
-    """`jms-uc2` on the shipped `merge-fault-demo`. (Added on 2026-10-06, jms_kapps 43; the
-    topology was a copy of the suite's own until jms_kapps 46.)"""
+    """`jms-uc2` on the shipped `merge-fault-demo`."""
     with running(dataset, MERGE_NAME, MERGE_PROCESSES) as started:
         yield started
 
@@ -405,6 +412,11 @@ def monitor_state(monitor: str) -> dict:
     return httpx.get(f"{monitor}/api/state", timeout=5).json()
 
 
+def assert_monitor_mode(monitor: str, mode: str) -> None:
+    """The monitor answers `mode` on its state route."""
+    assert monitor_state(monitor)["reading"]["mode"] == mode
+
+
 def back_in_the_wms(monitor: str, boxes: list[str]) -> bool:
     shown = {b["id"]: b for b in monitor_state(monitor)["boxes"]}
     return all(
@@ -444,10 +456,16 @@ def test_the_running_system_shows_both_faults_refused_and_every_box_arrives(
 ):
     run = merge_run
     state = run.wait_until_live()
+    # The Launcher starts the monitor in "graph only"; a launch with the box "Collect the SHACL
+    # refusals in one monitor" ticked starts it in "graph + streams".
+    assert_monitor_mode(through_the_launcher(state, "monitor"), "graph only")
+    launch_from_the_page(name=MERGE_NAME, collect_refusals=True)
+    state = run.wait_until_live()
     wms, monitor = (
         through_the_launcher(state, "wms"),
         through_the_launcher(state, "monitor"),
     )
+    assert_monitor_mode(monitor, "graph + streams")
     pids = [p["pid"] for p in state["processes"]]
     spawned: list[str] = []
     # Each box's transport, by the box's local name, as its spawn answered.
@@ -575,7 +593,7 @@ def test_the_running_system_shows_both_faults_refused_and_every_box_arrives(
         with pytest.raises(ProcessLookupError):
             os.kill(pid, 0)
     assert not [line for line in run.lines if "and was killed" in line], run.tail()
-    assert live_resources(connect(dataset)) == set()
+    assert_no_service_is_live(reader(connect(dataset)), run.lines, run.names)
 
 
 def check_the_steps_of_box_a(pages: ActivityPages, box: IRI, transport: IRI) -> None:
@@ -614,8 +632,8 @@ def check_the_wms_heard_each_box_once(
     pages: ActivityPages, opened: dict[str, IRI]
 ) -> None:
     """The WMS hears of each box once, at its transport's end: a module notifies it only when it
-    ends a transport, `done` or `failed`, and a change of the assigned module sends nothing
-    (Etienne, 2026-10-06). Every box came back, so the one record of each is the WMS taking it
+    ends a transport, `done` or `failed`, and a change of the assigned module sends nothing.
+    Every box came back, so the one record of each is the WMS taking it
     back, and its page shows no other notification. The graph shows a box back as soon as the
     store admits the last handover, and the WMS hears of it only after the move, so its records
     are waited for."""
@@ -656,7 +674,7 @@ SPAWNING_SECONDS = 15.0
 # presses Ctrl+C: once the commit has landed on the shared store, inside the move that follows.
 INTO_THE_MOVE_SECONDS = 1.5
 
-# The name of a box or a transport: a box the WMS spawns is named `Box-<UUID>` (jms_kapps 92), and
+# The name of a box or a transport: a box the WMS spawns is named `Box-<UUID>`, and
 # no such name is a word.
 _NAME = r"[A-Za-z0-9_.\-]+"
 
@@ -676,7 +694,7 @@ def transports(dataset: str) -> dict[IRI, dict[str, str | None]]:
     rows = bindings(
         connect(dataset),
         f"SELECT ?t ?status ?result ?assigned WHERE {{ ?t a <{FC.BoxTransportOperation}> ; "
-        f"<{SVC.operationStatus}> ?status . OPTIONAL {{ ?t <{SVC.executionResult}> ?result }} "
+        f"<{SVC.hasOperationStatus}> ?status . OPTIONAL {{ ?t <{SVC.hasExecutionResult}> ?result }} "
         f"OPTIONAL {{ ?t <{CFC.executedOn}> ?assigned }} }}",
     )
     return {
@@ -697,7 +715,7 @@ def test_ctrl_c_at_a_high_spawn_rate_ends_every_transport_by_its_own_party(
     run, dataset
 ):
     """The WMS spawns a box every two seconds on the cross, and Ctrl+C comes while a module
-    moves a box onto the next one (jms_kapps 42). Every process stops before the Launcher's kill,
+    moves a box onto the next one. Every process stops before the Launcher's kill,
     and then no transport is left running or queued: each one the stop cut ended failed, "the
     system is stopping", written once, by the module it is assigned to, or by the WMS for a box
     between its create and its notification."""
@@ -725,7 +743,7 @@ def test_ctrl_c_at_a_high_spawn_rate_ends_every_transport_by_its_own_party(
 
     assert not [line for line in run.lines if "and was killed" in line], run.tail()
     assert stopped < STOP_TIMEOUT_SECONDS, stopped
-    assert live_resources(connect(dataset)) == set()
+    assert_no_service_is_live(reader(connect(dataset)), run.lines, run.names)
     found = transports(dataset)
     assert found, "the WMS spawned nothing"
     left = {t: f for t, f in found.items() if f["status"] in ("running", "queued")}
@@ -751,7 +769,7 @@ def test_ctrl_c_at_a_high_spawn_rate_ends_every_transport_by_its_own_party(
     )
 
 
-# -- The load run (jms_kapps 51, decided by Etienne on 2026-10-07) ---------------------------- #
+# -- The load run ---------------------------- #
 
 # 600 boxes a minute for 60 s: 600 spawns due.
 LOAD_RATE = 600.0
@@ -842,7 +860,7 @@ def test_the_load_run_accounts_for_every_spawn_at_600_boxes_a_minute_on_the_grid
     assert abs(len(records) - LOAD_DUE) <= 2, counts
     assert counts["spawned"] > 0, counts
     assert not [line for line in run.lines if "and was killed" in line], run.tail()
-    assert live_resources(connect(dataset)) == set()
+    assert_no_service_is_live(reader(connect(dataset)), run.lines, run.names)
     failed = {t: f for t, f in found.items() if f["status"] == OperationStatus.FAILED}
     assert all(f["result"] for f in failed.values()), failed
     done = len(found) - len(failed)
@@ -851,7 +869,7 @@ def test_the_load_run_accounts_for_every_spawn_at_600_boxes_a_minute_on_the_grid
     assert len(found) == counts["spawned"], (len(found), counts)
 
 
-# -- The strategies, chosen at start (jms_kapps 52, decided by Etienne on 2026-10-07) ----------- #
+# -- The strategies, chosen at start ----------- #
 
 # 30 boxes a minute for 2 minutes: 60 spawns due.
 STRATEGIES_RATE = 30.0
@@ -913,9 +931,11 @@ def test_the_grid_launched_from_the_launcher_with_real_for_both_settles_every_sp
         for process in state["processes"]:
             commands[process["kind"]].append(process["command"])
         # By each option's own argument: what else a command line carries, and in which order,
-        # is not this test's (since jms_kapps 77 a module's ends with its deadlock alarm time).
+        # is not this test's (a module's ends with its deadlock alarm time).
         assert commands["module"]
-        assert all(argument(c, "--module-strategy") == "real" for c in commands["module"])
+        assert all(
+            argument(c, "--module-strategy") == "real" for c in commands["module"]
+        )
         assert [argument(c, "--wms-strategy") for c in commands["wms"]] == ["real"]
         children, evidence = module_processes_shown(run)
         assert len(children) == len(shipped_topology("grid").modules), evidence
@@ -965,4 +985,4 @@ def test_the_grid_launched_from_the_launcher_with_real_for_both_settles_every_sp
     # A spawn counts as spawned once the store admitted its create, which wrote its transport.
     assert len(found) == counts["spawned"], (len(found), counts)
     assert not [line for line in run.lines if "and was killed" in line], run.tail()
-    assert live_resources(connect(dataset)) == set()
+    assert_no_service_is_live(reader(connect(dataset)), run.lines, run.names)

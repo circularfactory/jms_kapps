@@ -5,20 +5,20 @@ Every store is built by the triple-store interface's `connect()`, through the mi
 the identity come from the environment, exactly as the middleware's own examples read them:
 `TRIPLESTORE_URL`, `TRIPLESTORE_USERNAME` and `TRIPLESTORE_PASSWORD`. The dataset never does. A
 seed clears the dataset it is pointed at, so the caller always names it, and the name defaults to
-the one dataset these use cases own. On the configured store, create that dataset once from
-`graphdb/jms-kapps-repo-config.ttl`. The local store that the project's `compose.yaml` brings up,
-only the fallback for a machine on which no store is configured, has it already.
+the one dataset these use cases own. Every demo runs on the configured store. On it, create that
+dataset once from `graphdb/jms-kapps-repo-config.ttl`. The local store that the project's
+`compose.yaml` brings up, only the fallback for a machine on which no store is configured, has it
+already.
 
-Changed on 2026-10-05, on Etienne Hoffmann's decision that every demo runs on the configured
-store and that the local one is only the fallback (the ticket on jms_kapps' demos on the
-configured live store, kapps_semantic_middleware 422). Until then the last two sentences
-said that the project's `compose.yaml` brings up a local store with that dataset created, and that
-any other store needs it created from the same configuration. Changed on 2026-10-11, jms_kapps
-62: the store is built by `connect()` and named in the interface's terms, the dataset and the
+The store is built by `connect()` and named in the interface's terms, the dataset and the
 `TRIPLESTORE_*` variables; the reset sets the shapes with the store's `shapes_set`.
 
+The reset seeds a demonstration or test dataset: a productive store already holds the
+ontologies and shapes, and no service calls the reset (services use this module only to connect
+and to read).
+
 A dataset is emptied whole by `clear_graph_by_graph`, the Launcher's Clear: every graph, one
-by one, and then the count of the statements it still holds (added on 2026-10-10, jms_kapps 5).
+by one, and then the count of the statements it still holds.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ from kapps_semantic_middleware.seeding import (
     SERVICE_GRAPH,
     clear_dataset,
     load_shared_ontologies,
+    read_service_shapes,
 )
 from kapps_semantic_middleware.validation_report import rule_names
 from kapps_triplestore_interface import (
@@ -104,6 +105,16 @@ def read_asset(package: str, *path: str) -> str:
     return resources.files(package).joinpath(*path).read_text(encoding="utf-8")
 
 
+def with_operation_status_shape(shapes: str) -> str:
+    """`shapes` with the middleware's operation-status shape in front of it: every Operation has
+    exactly one status, one of four values. An empty `shapes` gives that shape alone.
+
+    The store's `shapes_set` replaces every shape, so the two go as one document. Each Turtle file
+    declares its own prefixes, which the joined document repeats.
+    """
+    return read_service_shapes() + "\n" + shapes
+
+
 def reset(
     store: TripleStore, *, ontology: str, shapes: str | None, individuals: str = ""
 ) -> None:
@@ -112,11 +123,13 @@ def reset(
 
     The order matters. The old data goes first, because a store validates the data it already
     holds against its shapes the moment the shapes change. Then the shapes, which replace every
-    shape the dataset had, through the store's `shapes_set`, so that an empty `shapes` leaves the
-    dataset with none; a dataset without SHACL validation refuses them. With `shapes` None, the
-    reset sends no shapes at all, for a dataset without SHACL validation that a caller seeds on
-    purpose, as the measurement harness seeds its SHACL-off twin. Then Core,
-    `svc:` and `mes:`, then the use case's ontology into the default graph, which is where the
+    shape the dataset had, through the store's `shapes_set`; a dataset without SHACL validation
+    refuses them. The middleware's operation-status shape joins every shapes document the reset
+    sends, an empty one too (`with_operation_status_shape`): the demonstrations seed it, the same
+    way they load the middleware's service ontology, and a productive knowledge graph already
+    holds it. With `shapes` None, the reset sends no shapes at all, for a dataset without SHACL
+    validation that a caller seeds on purpose, as the measurement harness seeds its SHACL-off
+    twin. Then Core, `svc:` and `mes:`, then the use case's ontology into the default graph, which is where the
     middleware looks for its alignment axioms, then the individuals, also as Turtle, into the
     default graph. The prefixes come last, after every import, because an import adds back the
     names nobody chose that `register_prefixes` deletes.
@@ -133,7 +146,7 @@ def reset(
     """
     clear_dataset(store)
     if shapes is not None:
-        store.shapes_set(shapes, SHAPES_CONTENT_TYPE)
+        store.shapes_set(with_operation_status_shape(shapes), SHAPES_CONTENT_TYPE)
     load_shared_ontologies(store, reload=True)
     store.graph_add(ontology, content_type="application/x-turtle")
     if individuals:
@@ -171,9 +184,8 @@ def clear_graph_by_graph(store: TripleStore) -> int:
     2026-10-01). Nothing here turns the history collection off: a clear while it is off is not
     recorded, and the cleared data would then disappear from every earlier point in time.
 
-    Changed on 2026-10-11, jms_kapps 62: the interface takes every absolute IRI as the name of a
-    graph since kapps_triplestore_interface 32, so the receipts graph is listed and cleared as
-    any other. Until then a listing that held it raised, and nothing was cleared.
+    The interface takes every absolute IRI as the name of a graph, so the receipts graph is listed
+    and cleared as any other.
 
     The count is `statement_count`, of the statements written, after the last clear.
 
@@ -189,7 +201,7 @@ def clear_graph_by_graph(store: TripleStore) -> int:
         ]
     except Exception as error:
         raise ClearFailed(
-            f"the store did not list the named graphs of {store.dataset}, so nothing was "
+            f"the triple store did not list the named graphs of {store.dataset}, so nothing was "
             f"cleared: {_why(error)}",
             nothing_cleared=True,
         ) from error
@@ -204,8 +216,8 @@ def clear_graph_by_graph(store: TripleStore) -> int:
         return statement_count(store)
     except Exception as error:
         raise ClearFailed(
-            f"every graph of {store.dataset} was cleared, but the store did not say how many "
-            f"statements it holds: {_why(error)}"
+            f"every graph of {store.dataset} was cleared, but the triple store did not say how "
+            f"many statements it holds: {_why(error)}"
         ) from error
 
 
@@ -254,12 +266,13 @@ def _clear(store: TripleStore, graph: IRI | None, *, nothing_cleared: bool) -> N
         cleared = store.graph_clear(graph)
     except Exception as error:
         raise ClearFailed(
-            f"the store did not clear {what} of {store.dataset}: {_why(error)}",
+            f"the triple store did not clear {what} of {store.dataset}: {_why(error)}",
             nothing_cleared=nothing_cleared,
         ) from error
     if not cleared:
         raise ClearFailed(
-            f"the store did not clear {what} of {store.dataset}: it answered that it did not",
+            f"the triple store did not clear {what} of {store.dataset}: "
+            "it answered that it did not",
             nothing_cleared=nothing_cleared,
         )
 
@@ -278,7 +291,7 @@ def _clear_shapes(store: TripleStore) -> None:
         return
     except Exception as error:
         raise ClearFailed(
-            f"the store did not remove the shapes of {store.dataset}: {_why(error)}",
+            f"the triple store did not remove the shapes of {store.dataset}: {_why(error)}",
             nothing_cleared=False,
         ) from error
 

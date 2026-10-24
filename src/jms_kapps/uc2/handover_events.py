@@ -8,26 +8,20 @@ its events: a monitor finds the stream through the graph and reads the events fr
 
 - **`commit_refused`.** A participant emits it when the store refuses the entry of one of its
   handovers, with the store's validation report verbatim, and the WarehouseManagementSystem when
-  the store refuses the create that puts a box on its origin, its handover onto the station (added
-  on 2026-10-06, jms_kapps 41, decided by Etienne: it hands no box over with the middleware's
-  handover any more).
+  the store refuses the create that puts a box on its origin, its handover onto the station.
 - **`deadlock_alarm`.** A module emits it once for a box it holds that has waited past the
   deadlock alarm time, counted from its first ask of a Reserve, with the modules it asks
-  (`asked`). The box keeps waiting. (Added on 2026-10-11, jms_kapps 77, decided by Etienne.)
+  (`asked`). The box keeps waiting.
 
 The other kinds of the full stream (a Reserve answered, a reservation dropped, an admitted commit,
-an arrival) belong to the monitor on the middleware's dashboard, which comes later. (Changed on
-2026-10-11, jms_kapps 77, decided by Etienne: the deadlock alarm. Until then "**One kind for now:
-`commit_refused`.**", with the sentences of its bullet.)
+an arrival) belong to the monitor on the middleware's dashboard, which comes later.
 
 **The event** is JSON: its `id`, its `time` (UTC, ISO 8601), the `resource` that emitted it, its
 `kind`, the `box`, the `peer` and the `transport` it is about, a `reason`, for a refusal the
 `refusal`: its `results`, one `{shape, focus_node, path}` for every rule the report names (a
 report can name several, and names none when it is no RDF), and the `report` itself, and for an
 alarm (`DeadlockAlarm`) the modules `asked`, which no other kind has. Every IRI is full; a local
-name is made only where a person reads it. (Changed on 2026-10-11, jms_kapps 77, decided by
-Etienne: an alarm names "the modules asked"; `asked` is the build's name for them, not yet
-reviewed by him. Until then the sentence ended "and the `report` itself.")
+name is made only where a person reads it.
 
 **The route** `GET /handover-events` keeps the last 500 events. An event's id is
 `<stream token>:<sequence>`, and the token is new at every start of the process, so a reader that
@@ -105,7 +99,7 @@ class HandoverEvent(BaseModel):
 class DeadlockAlarm(HandoverEvent):
     """An event of the kind `deadlock_alarm`: the module `resource` holds `box`, which has
     waited past the deadlock alarm time for a Reserve of the modules `asked`, each by its full
-    IRI. (Added on 2026-10-11, jms_kapps 77, decided by Etienne.)"""
+    IRI."""
 
     asked: list[str]
 
@@ -183,8 +177,7 @@ class HandoverEvents:
         reason: str,
     ) -> DeadlockAlarm:
         """Emit that `box`, which this participant holds, has waited past the deadlock alarm time
-        for a Reserve of the modules `asked`, as `reason` says for a person. (Added on 2026-10-11,
-        jms_kapps 77, decided by Etienne.)"""
+        for a Reserve of the modules `asked`, as `reason` says for a person."""
         with self._lock:
             event = DeadlockAlarm(
                 **self._next(box=box, peer=None, transport=transport),

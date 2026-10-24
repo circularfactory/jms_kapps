@@ -1,10 +1,8 @@
-"""The Launcher page's Clear, in a headless browser, as a person uses it (jms_kapps 5).
+"""The Launcher page's Clear, in a headless browser, as a person uses it.
 
 The page is the real one, served by the Launcher's real app. What stands behind the Launcher is
 fake, and nothing reaches a store: the graph records each clear, answers the statements it leaves
-or fails as told, and calls no service live unless told to; every process only sleeps. (Added on
-2026-10-10, jms_kapps 5, decided by Etienne on 2026-10-05: "a clear button that kills every
-process and clears the whole repository".)
+or fails as told, and calls no service live unless told to; every process only sleeps.
 """
 
 from __future__ import annotations
@@ -52,6 +50,9 @@ class Graph:
         self, topology: Topology, transit_seconds: float, *, collect_history: bool
     ) -> None:
         pass
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return live_services(self.live, workflows)
@@ -178,13 +179,13 @@ def test_while_it_clears_the_page_says_so_and_takes_no_second_clear_or_launch(
     )
     clear = page.get_by_role("button", name="Clear", exact=True)
     expect(clear).to_be_disabled()
-    expect(page.get_by_role("button", name="Launch this topology")).to_be_disabled()
+    expect(page.get_by_role("button", name="Launch", exact=True)).to_be_disabled()
 
     graph.held.set()
 
     expect(message).to_have_text("test-dataset is empty: 0 statements")
     expect(clear).to_be_enabled()
-    expect(page.get_by_role("button", name="Launch this topology")).to_be_enabled()
+    expect(page.get_by_role("button", name="Launch", exact=True)).to_be_enabled()
 
 
 def test_statements_the_store_still_holds_are_said_as_an_error(page: Page, url, graph):
@@ -223,7 +224,7 @@ def test_a_graph_the_store_refuses_to_clear_shows_why_in_the_page(
 ):
     opened(page, url)
     graph.refusal = (
-        "the store did not clear the graph <http://example.org/notes> of "
+        "the triple store did not clear the graph <http://example.org/notes> of "
         "test-dataset: the store is busy"
     )
 

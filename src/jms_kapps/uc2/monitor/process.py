@@ -7,7 +7,8 @@ runs on the main thread, so that a signal reaches it and the middleware deregist
 out.
 
 Run it as `python -m jms_kapps.uc2.monitor.process`, the command line `monitor_command` builds. The
-Launcher does.
+Launcher does. It starts in "graph only" unless `--mode "graph + streams"` says otherwise, which the
+Launcher adds where a person ticked the box that collects the refusals in the monitor.
 """
 
 from __future__ import annotations
@@ -20,14 +21,22 @@ from kapps_semantic_middleware.vocabulary import SVC
 
 from jms_kapps.common.triplestore import connect
 from jms_kapps.uc2.monitor.api import mount_onto
-from jms_kapps.uc2.monitor.memory import MonitorMemory
+from jms_kapps.uc2.monitor.memory import (
+    GRAPH_AND_STREAMS,
+    GRAPH_ONLY,
+    MonitorMemory,
+)
+from jms_kapps.uc2.monitor.memory import (
+    Mode as MonitorMode,
+)
 from jms_kapps.uc2.monitor.reads import GraphReads
 from jms_kapps.uc2.process import process_parser, run_process
 from jms_kapps.uc2.vocabulary import MONITOR
 
 
 def monitor_command(dataset: str) -> list[str]:
-    """The command line that runs the monitor against `dataset`."""
+    """The command line that runs the monitor against `dataset`, which starts in the process's own
+    default, "graph only": the Launcher adds `--mode` where a launch collects the refusals."""
     return [
         sys.executable,
         "-m",
@@ -37,9 +46,11 @@ def monitor_command(dataset: str) -> list[str]:
     ]
 
 
-def build(dataset: str, host: str, port: int) -> SemanticMiddleware:
+def build(
+    dataset: str, host: str, port: int, mode: MonitorMode = GRAPH_ONLY
+) -> SemanticMiddleware:
     """The monitor's middleware instance, with its routes and page grafted onto its app, and its
-    background task started. The app keeps the task as `app.state.memory`."""
+    background task started, in `mode`. The app keeps the task as `app.state.memory`."""
     db = connect(dataset)
     middleware = SemanticMiddleware(
         mode=Mode.RESOURCE,
@@ -51,7 +62,7 @@ def build(dataset: str, host: str, port: int) -> SemanticMiddleware:
         port=port,
         activity_feed=True,
     )
-    memory = MonitorMemory(GraphReads(db))
+    memory = MonitorMemory(GraphReads(db), mode=mode)
     mount_onto(middleware.app, memory=memory)
     middleware.app.state.memory = memory
     memory.start()
@@ -59,10 +70,18 @@ def build(dataset: str, host: str, port: int) -> SemanticMiddleware:
 
 
 def main() -> None:
-    args = process_parser("The monitor of use case 2").parse_args()
+    parser = process_parser("The monitor of use case 2")
+    parser.add_argument(
+        "--mode",
+        choices=[GRAPH_ONLY, GRAPH_AND_STREAMS],
+        default=GRAPH_ONLY,
+        help='What the monitor reads when it starts: "graph only", or "graph + streams", '
+        "which follows the participants' handover event streams too",
+    )
+    args = parser.parse_args()
     run_process(
         args.host,
-        lambda port: build(args.dataset, args.host, port),
+        lambda port: build(args.dataset, args.host, port, args.mode),
         lambda address: f"The monitor runs on {address}",
     )
 

@@ -4,11 +4,9 @@ its form on the grid.
 The parties are served in this process (`_participants`), with a transit time of 0, and the WMS
 is built as its process builds it. The test reads the dashboard's boxes and posts what its forms
 post: on the cross, two boxes with their origin and destination picked, one left to the WMS, and
-then a spawn rate, until it is set to 0. The cross names no roles, so its form offers every module
-both ways; the grid names its entry row and its exits, so its form offers only those, and a spawn
-from another module is refused (added on 2026-10-06, jms_kapps 45, decided by Etienne: roles are
-optional; until then the cross's form offered Modules 1 and 2 as the origin and Modules 4 and 5
-as the destination, and one box was picked).
+then a spawn rate, until it is set to 0. The cross names Modules 1 and 2 as entry modules and Modules 4 and 5
+as exit modules, so its form offers those only; the grid names its entry row and its exits, so its form offers only those, and a spawn
+from another module is refused.
 
 These tests clear the dataset they run against. They run only when the store's connection
 variables are set, against the dataset `--dataset` names (there is no default).
@@ -42,9 +40,8 @@ GRID_TOPOLOGY = shipped_topology("grid")
 TRANSPORTS_SECONDS = 120.0
 # Longer than one spawn takes on a shared store: the box made, handed to its origin, notified.
 SPAWN_SECONDS = 5.0
-# The cross names no entry module (changed on 2026-10-06, jms_kapps 45, decided by Etienne: roles
-# are optional; until then "no entry module is free").
-NO_MODULE_FREE = "no module is free"
+# The cross names Modules 1 and 2 as its entry modules.
+NO_MODULE_FREE = "no entry module is free"
 
 
 class Dashboard:
@@ -67,9 +64,9 @@ class Dashboard:
         return response.json()
 
     def spawn(self, origin: str = "", destination: str = "") -> dict:
-        """Spawn as the form does, asking again while no module is free, or while the origin
+        """Spawn as the form does, asking again while no entry module is free, or while the origin
         refuses to reserve with a refusal that passes, as it does while Module 3 is reserved for
-        another box (added on 2026-10-06, jms_kapps 43)."""
+        another box."""
         deadline = time.monotonic() + TRANSPORTS_SECONDS
         while True:
             answer = self.post(
@@ -102,34 +99,35 @@ def test_the_dashboard_spawns_boxes_and_a_rate_on_the_cross(dataset):
     accepted boxes that the rate spawned have appeared in "Last spawns" within 120 s, and the 5
     boxes spawned by hand do not count. "Last spawns" keeps the 20 newest answers, approximately the
     last 10 s at this rate, so the step collects the accepted boxes of every read over the full
-    wait, by box name, and does not ask for 5 among the newest rows of one read. (Sören's decision
-    of 2026-10-13 as the product owner of the tests, jms_kapps 85, note 1866296, decision 3;
-    jms_kapps 102. Until then the step passed when 5 rows of one read were accepted: it depended on
-    Module 3 moving a box in 2.4 s or less, a speed limit of the store and no decided behaviour,
-    and it counted the boxes spawned by hand, so it could pass before the rate spawned one.)
+    wait, by box name, and does not ask for 5 among the newest rows of one read.
     """
     with participants(dataset, CROSS_TOPOLOGY) as party:
         dashboard = Dashboard(party)
 
-        every_module = [("", "the WMS chooses")] + [
-            (str(m), m.fragment) for m in (M1, M2, M3, M4, M5)
-        ]
         assert selects(dashboard.box("spawn")) == {
-            "origin": every_module,
-            "destination": every_module,
+            "origin": [("", "the WMS chooses")]
+            + [(str(m), m.fragment) for m in (M1, M2)],
+            "destination": [("", "the WMS chooses")]
+            + [(str(m), m.fragment) for m in (M4, M5)],
         }
 
-        # Module 1 to Module 4, as before; then from a module that was an exit to one that was
-        # an entry, until the cross lost its roles; then from and to Module 3, in the middle.
-        named = [(M1, M4), (M5, M2), (M3, M1), (M2, M3)]
-        answers = [dashboard.spawn(str(o), str(d)) for o, d in named]
+        # Each of the four ordered pairs of an entry and an exit module, one box at a time: there
+        # are two entry modules, and Module 3, in the middle, takes one box at a time.
+        named = [(M1, M4), (M2, M5), (M1, M5), (M2, M4)]
+        answers = []
+        for o, d in named:
+            answers.append(dashboard.spawn(str(o), str(d)))
+            assert answers[-1]["accepted"], answers
+            eventually(
+                lambda: all_ended(dashboard, len(answers)), timeout=TRANSPORTS_SECONDS
+            )
         left = dashboard.spawn()
-        assert all(a["accepted"] for a in [*answers, left]), (answers, left)
+        assert left["accepted"], left
+        assert IRI(left["origin"]) in (M1, M2) and IRI(left["destination"]) in (M4, M5)
         eventually(lambda: all_ended(dashboard, 5), timeout=TRANSPORTS_SECONDS)
         assert dashboard.statuses() == ["done"] * 5
-        # Last spawns shows the newest answers, among them those the origin refused while
-        # Module 3 was reserved for a box; Transports shows each box's way. Each box is named by
-        # a UUID (jms_kapps 92): the dashboard shows the names the answers gave.
+        # Last spawns shows the newest answers, the last one first; Transports shows each box's
+        # way. Each box is named by a UUID: the dashboard shows the names the answers gave.
         boxes = [IRI(a["box"]).fragment for a in [*answers, left]]
         assert rows(dashboard.box("last-spawns"))[0][1:4] == [
             boxes[-1],
@@ -147,10 +145,10 @@ def test_the_dashboard_spawns_boxes_and_a_rate_on_the_cross(dataset):
             "boxes_per_minute": 120
         }
         assert in_force(dashboard.box("spawn-rate"))[0] == (
-            "In force: 120 boxes per minute"
+            "Current rate: 120 boxes per minute"
         )
-        # The step counts the accepted boxes that the rate spawned, over the full wait of 120 s
-        # (Sören's decision of 2026-10-13, jms_kapps 85, note 1866296, decision 3). Each read adds
+        # The step counts the accepted boxes that the rate spawned, over the full wait of 120 s.
+        # Each read adds
         # the accepted boxes of "Last spawns" to a set, by box name, leaving out the boxes spawned
         # by hand above. "Last spawns" keeps 20 rows, approximately the last 10 s at 120 boxes per
         # minute, so a read each 50 ms misses no row.
@@ -172,7 +170,7 @@ def test_the_dashboard_spawns_boxes_and_a_rate_on_the_cross(dataset):
             "boxes_per_minute": 0
         }
         assert in_force(dashboard.box("spawn-rate"))[0] == (
-            "In force: 0 boxes per minute, so none spawns"
+            "Current rate: 0, spawning is off"
         )
 
         # A spawn under way when the rate changed still ends: on a shared store one takes a few
@@ -193,8 +191,7 @@ def test_on_the_grid_the_wms_picks_only_an_entry_module_as_the_origin_and_an_exi
     """Spawns left to the WMS on the grid, read from their answers: every origin it picks is on
     the entry row, and every destination is an exit. The modules are not served, so each spawn is
     then refused at the origin, which has no BoxTransportCapability: the picks are what this
-    checks; the real run of jms_kapps 45 shows boxes carried on the grid. (Added on 2026-10-06,
-    jms_kapps 45, decided by Etienne: the grid keeps its entry row and its exits.)"""
+    checks; the real run shows boxes carried on the grid. The grid keeps its entry row and its exits."""
     with participants(
         dataset,
         GRID_TOPOLOGY,
@@ -215,7 +212,7 @@ def test_on_the_grid_the_form_offers_the_entry_row_and_a_spawn_from_another_modu
 ):
     """The grid names its entry row and its exits, so a named spawn is held to them, and the
     reason shows in "Last spawns". The spawn is refused before the WMS asks any module, so the WMS
-    alone is served. (Added on 2026-10-06, jms_kapps 45, decided by Etienne.)"""
+    alone is served."""
     with participants(
         dataset,
         GRID_TOPOLOGY,

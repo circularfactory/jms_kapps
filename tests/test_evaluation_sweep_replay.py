@@ -1,11 +1,10 @@
-"""The sweep replays a recorded run compressed in time, level by level (jms_kapps 98, from the
-decisions of jms_kapps 85, note 1864593): a block of the spec gives replay factors; after the UC2
+"""The sweep replays a recorded run compressed in time, level by level: a block of the spec gives replay factors; after the UC2
 runs of each of its configurations the sweep replays the first valid one once per factor, in rising
 order, and stops the replay of that configuration at the first broken level.
 
 No test here makes a run: the UC2 runs and the replay levels are fabricated records, written by
 stand-ins for a run on the configured store (a heavy run is never a test or a CI job). The
-approvals are for the spec of a temporary folder (jms_kapps 96). The connection variables of a store
+approvals are for the spec of a temporary folder. The connection variables of a store
 are removed first.
 """
 
@@ -523,8 +522,7 @@ def test_the_broken_level_is_named_in_the_record_of_the_run_and_the_table_of_end
 def test_a_level_that_failed_ends_the_replay_and_the_sweep_goes_on(
     tmp_path, configured, capsys
 ):
-    """A failed level counts toward the 3 failed runs in a row, and the sweep goes on (jms_kapps
-    112: until 2026-10-14 it stopped the sweep)."""
+    """A failed level counts toward the 3 failed runs in a row, and the sweep goes on."""
     runs, replays = configured(replays=FabricatedReplays(failing=2.0))
 
     code = call(tmp_path)
@@ -556,8 +554,7 @@ def test_a_level_that_a_stop_signal_ended_has_not_ended_the_replay(tmp_path):
 def test_a_factor_above_one_is_skipped_and_listed_without_an_approval(
     tmp_path, configured, capsys
 ):
-    """Skipped at its start, with its higher factors, and the sweep goes on (jms_kapps 112: until
-    2026-10-14 the call was refused before its first run)."""
+    """Skipped at its start, with its higher factors, and the sweep goes on."""
     runs, replays = configured()
 
     code = call(tmp_path, approve=False)
@@ -638,7 +635,7 @@ def test_flag_overrides_are_not_covered_by_an_approval(tmp_path, configured, cap
 def test_a_replay_whose_approval_ended_is_skipped_and_the_sweep_goes_on(
     tmp_path, configured, capsys
 ):
-    """jms_kapps 112: until 2026-10-14 the sweep stopped before the level."""
+    """The sweep goes on after the level that failed to start."""
     runs, _ = configured(replays=FabricatedReplays(refusing=True))
 
     code = call(tmp_path)
@@ -651,7 +648,7 @@ def test_a_replay_whose_approval_ended_is_skipped_and_the_sweep_goes_on(
 
 
 # Under the precision rule the rounds plan the levels as they plan a ramp's: in round 1, and in a
-# later round only while the replay has not ended (jms_kapps 111; jms_kapps 114).
+# later round only while the replay has not ended.
 
 PRECISION_SPEC = """\
 [defaults]

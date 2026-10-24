@@ -1,16 +1,29 @@
+/* The look of the Launcher and the monitor: SFB 1574's colours, read off its logo. Both pages carry
+   this block with the same names and values, each in its own stylesheet, because two processes
+   serve them. The colours that carry meaning (the process states, and the module drawing of the
+   monitor) keep their own variables. */
 :root {
-  --ink: #1c1c1c;
-  --muted: #6b6b6b;
-  --line: #d5d5d2;
+  --teal: #1b7a86;
+  --petrol: #0a3249;
+  --indigo: #151a4c;
+  /* Only for signals and errors. */
+  --signal: #d0443a;
+  --ink: #231f20;
+  --muted: #5d6a72;
+  --line: #dde4e7;
   --paper: #fff;
-  --ground: #f7f7f5;
+  --ground: #fff;
+  --tint: #f2f7f8;
   --live: #2e7d32;
   --starting: #b26a00;
   --failed: #c62828;
   --stopped: #8a8a8a;
   --killed: #7b1fa2;
-  --link: #0b5cad;
-  --accent: #1f4e8c;
+  --link: #14646f;
+  /* The green frame of a module drawn from above, as on a real FlexConveyor module. */
+  --frame: #3fae49;
+  /* A live module that holds a box: neither red, which means failed, nor the orange of a box. */
+  --holds: #dbe9f8;
 }
 
 * { box-sizing: border-box; }
@@ -23,27 +36,30 @@ body {
   color: var(--ink);
   background: var(--ground);
   margin: 0;
-  padding: 16px;
+  padding: 0 20px 24px;
 }
 
 header {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px 14px;
   max-width: 1180px;
-  margin: 0 auto 8px;
+  margin: 0 auto 20px;
+  padding: 14px 0 12px;
+  border-bottom: 2px solid var(--teal);
 }
 
-h1 { font-size: 20px; margin: 0; }
-h2 { font-size: 16px; margin: 0 0 4px; }
+header img.logo { height: 40px; width: auto; display: block; }
+h1 { font-size: 18px; font-weight: 600; margin: 0; color: var(--indigo); }
+h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; color: var(--petrol); }
 main { max-width: 1180px; margin: 0 auto; }
 
 section {
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 14px 16px;
+  border-radius: 10px;
+  padding: 16px 18px;
   margin-bottom: 16px;
   overflow-x: auto;
 }
@@ -53,8 +69,10 @@ section {
 .spacer { flex: 1; }
 
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
-th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; }
-th, td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { text-align: left; font-weight: 600; color: var(--petrol); font-size: 12px; letter-spacing: .02em; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+thead th { border-bottom: 2px solid var(--line); }
+tbody tr:hover td { background: var(--tint); }
 
 button, .button, select, input {
   font: 13px system-ui, sans-serif;
@@ -65,10 +83,11 @@ button, .button, select, input {
   padding: 3px 10px;
 }
 button, .button { cursor: pointer; text-decoration: none; display: inline-block; }
-button:hover, .button:hover { background: #f0f0ee; }
+button:hover, .button:hover { background: var(--tint); border-color: var(--teal); }
 button:disabled { opacity: .45; cursor: default; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-button.primary:hover { background: #173c6c; }
+button.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+button.primary:hover { background: var(--petrol); border-color: var(--petrol); }
+button:focus-visible, .button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
 button.link { border: 0; background: none; padding: 0; color: var(--link); font-size: 14px; }
 button.link:hover { text-decoration: underline; background: none; }
 
@@ -91,7 +110,7 @@ tr.unconfirmed td:nth-child(2) { font-style: italic; }
 /* The Launcher does not answer: everything shown is from its last answer. */
 body.unanswered #processes, body.unanswered #modules, body.unanswered #boxes { opacity: .55; }
 
-tr.output td { background: #fafaf8; }
+tr.output td { background: var(--tint); }
 tr.output pre {
   margin: 4px 0 0;
   font: 12px/1.5 ui-monospace, monospace;
@@ -102,20 +121,27 @@ tr.output pre {
 }
 
 .message { padding: 6px 10px; border-radius: 6px; white-space: pre-wrap; font-size: 13px; }
-.message.info { background: #eef3fa; }
+.message.info { background: var(--tint); }
 .message.ok { background: #edf6ee; }
-.message.error { background: #fdeeee; color: var(--failed); }
+.message.error { background: #fdeceb; color: var(--signal); }
 .message.warning { background: #fff4e0; color: #7a4a00; margin: 0 0 16px; }
 #draw-errors { margin: 0 0 16px; }
 
 .switch { font-size: 13px; white-space: nowrap; }
 td.faults .switch { display: block; }
-.switch.armed { color: var(--failed); }
-.field-problem { color: var(--failed); font-size: 13px; }
-#editor-selected input[aria-invalid="true"] { border-color: var(--failed); }
+.switch.armed { color: var(--signal); }
+.field-problem { color: var(--signal); font-size: 13px; }
+#editor-selected input[aria-invalid="true"] { border-color: var(--signal); }
 
-/* The topology editor: a grid of cells, with a gap between each two for the edge between them. */
-#editor { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 4px; }
+/* A longer explanation, closed until a person opens it. */
+details { margin: 4px 0; }
+details > summary { cursor: pointer; color: var(--link); font-size: 13px; }
+details > p { margin: 4px 0 8px 14px; }
+
+/* The topology's grid: a grid of cells, with a gap between each two for the edge between them. It
+   draws the chosen topology read-only, and the edit in edit mode. */
+#editor { margin-top: 10px; }
+#run { border-top: 1px solid var(--line); padding-top: 10px; }
 .editor-body { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; margin: 8px 0; }
 .grid { --cell: 78px; --gap: 26px; display: grid; }
 .grid .cell {
@@ -129,10 +155,10 @@ td.faults .switch { display: block; }
   border-radius: 8px;
 }
 .grid .cell.empty { border: 1px dashed var(--line); background: none; color: var(--muted); font-size: 18px; }
-.grid .cell.empty:hover { background: #eef3fa; color: var(--accent); }
-.grid .cell.module { border: 2px solid #9fb3cc; background: #eef3fa; }
-.grid .cell.module:hover { background: #dfe9f6; }
-.grid .cell.module.selected { border-color: var(--accent); background: #d3e2f5; box-shadow: 0 0 0 2px #9fb3cc; }
+.grid .cell.empty:hover { background: var(--tint); color: var(--teal); }
+.grid .cell.module { border: 2px solid #8cbcc3; background: var(--tint); }
+.grid .cell.module:hover { background: #e1eef0; }
+.grid .cell.module.selected { border-color: var(--teal); background: #d2e7ea; box-shadow: 0 0 0 2px #8cbcc3; }
 .grid .cell .name { font-weight: 600; font-size: 13px; }
 .grid .cell .roles { font-size: 11px; color: var(--muted); min-height: 1.4em; }
 .grid .edge {
@@ -140,7 +166,7 @@ td.faults .switch { display: block; }
   border: 0;
   border-radius: 4px;
   background: none;
-  color: var(--accent);
+  color: var(--teal);
   font-size: 20px;
   font-weight: 600;
   display: flex;
@@ -150,12 +176,23 @@ td.faults .switch { display: block; }
 .grid .edge.across { width: var(--gap); height: var(--cell); }
 .grid .edge.down { width: var(--cell); height: var(--gap); }
 .grid .edge.none { color: #a3a39e; }
-.grid .edge:hover { background: #eef3fa; }
+button.edge:hover { background: var(--tint); }
+div.cell.module:hover { background: var(--tint); }
 #editor-selected { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 200px; }
 
 /* The boxes on the station: the query's head on one line, its text below, as the monitor shows a
    query it sends. */
 .query-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 10px; }
 .query-head .copy { margin-left: auto; }
-pre.query-text { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 24em; overflow: auto; background: #fafaf8; padding: 6px 8px; border-radius: 4px; }
+pre.query-text { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 24em; overflow: auto; background: var(--tint); padding: 6px 8px; border-radius: 4px; }
 #boxes-read { margin: 6px 0 0; }
+
+/* A phone: the header stacks, and a section keeps its tables inside it, scrolling on its own. */
+@media (max-width: 640px) {
+  body { padding: 0 12px 16px; }
+  header img.logo { height: 32px; }
+  h1 { font-size: 16px; flex-basis: 100%; }
+  section { padding: 12px; }
+  .toolbar > label { flex-basis: 100%; white-space: normal; }
+  .toolbar select { max-width: 100%; }
+}

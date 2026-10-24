@@ -1,4 +1,4 @@
-"""A plain install of jms_kapps gains no dependency from the measurement harness (jms_kapps 47).
+"""A plain install of jms_kapps gains no dependency from the measurement harness.
 
 Every module of `jms_kapps.evaluation` imports only the standard library, jms_kapps itself, and the
 distributions that jms_kapps declares for every install. A package that only the harness needs

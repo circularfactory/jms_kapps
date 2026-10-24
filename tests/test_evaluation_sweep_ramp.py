@@ -1,10 +1,10 @@
-"""The ramp of the measurement harness (jms_kapps 49): a sweep block marked as a ramp, with rising
+"""The ramp of the measurement harness: a sweep block marked as a ramp, with rising
 box rates, whose runs are heavy. The sweep runs it one rate per run, in rising order, judges each
 level with the broken rule after its run, and stops at the first broken level.
 
 No test here makes a run: a ramp's runs are fabricated records, written by a stand-in for a run on
-the configured store (Etienne's rule of 2026-10-11: a heavy run is never a test or a CI job). The
-approvals here are for the spec of a temporary folder (jms_kapps 96). The connection variables of a
+the configured store (a heavy run is never a test or a CI job). The
+approvals here are for the spec of a temporary folder. The connection variables of a
 store are removed first.
 """
 
@@ -76,8 +76,7 @@ class FabricatedRuns:
         self, broken_from: float | None = None, limited_from: float | None = None
     ) -> None:
         self.broken_from = broken_from
-        # From this rate on, 30 of 100 offered spawns are refused, and the writes stand still
-        # (jms_kapps 99).
+        # From this rate on, 30 of 100 offered spawns are refused, and the writes stand still.
         self.limited_from = limited_from
         self.made: list[tuple[int, float, str | None]] = []
 
@@ -184,8 +183,7 @@ def test_a_ramp_s_configuration_that_another_block_lists_too_is_refused(tmp_path
 def test_a_ramp_without_the_approval_switch_is_skipped_and_listed(
     tmp_path, monkeypatch, capsys
 ):
-    """Its levels are skipped and listed, and the sweep makes the runs at normal load (jms_kapps
-    112: until 2026-10-14 the call was refused before its first run)."""
+    """Its levels are skipped and listed, and the sweep makes the runs at normal load."""
     fabricated = FabricatedRuns()
     for name in ("URL", "USERNAME", "PASSWORD"):
         monkeypatch.setenv(f"TRIPLESTORE_{name}", "x")
@@ -232,7 +230,7 @@ def test_a_selection_without_a_ramp_s_level_needs_no_approval(tmp_path, monkeypa
 
 
 def test_one_approval_covers_the_levels_of_two_ramps(tmp_path, monkeypatch):
-    """One approval covers one spec for one period (jms_kapps 96): a selection with levels of two
+    """One approval covers one spec for one period: a selection with levels of two
     ramps to make runs, each level under the approval."""
     second = '\n[[sweep]]\nramp = true\ntopology = "pair"\nboxes_per_minute = [10, 20]\nrepetitions = 1\n'
     spec_path = spec_file(tmp_path, SPEC + second)
@@ -311,7 +309,7 @@ def test_the_sweep_runs_a_ramp_in_rising_order_and_stops_it_at_its_first_broken_
 def test_a_ramp_goes_on_past_a_uc2_limited_level_with_a_plateau_and_stops_at_a_heap_refusal(
     tmp_path,
 ):
-    """jms_kapps 99. From 40 boxes per minute on, 30 % of the spawns are refused and the writes
+    """From 40 boxes per minute on, 30 % of the spawns are refused and the writes
     plateau: the old rule stopped the ramp at 40. Now it runs 80, where the store refuses for
     want of heap, and stops there."""
     to_make, spec, found = plan(spec_file(tmp_path))

@@ -90,11 +90,8 @@ class ModulesAndConnections(NamedTuple):
     """Every module of the station with its types, in the order of their IRIs, and every
     connection, as (the module that has it, the module it leads to), with the direction of each
     that names one the use case knows: what the WarehouseManagementSystem picks the modules of a
-    spawn from. (Changed on 2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07: the WMS's
-    strategy is given the connections as the WMS read them; that each comes with its direction, as
-    a module's does, is the build's reading. Until then: "and every connection, as (the module
-    that has it, the module it leads to): what the WarehouseManagementSystem picks the modules of
-    a spawn from.")"""
+    spawn from. The WMS's strategy is given the connections as the WMS read them, each with its
+    direction, as a module's is."""
 
     types: dict[IRI, list[ModuleType]]
     connections: list[tuple[IRI, IRI]]
@@ -113,16 +110,7 @@ def modules_and_connections(db: Queryable) -> ModulesAndConnections:
     resource the graph types as one of the three module classes, with those of its classes, and
     where each connection leads. A module's roles are among its types, `fc:EntryModule` and
     `fc:ExitModule`, where the topology names them (`topology.choices`); the connections say which
-    destinations an origin reaches (`routing.reachable`).
-
-    (Changed on 2026-10-07, jms_kapps 51, decided by Etienne: "the WMS picks only an exit that it
-    can reach from the origin, for every topology", with the connections "in the same graph read
-    as the module types". Until then this was `module_types`, "Every module of the station, with
-    its types, in the order of their IRIs, in one read", added on 2026-10-06, jms_kapps 45, for
-    Etienne's decision that roles are optional; one read of every module with its types was that
-    build's reading. It had replaced `modules_of_class`, "Every module of `module_class`, such as
-    `fc:EntryModule`, in the order of their IRIs", which the WarehouseManagementSystem read once
-    for each role.)"""
+    destinations an origin reaches (`routing.reachable`)."""
     classes = " ".join(f"<{module_class}>" for module_class in _MODULE_CLASSES)
     rows = bindings(
         db,
@@ -181,7 +169,7 @@ def transit_times(db: Queryable, resource: IRI) -> TransitTimes:
             else f"{len(own)} transit times ({', '.join(f'{s:g}' for s in sorted(own))} s)"
         )
         raise TransitTimeError(
-            f"{resource.fragment} has {held} in the graph (fc:hasTransitTime), and needs exactly "
+            f"{resource.fragment} has {held} in the knowledge graph (fc:hasTransitTime), and needs exactly "
             "one, which a launch writes, so it does not start"
         )
     return TransitTimes(own[0], max(seconds for _, seconds in times))
@@ -283,10 +271,6 @@ def holds_query(resource: IRI, box: IRI) -> str:
 def holds(db: Queryable, resource: IRI, box: IRI) -> bool:
     """Whether `resource` possesses `box` now, in one `ASK` about that one box: its answer is the
     same size however many boxes `resource` holds.
-
-    (Added on 2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85: "when a box returns, the
-    WMS asks the store about that one box (an `ASK`)", in place of its read of every box it
-    holds, `boxes_held_by`.)
     """
     answer = db.query(holds_query(resource, box))
     return bool(answer.get("boolean", False)) if isinstance(answer, dict) else False
@@ -319,19 +303,13 @@ def at_start(db: Queryable, resource: IRI) -> StartRead:
 class GraphView:
     """The reads above, bound to one client, and the fetch of a box with its transport, through
     the party's middleware. What a running module and the WarehouseManagementSystem are given as
-    their graph. None of them reads every box in the graph. (Changed on 2026-10-12, jms_kapps 92,
-    decided by Sören on jms_kapps 85: the WarehouseManagementSystem no longer numbers a box after
-    the boxes in the graph. Until then: "The reads above and the boxes, bound to one client".)
+    their graph. None of them reads every box in the graph.
 
     Neither reads a transport it is notified of: the middleware's intake hands it that one. A
     module reads a transport when a box arrives on it, from its Receive, and when the bound of its
     reservation finds the box its own with no Receive: then it reads the box with its transport
-    through the box's link to it, with `fetch`, its middleware's `mw.fetch`. (Changed on
-    2026-10-06, jms_kapps 39, decided by Etienne: a party finds a transport through its box, never
-    from the box's name. Until then the first sentence went on: "Neither reads a transport: the
-    middleware's intake hands it the one it is notified of." Changed again on 2026-10-06,
-    jms_kapps 40, decided by Etienne, when the Receive came to start the receiving module. Until
-    then: "A module reads a transport only when it holds a box and is told of no transport".)
+    through the box's link to it, with `fetch`, its middleware's `mw.fetch`. A party finds a
+    transport through its box, never from the box's name.
     """
 
     def __init__(self, db: Queryable, fetch: Fetch) -> None:

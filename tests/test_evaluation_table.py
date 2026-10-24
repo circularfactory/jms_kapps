@@ -1,4 +1,4 @@
-"""The table of a spec (jms_kapps 49): the statistics of its runs for each configuration and each
+"""The table of a spec: the statistics of its runs for each configuration and each
 run kind, the SHACL overhead, the load levels, the calibration pair, the ramps and the runs left
 out. Every number here comes from fabricated records and is computed by hand; no store, no run.
 """
@@ -361,7 +361,7 @@ def test_the_table_compares_a_calibration_pair_and_gives_the_matcher_s_reads(spe
 
 
 def test_a_baseline_replaying_a_run_takes_its_columns_in_that_run_s_row(spec):
-    """A store-only baseline (jms_kapps 81) names the run it replays; it has store requests and
+    """A store-only baseline names the run it replays; it has store requests and
     no commit, no transport and no matcher."""
     baseline = record(
         "baseline-1",
@@ -402,8 +402,7 @@ def test_the_table_reports_the_level_before_a_ramp_s_first_broken_one_as_its_sca
         ramp_level(spec, 5, "ramp-10"),
         ramp_level(spec, 6, "ramp-20"),
         # A heap refusal breaks the level; the 205 completed writes a minute, 2.5 % more than the
-        # 200 at 20 boxes per minute, are a plateau, which is shown and breaks nothing
-        # (jms_kapps 99).
+        # 200 at 20 boxes per minute, are a plateau, which is shown and breaks nothing.
         ramp_level(
             spec,
             7,
@@ -570,7 +569,7 @@ def test_the_markdown_shows_each_ramp_level_s_numbers(spec):
 
     shown = markdown(table_of(spec, levels))
 
-    # The spawn columns are empty for a record that holds no spawn count (before jms_kapps 99).
+    # The spawn columns are empty for a record that holds no spawn count (an earlier form of the record).
     assert (
         "| 10 | spec 5 | ramp-10 | yes | 0 | 0.00% | 0.1 | 100 | 20 |  |  |  |  |  |  |  |"
         in shown
@@ -586,7 +585,7 @@ def test_a_baseline_made_by_jms_kapps_81_s_code_takes_its_columns_in_its_run_s_r
 ):
     """Both records in the form their code writes them: a UC2 run recorded by part 1 and part 2
     against their stand-ins, and its store-only baseline made by `baseline.run_baseline` against
-    a stand-in store (jms_kapps 81). The table finds the baseline's row by `replayed_run`, and
+    a stand-in store. The table finds the baseline's row by `replayed_run`, and
     reads its measures as part 2's: the accepted request of the window, its share of refused or
     timed out, its completed writes, and the refusal for want of heap in its window but not the
     one before it."""

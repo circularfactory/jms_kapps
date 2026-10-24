@@ -1,4 +1,4 @@
-"""Approval files for tests (jms_kapps 96). Each approves a spec of a temporary folder, for a period
+"""Approval files for tests. Each approves a spec of a temporary folder, for a period
 around the time of the test: none approves a spec of the repository, and no test makes a heavy run
 on a store (`tests/test_evaluation_approval.py` checks that no file holds a shipped spec's key)."""
 

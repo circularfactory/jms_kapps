@@ -2,7 +2,7 @@
 
 It parses `uc1/ontology/integration_usecase.ttl` offline and checks the ten properties of the
 effective values (who holds each, its range, its unit, and that each is functional), the retired
-names, the superclasses, the Screw type `:M4`, the decision snapshot, and the outcome vocabulary. `test_uc1_ontology_live.py` loads
+names, the superclasses, the Screw type `:M4`, the parameter copy, and the outcome vocabulary. `test_uc1_ontology_live.py` loads
 the same file into a live GraphDB and hydrates it through the object-graph mapper.
 """
 
@@ -22,8 +22,8 @@ TORQUE = "Unit: N·m."
 POSITION = "Unit: mm along the y axis of the robot frame."
 ANGLE = "Unit: degrees."
 
-TYPE_HOLDERS = {"ScrewType", "Screw", "DecisionSnapshot"}
-PLACEMENT_HOLDERS = {"Screw", "DecisionSnapshot"}
+TYPE_HOLDERS = {"ScrewType", "ParameterCopy"}
+PLACEMENT_HOLDERS = {"Screw", "ParameterCopy"}
 
 # Each property: the individuals that may hold it, and its unit.
 PROPERTIES = {
@@ -56,7 +56,7 @@ RETIRED = [
     "hasRobotPositionTimeSeriesData",
 ]
 
-# Each unscrewing outcome, the Screw conditions it indicates, and the category each requires.
+# Each detection result, the Screw conditions it indicates, and the category each requires.
 OUTCOMES = {
     "ScrewIntact": {"Intact"},
     "MissingScrew": {"MissingScrewMode"},
@@ -131,8 +131,7 @@ def test_each_property_has_its_holders_its_range_and_its_unit(
 
 
 def test_exactly_the_ten_and_two_prov_terms_are_functional(graph: Graph) -> None:
-    """The two PROV terms: a snapshot comes from one classification, which ends once
-    (jms_kapps 59)."""
+    """The two PROV terms: a snapshot comes from one classification, which ends once."""
     functional = {local(p) for p in graph.subjects(RDF.type, OWL.FunctionalProperty)}
 
     assert functional == {*PROPERTIES, str(PROV.wasGeneratedBy), str(PROV.endedAtTime)}
@@ -169,9 +168,9 @@ def test_the_retired_names_are_gone(graph: Graph) -> None:
 def test_each_class_sits_directly_under_its_core_class(graph: Graph) -> None:
     """Directly, as use case 2's BoxTransportOperation is: the object-graph mapper finds a property
     of a class only through its domain, so only a direct triple lets an unscrewing operation name
-    the Capability it implements. A Screw is a `cfc:Workpiece`, the common superclass of
-    `cfc:Assembly` and `cfc:Component`, which says what Figure 7 of the paper draws and leaves the
-    choice between the two to Milestone 2. A Screw type has no superclass."""
+    the Capability it implements. A Screw is a `cfc:Component` (a workpiece that is indivisible within
+    the modeling scope, disjoint from `cfc:Assembly`), and a Screw type is a `cfc:ComponentType`.
+    Neither carries a restriction of its own in this file."""
     superclasses = {
         cls: set(graph.objects(term(cls), RDFS.subClassOf))
         for cls in ("UnscrewingOperation", "Screw", "ScrewType", "AngleGrinder")
@@ -179,8 +178,8 @@ def test_each_class_sits_directly_under_its_core_class(graph: Graph) -> None:
 
     assert superclasses == {
         "UnscrewingOperation": {URIRef(str(CFC.Operation))},
-        "Screw": {core("Workpiece")},
-        "ScrewType": set(),
+        "Screw": {core("Component")},
+        "ScrewType": {core("ComponentType")},
         "AngleGrinder": {core("Assembly"), core("Product")},
     }
     # The artifact's undeclared `:Product` is gone, and nothing names it any more.
@@ -236,21 +235,22 @@ def test_the_artifacts_product_class_is_gone(graph: Graph) -> None:
     assert [triple for triple in graph if mine in triple] == []
 
 
-def test_the_design_names_the_screw_type_on_the_product_type(graph: Graph) -> None:
-    """The design: a grinder of this model is built with this Screw type. It is what the detector
-    compares against when a recovered Screw carries no record of its own."""
+def test_the_design_names_the_screw_type_on_the_assembly_type(graph: Graph) -> None:
+    """The design: a grinder of this model is built with this Screw type. It sits on Core's
+    assembly type, which defines the composition of an assembly independent of its instances. It
+    is what the detector compares against when a recovered Screw carries no record of its own."""
     assert (term("hasExpectedScrewType"), RDF.type, OWL.ObjectProperty) in graph
     assert set(graph.objects(term("hasExpectedScrewType"), RDFS.domain)) == {
-        core("ProductType")
+        core("AssemblyType")
     }
     assert set(graph.objects(term("hasExpectedScrewType"), RDFS.range)) == {
         term("ScrewType")
     }
 
 
-# What a product type that carries the design property would be entailed to be. The claim of
+# What an assembly type that carries the design property would be entailed to be. The claim of
 # `:hasExpectedScrewType` is that `:Screw` is not among them.
-PRODUCT_TYPE = term("ProbeProductType")
+PRODUCT_TYPE = term("ProbeAssemblyType")
 SCREW_TYPE = term("M4")
 
 # The ways the file could be written that would break the claim. Each is applied to the ontology on
@@ -266,8 +266,8 @@ BREAKING = {
         OWL.equivalentProperty,
         term("hasScrewType"),
     ),
-    "a product type declared to be a Screw": (
-        URIRef(CORE_NS + "ProductType"),
+    "an assembly type declared to be a Screw": (
+        URIRef(CORE_NS + "AssemblyType"),
         RDFS.subClassOf,
         term("Screw"),
     ),
@@ -325,14 +325,14 @@ def entailed(graph: Graph, extra: tuple | None = None) -> Graph:
 def test_the_design_property_does_not_make_a_product_type_a_screw(graph: Graph) -> None:
     """Why `:hasExpectedScrewType` exists instead of a second use of `:hasScrewType`. RDFS reads
     `rdfs:domain` as an inference rule: from `p rdfs:domain C` and `x p y` follows `x rdf:type C`.
-    `:hasScrewType` has the domain `:Screw`, so carrying it would make a product type a Screw.
+    `:hasScrewType` has the domain `:Screw`, so carrying it would make an assembly type a Screw.
 
-    This asserts the design statement about a product type, closes the graph under the rules that
+    This asserts the design statement about an assembly type, closes the graph under the rules that
     could produce that type, and checks it is absent. The counterfactual is the proof that the
     closure can produce it at all.
     """
     closed = entailed(graph)
-    assert (PRODUCT_TYPE, RDF.type, URIRef(CORE_NS + "ProductType")) in closed, (
+    assert (PRODUCT_TYPE, RDF.type, URIRef(CORE_NS + "AssemblyType")) in closed, (
         "the closure does not even derive the type the design property's domain gives"
     )
 
@@ -347,7 +347,7 @@ def test_the_design_property_does_not_make_a_product_type_a_screw(graph: Graph) 
 @pytest.mark.parametrize("why", sorted(BREAKING))
 def test_the_claim_is_checked_and_not_assumed(graph: Graph, why: str) -> None:
     """The test above must fail on a file that breaks the claim. Each of these three ways of
-    writing the ontology does make a product type a Screw, and each one must be caught."""
+    writing the ontology does make an assembly type a Screw, and each one must be caught."""
     closed = entailed(graph, BREAKING[why])
 
     assert (PRODUCT_TYPE, RDF.type, term("Screw")) in closed, (
@@ -358,17 +358,19 @@ def test_the_claim_is_checked_and_not_assumed(graph: Graph, why: str) -> None:
 def test_an_operation_names_its_workpiece_and_a_screw_names_its_operation(
     graph: Graph,
 ) -> None:
-    """Figure 7 of the paper draws both. `:hasWorkpiece` is the step from the operation to the
-    product, from which `cfc:hasProductType` reaches the model and `:hasExpectedScrewType` the
+    """Figure 7 of the paper draws both. `:concernsWorkpiece` is the step from the operation to the
+    product, from which `cfc:hasAssemblyType` reaches the assembly type and `:hasExpectedScrewType` the
     Screw type the design calls for. `:hasOperation` is the back-link that gives §5.1 the
     bidirectional traceability it claims for R4. `:hasOperation` is the `owl:inverseOf`
-    `:hasScrew`, so a repository on rdfsplus-optimized infers the back-link in the operation's own
-    commit; the planner also writes it explicitly (Etienne, 2026-10-15, MR jms_kapps!113)."""
-    assert (term("hasWorkpiece"), RDF.type, OWL.ObjectProperty) in graph
-    assert set(graph.objects(term("hasWorkpiece"), RDFS.domain)) == {
+    `:concernsScrew`, so a repository on rdfsplus-optimized infers the back-link in the operation's own
+    commit; the planner also writes it explicitly."""
+    assert (term("concernsWorkpiece"), RDF.type, OWL.ObjectProperty) in graph
+    assert set(graph.objects(term("concernsWorkpiece"), RDFS.domain)) == {
         term("UnscrewingOperation")
     }
-    assert set(graph.objects(term("hasWorkpiece"), RDFS.range)) == {core("Workpiece")}
+    assert set(graph.objects(term("concernsWorkpiece"), RDFS.range)) == {
+        core("Workpiece")
+    }
 
     assert (term("hasOperation"), RDF.type, OWL.ObjectProperty) in graph
     assert set(graph.objects(term("hasOperation"), RDFS.domain)) == {term("Screw")}
@@ -376,15 +378,15 @@ def test_an_operation_names_its_workpiece_and_a_screw_names_its_operation(
         term("UnscrewingOperation")
     }
 
-    assert (term("hasOperation"), OWL.inverseOf, term("hasScrew")) in graph
+    assert (term("hasOperation"), OWL.inverseOf, term("concernsScrew")) in graph
 
 
 def test_a_screw_names_its_screw_type(graph: Graph) -> None:
-    for cls in ("Screw", "ScrewType", "DecisionSnapshot", "UnscrewingOperation"):
+    for cls in ("Screw", "ScrewType", "ParameterCopy", "UnscrewingOperation"):
         assert (term(cls), RDF.type, OWL.Class) in graph
     assert set(graph.objects(term("hasScrewType"), RDFS.domain)) == {term("Screw")}
     assert set(graph.objects(term("hasScrewType"), RDFS.range)) == {term("ScrewType")}
-    assert set(graph.objects(term("hasScrew"), RDFS.range)) == {term("Screw")}
+    assert set(graph.objects(term("concernsScrew"), RDFS.range)) == {term("Screw")}
 
 
 def test_m4_is_a_screw_type_with_no_values(graph: Graph) -> None:
@@ -395,12 +397,12 @@ def test_m4_is_a_screw_type_with_no_values(graph: Graph) -> None:
 
 
 def test_an_operation_links_to_its_decision_snapshot(graph: Graph) -> None:
-    assert (term("usedValues"), RDF.type, OWL.ObjectProperty) in graph
-    assert set(graph.objects(term("usedValues"), RDFS.domain)) == {
+    assert (term("classifiedWith"), RDF.type, OWL.ObjectProperty) in graph
+    assert set(graph.objects(term("classifiedWith"), RDFS.domain)) == {
         term("UnscrewingOperation")
     }
-    assert set(graph.objects(term("usedValues"), RDFS.range)) == {
-        term("DecisionSnapshot")
+    assert set(graph.objects(term("classifiedWith"), RDFS.range)) == {
+        term("ParameterCopy")
     }
 
 
@@ -416,15 +418,15 @@ def test_an_operation_holds_one_reference_to_its_curves(graph: Graph) -> None:
 
 def test_the_outcome_vocabulary(graph: Graph) -> None:
     for prop, domain, range_ in (
-        ("hasOutcome", "UnscrewingOperation", "UnscrewingOutcome"),
-        ("indicates", "UnscrewingOutcome", "ScrewCondition"),
+        ("hasDetectionResult", "UnscrewingOperation", "DetectionResult"),
+        ("indicates", "DetectionResult", "ScrewCondition"),
         ("requiresDisassembly", "ScrewCondition", "DisassemblyCategory"),
     ):
         assert (term(prop), RDF.type, OWL.ObjectProperty) in graph
         assert set(graph.objects(term(prop), RDFS.domain)) == {term(domain)}
         assert set(graph.objects(term(prop), RDFS.range)) == {term(range_)}
 
-    outcomes = {local(s) for s in graph.subjects(RDF.type, term("UnscrewingOutcome"))}
+    outcomes = {local(s) for s in graph.subjects(RDF.type, term("DetectionResult"))}
     assert outcomes == set(OUTCOMES)
     for outcome, conditions in OUTCOMES.items():
         assert objects_of(graph, outcome, "indicates") == conditions
@@ -455,3 +457,77 @@ def test_the_vocabulary_module_matches_the_file(graph: Graph) -> None:
         for name, (holders, _) in PROPERTIES.items()
         if holders == PLACEMENT_HOLDERS
     }
+
+
+def test_the_ontology_aligns_screw_and_screw_type_with_core(graph: Graph) -> None:
+    """The alignment triples, each checked on its own."""
+    assert (term("ScrewType"), RDFS.subClassOf, core("ComponentType")) in graph
+    assert (term("Screw"), RDFS.subClassOf, core("Component")) in graph
+    assert (term("Screw"), RDFS.subClassOf, core("Workpiece")) not in graph
+    assert (term("hasScrewType"), RDFS.subPropertyOf, core("hasComponentType")) in graph
+    assert set(graph.objects(term("hasExpectedScrewType"), RDFS.domain)) == {
+        core("AssemblyType")
+    }
+    assert set(graph.objects(term("hasExpectedScrewType"), RDFS.range)) == {
+        term("ScrewType")
+    }
+
+
+def test_the_core_names_that_the_alignment_uses_are_declared_by_core() -> None:
+    """A typo in a Core name would pass every offline test and fail only live."""
+    core_graph = Graph().parse(
+        data=read_asset("kapps_semantic_middleware", "ontology/core.ttl"),
+        format="turtle",
+    )
+    for local_name in (
+        "Component",
+        "ComponentType",
+        "AssemblyType",
+        "Workpiece",
+        "hasComponentType",
+        "hasAssemblyType",
+    ):
+        assert any(core(local_name) == s for s in core_graph.subjects()), local_name
+
+
+def test_the_ontology_names_none_of_the_six_old_terms() -> None:
+    """The renames: the six old names are gone and the six new ones are declared."""
+    graph = Graph().parse(
+        data=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        format="turtle",
+    )
+    mentioned = {local(node) for triple in graph for node in triple}
+    old = {
+        "Decision" + "Snapshot",
+        "used" + "Values",
+        "has" + "Screw",
+        "has" + "Workpiece",
+    }
+    old |= {"has" + "Outcome", "Unscrewing" + "Outcome"}
+
+    assert mentioned.isdisjoint(old)
+    for new in (
+        "ParameterCopy",
+        "classifiedWith",
+        "concernsScrew",
+        "concernsWorkpiece",
+        "hasDetectionResult",
+        "DetectionResult",
+    ):
+        assert new in mentioned
+
+
+UNSCREWING = "http://w3id.org/circularfactory/Unscrewing"
+
+
+@pytest.mark.parametrize("name", ["ontology/integration_usecase.ttl", "shapes/integration_usecase_shapes.ttl"])
+def test_the_file_declares_the_unscrewing_namespace_as_prefix_and_base(name: str) -> None:
+    """The namespace is spelled out here, not read from `JMS_NS`, so that the test fails when the
+    file or the constant drifts from the agreed namespace."""
+    text = read_asset("jms_kapps.uc1", *name.split("/"))
+    parsed = Graph().parse(data=text, format="turtle")
+
+    assert dict(parsed.namespaces())[""] == URIRef(UNSCREWING + "#")
+    if name.startswith("ontology"):
+        assert f"@base <{UNSCREWING}> ." in text
+    assert JMS_NS == UNSCREWING + "#"

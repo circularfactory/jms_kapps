@@ -4,18 +4,18 @@ Each participant of a use case runs as a process of its own, behind a middleware
 own: a FlexConveyorModule, the WarehouseManagementSystem and the monitor of use case 2, and the
 learner of use case 1. `process_parser` is the command line they share, and `run_process` binds a
 free port, builds the middleware for it and serves it until a signal stops the process, with its
-API docs by relative paths, so that they work through use case 2's Launcher as at the process's
-own address. A process whose middleware has an activity feed shows its own records there too,
-from INFO up, beside the middleware's: a module's and the WMS's activity page shows the steps that
+API docs by relative paths, so that they work through the page of the run (`passthrough`) as at
+the process's own address. A process whose middleware has an activity feed shows its own records
+there too, from INFO up, beside the middleware's: a module's and the WMS's activity page shows the steps that
 process takes. Uvicorn runs on the main thread, so that a signal reaches it and the middleware
 deregisters on the way out. SIGHUP, which a closing terminal sends, stops a process as SIGTERM does
 (`hangup_stops`). Every process takes Ctrl+C and every stop signal as one stop (`one_stop`), so a
 second one never cuts its stop short: each process this server serves, and use case 2's Launcher.
 After a clean stop the server raises no signal again, so the process exits with code 0 on every OS,
-whatever began its stop. (Changed on 2026-10-12, jms_kapps 104, decided by Sören: the demos are
-OS-agnostic from the outside. Until then "A process that must not let a second stop signal cut its
-stop short, as use case 2's Launcher, takes every stop signal as one stop (`one_stop`).", and a
-process ended as the stop signal ends it.)
+whatever began its stop: the demos are OS-agnostic from the outside, so a person or a supervisor on
+any OS stops a demo the same way, whatever signal its OS sends. A stop signal that arrives while
+the process still starts, from the moment it enters `run_process` until the server takes the
+signals, is a stop too: the start ends there, and the process exits with code 0.
 """
 
 from __future__ import annotations
@@ -51,9 +51,7 @@ from jms_kapps.common.triplestore import DEFAULT_DATASET
 # stop for the box it reserved itself for and for its own work, this bound at most, counted from
 # the stop signal and beside this wait, not after it. The middleware's activity stream ends by
 # itself after 2 s, so an open activity page ends before the bound does. Uvicorn takes the bound
-# in whole seconds. (Changed on 2026-10-06, jms_kapps 42, decided by Etienne: a module waits at its
-# stop. Until then "The other half is for the deregistration and the exit, which take about 1 s,
-# and the rest is a margin.")
+# in whole seconds.
 GRACEFUL_SHUTDOWN_SECONDS = STOP_TIMEOUT_SECONDS // 2
 
 # This package's logger: the parent of every logger of the use cases' code.
@@ -97,8 +95,7 @@ def begin_stop(app: FastAPI) -> None:
     stop signal arrives. The first mark keeps the time it was made, so that a party counts its
     waits from the first signal, and sets the stop's event (`stop_event`), which wakes a thread
     that waits for the stop. It takes no lock that the main thread holds, so it is safe in a
-    signal handler. (Changed on 2026-10-06, jms_kapps 42, decided by Etienne: a module waits at
-    its stop. Until then "One assignment and no lock, so it is safe in a signal handler.")"""
+    signal handler."""
     if not stop_has_begun(app):
         app.state.stop_began_at = time.monotonic()
     app.state.stop_has_begun = True
@@ -230,9 +227,12 @@ class _StopMarkingServer(uvicorn.Server):
     makes uvicorn skip the shutdown, where the middleware deregisters. SIGHUP is a stop signal
     here too (`hangup_stops`)."""
 
-    def __init__(self, app: FastAPI) -> None:
+    def __init__(
+        self, app: FastAPI, taking_over: Callable[[], None] = lambda: None
+    ) -> None:
         super().__init__(server_config(app))
         self._app = app
+        self._taking_over = taking_over
 
     def _begin(self, signum: int) -> None:
         begin_stop(self._app)
@@ -244,12 +244,11 @@ class _StopMarkingServer(uvicorn.Server):
         exit on a second Ctrl+C, and raise each signal it caught again once the shutdown is over.
         No signal is raised again here, so a process that stopped cleanly exits with code 0 on
         every OS, whatever began its stop: on Windows a raised signal ends the process through
-        the C runtime, with a non-zero code. (Changed on 2026-10-12, jms_kapps 104, decided by
-        Sören: the demos are OS-agnostic from the outside. Until then "Uvicorn's own stop
-        signals, and SIGHUP as one of them. SIGHUP's handler is set inside uvicorn's and put back
-        first, so that uvicorn raises a SIGHUP again once the shutdown is over, as it raises a
-        SIGTERM: the process then ends as that signal ends it.")"""
+        the C runtime, with a non-zero code. SIGHUP is one of the signals, and its handler is
+        set after uvicorn's. `taking_over` is called once every handler is in place, so that a
+        signal before it is still the start's to take (`_StartupStop`)."""
         with one_stop(self._begin):
+            self._taking_over()
             yield
 
 
@@ -262,20 +261,75 @@ async def serve(middleware: SemanticMiddleware, sock: socket.socket) -> None:
     await _StopMarkingServer(middleware.app).serve(sockets=[sock])
 
 
-async def _serve_to_the_end(
-    middleware: SemanticMiddleware, sock: socket.socket
-) -> None:
-    """Serve as `serve` does, and then ignore Ctrl+C and every stop signal until the process
-    exits. The stop is over then, and the handlers that `one_stop` put back would let a late
-    signal end a process that stopped cleanly with a non-zero code: the Launcher's SIGTERM to a
-    child that a terminal's Ctrl+C had stopped first, for one. Only a process of its own does
-    this, never `serve`, which a caller in the same process may go on from. (Added on
-    2026-10-15, jms_kapps 104.)"""
-    await serve(middleware, sock)
-    for sig in (signal.SIGINT, *PLATFORM.STOP_SIGNALS):
+class _StoppedWhileStarting(BaseException):
+    """A stop signal arrived while the process still started. A `BaseException`, as
+    `KeyboardInterrupt` is, so that no `except Exception` on the way, in a build or a library,
+    takes it for an error, and `run_process` alone catches it."""
+
+
+class _StartupStop:
+    """Takes Ctrl+C and every stop signal while a process starts, from the moment it enters
+    `run_process` until its server takes the signals (`taking_over`).
+
+    Left to Python, a Ctrl+C would escape as `KeyboardInterrupt` from wherever the start was, and
+    SIGTERM and SIGHUP would end the process by their default action: it would die by the signal,
+    and its supervisor would read it as failed instead of stopped. Here the first signal ends the
+    start where it is, without finishing the build: nothing has registered yet, since a middleware
+    registers in its lifespan startup, once the server serves, so nothing is left to deregister,
+    and the stop stays as short as the start was far. Every later signal does nothing (as `one_stop`), so uv's SIGINT,
+    passed on again 200 ms after the first, does not cut the end short. Once the server has taken
+    the signals, they are the server's, and when it puts this handler back after its stop, a late
+    signal does nothing here either.
+
+    SIGHUP is left as it is where it is ignored, as `hangup_stops` leaves it, so that a process
+    started under `nohup` keeps outliving its terminal.
+    """
+
+    def __init__(self) -> None:
+        self._over = False
+
+    def take(self) -> None:
+        """Take the signals, on the main thread, as `run_process` runs on."""
+        for sig in _stop_signals():
+            if sig != PLATFORM.HANGUP or signal.getsignal(sig) != signal.SIG_IGN:
+                signal.signal(sig, self._handle)
+
+    def taking_over(self) -> None:
+        """The server takes the signals from here on."""
+        self._over = True
+
+    def _handle(self, signum: int, frame: FrameType | None) -> None:
+        if self._over:
+            return
+        self._over = True
+        raise _StoppedWhileStarting
+
+
+def _stop_signals() -> tuple[int, ...]:
+    """Ctrl+C, the platform's stop signals and, where there is one, SIGHUP."""
+    hangup = () if PLATFORM.HANGUP is None else (PLATFORM.HANGUP,)
+    return (signal.SIGINT, *PLATFORM.STOP_SIGNALS, *hangup)
+
+
+def _ignore_stop_signals() -> None:
+    """Ignore Ctrl+C and every stop signal until the process exits.
+
+    Its stop is over then, and a handler put back would let a late signal end a process that
+    stopped cleanly with a non-zero code: the Launcher's SIGTERM to a child that a terminal's
+    Ctrl+C had stopped first, for one. Only a process of its own does this, never `serve`, which a
+    caller in the same process may go on from."""
+    for sig in _stop_signals():
         signal.signal(sig, signal.SIG_IGN)
-    if PLATFORM.HANGUP is not None:
-        signal.signal(PLATFORM.HANGUP, signal.SIG_IGN)
+
+
+async def _serve_to_the_end(
+    middleware: SemanticMiddleware, sock: socket.socket, startup: _StartupStop
+) -> None:
+    """Serve as `serve` does, with the signals taken from `startup` once the server takes them,
+    and then ignore Ctrl+C and every stop signal until the process exits
+    (`_ignore_stop_signals`), at once, before the event loop closes."""
+    await _StopMarkingServer(middleware.app, startup.taking_over).serve(sockets=[sock])
+    _ignore_stop_signals()
 
 
 def process_parser(description: str) -> argparse.ArgumentParser:
@@ -288,13 +342,33 @@ def process_parser(description: str) -> argparse.ArgumentParser:
     return parser
 
 
-def _log_to_stderr() -> None:
-    """Log this package's records from INFO up, and every other logger's from WARNING up.
+class _OwnOrWarning(logging.Filter):
+    """Passes a record of this package's loggers, and any record from WARNING up."""
 
-    This package's INFO records matter: a module logs each step it accepts, and the vertical slice
-    reads those lines. So the level of the `jms_kapps` logger is set here. A library's INFO
+    def filter(self, record: logging.LogRecord) -> bool:
+        return (
+            record.levelno >= logging.WARNING
+            or record.name == _OWN_LOGGER
+            or record.name.startswith(_OWN_LOGGER + ".")
+        )
+
+
+def _log_to_stderr() -> None:
+    """Show this package's records from INFO up in the terminal, and every other logger's from
+    WARNING up.
+
+    This package's INFO records matter: a module logs each step it accepts, and the tests
+    read those lines. So the level of the `jms_kapps` logger is set here. A library's INFO
     records, such as `httpx`'s one line per request, would bury those steps, so the root logger
     is at WARNING.
+
+    The middleware's INFO records would still reach the terminal where its activity feed is on,
+    because the feed sets the middleware's package logger to INFO: a heartbeat line
+    per process, and the connector's read and write lines. A UC2 run shows the lines of all its
+    processes in one terminal, so the stderr handler carries a filter (`_OwnOrWarning`): INFO
+    only from this package, WARNING and above from every logger. No logger level changes, so the
+    middleware's activity feeds and the dashboard's Logs tab, whose handlers are not this one,
+    still get the middleware's INFO records.
 
     The setup takes over with `force=True`, whatever a dependency did at import: the middleware's
     transport, `transitional_sync_middleware`, calls `basicConfig` at INFO and attaches a stderr
@@ -308,6 +382,8 @@ def _log_to_stderr() -> None:
     (see `feed_own_log`) on the `jms_kapps` logger, so the call does not touch them.
     """
     logging.basicConfig(level=logging.WARNING, force=True)
+    for handler in logging.getLogger().handlers:
+        handler.addFilter(_OwnOrWarning())
     logging.getLogger(_OWN_LOGGER).setLevel(logging.INFO)
 
 
@@ -353,7 +429,9 @@ def run_process(
 ) -> None:
     """Bind a free port on `host`, build the middleware for it, and serve until a signal stops it,
     with its API docs by relative paths (see `relative_api_docs`), and with this package's records
-    on its activity page, if it has one (see `feed_own_log`).
+    on its activity page, if it has one (see `feed_own_log`). A stop signal before the server
+    serves ends the start there (`_StartupStop`); either way the process returns from here once
+    its stop is over, with every stop signal ignored, to exit with code 0.
 
     Args:
         host: The host to bind.
@@ -361,19 +439,21 @@ def run_process(
         announcement: The line to print once the process is built, given the address it serves
             on.
     """
-    _log_to_stderr()
-    sock = bind_socket(host)
-    port = sock.getsockname()[1]
-    middleware = build_for_port(port)
-    # Its docs, like each of its pages, work through the Launcher's port as at its own.
-    relative_api_docs(middleware.app)
-    feed_own_log(middleware)
-    print(announcement(f"http://{host}:{port}/"), flush=True)
+    startup = _StartupStop()
+    startup.take()
     try:
-        asyncio.run(_serve_to_the_end(middleware, sock))
-    except KeyboardInterrupt:
-        # A Ctrl+C while the event loop starts, before the server takes the signals: nothing
-        # serves yet, so nothing is left to stop. Once it serves, a Ctrl+C begins the stop as every stop signal does, and raises
-        # nothing. (Changed on 2026-10-12, jms_kapps 104, decided by Sören. Until then "Uvicorn
-        # has shut down cleanly by the time Ctrl+C arrives here.")
+        _log_to_stderr()
+        sock = bind_socket(host)
+        port = sock.getsockname()[1]
+        middleware = build_for_port(port)
+        # Its docs, like each of its pages, work through the port of the run's page as at its own.
+        relative_api_docs(middleware.app)
+        feed_own_log(middleware)
+        print(announcement(f"http://{host}:{port}/"), flush=True)
+        asyncio.run(_serve_to_the_end(middleware, sock, startup))
+    except _StoppedWhileStarting:
+        # Nothing serves yet, so nothing is left to stop.
         pass
+    finally:
+        # Again here for a start that a signal or an error ended before the server served.
+        _ignore_stop_signals()

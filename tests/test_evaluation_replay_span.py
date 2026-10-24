@@ -1,6 +1,4 @@
-"""The replay span is at least the window (jms_kapps 107, from Sören's decision of 2026-10-13 as the
-product owner of the tests, jms_kapps 85, note 1866296, the changed reading "The replay span is read
-literally"): the achieved rate of a replay level is its answered requests over the larger of its
+"""The replay span is at least the window: the achieved rate of a replay level is its answered requests over the larger of its
 replay span and its window, so it is never more than the offered rate, and 100 % means that the
 store kept up. The record keeps the literal span.
 
@@ -125,7 +123,8 @@ def test_a_fake_store_that_answers_every_request_but_one_achieves_less_than_the_
 def test_the_documentation_states_the_rule(spec_path, one):  # noqa: F811
     readme = " ".join((EVALUATION / "README.md").read_text(encoding="utf-8").split())
     assert "the replay span is at least the window" in readme.replace("*", "").lower()
-    assert "jms_kapps 107" in readme
+    assert "jms_kapps 107" not in readme
+    assert "achieved rate uses the larger of the span" in readme
     from jms_kapps.evaluation import replay_levels
 
     assert "at least the window" in " ".join((replay_levels.__doc__ or "").split())

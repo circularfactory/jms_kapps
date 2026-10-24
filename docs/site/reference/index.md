@@ -1,6 +1,6 @@
 # API reference
 
-Generated from the source by `sphinx.ext.autodoc`, one page per module (115 modules).
+Generated from the source by `sphinx.ext.autodoc`, one page per module.
 Members without a docstring are listed too, with their signatures. Deprecated names are left
 out; the changelog lists them.
 
@@ -17,6 +17,7 @@ jms_kapps
 
 common/index
 common/api_docs
+common/passthrough
 common/prefixes
 common/process
 common/services
@@ -40,25 +41,36 @@ common/platforms/windows
 uc1/index
 uc1/__main__
 uc1/anomaly_detector
+uc1/anomaly_detector_dashboard
+uc1/anomaly_detector_memory
 uc1/classify_call
 uc1/decision_tree
 uc1/effective_values
 uc1/frame
+uc1/infeasible_operation
 uc1/learner
 uc1/learner_dashboard
 uc1/learner_memory
 uc1/learner_process
+uc1/mqtt_broker
 uc1/page
+uc1/page_lists
 uc1/planner
 uc1/planner_dashboard
 uc1/planner_memory
 uc1/planner_process
 uc1/planner_reads
 uc1/replay
+uc1/robot_attempt
+uc1/robot_binding
+uc1/robot_controller
 uc1/run_core
 uc1/scope_log
 uc1/screwing_resource
+uc1/screwing_resource_dashboard
+uc1/screwing_resource_memory
 uc1/seed
+uc1/sequence
 uc1/timeseries
 uc1/vocabulary
 ```
@@ -69,6 +81,7 @@ uc1/vocabulary
 
 uc2/index
 uc2/__main__
+uc2/capability_resource
 uc2/discovery
 uc2/handover_events
 uc2/handshake
@@ -81,12 +94,13 @@ uc2/process
 uc2/routing
 uc2/run_core
 uc2/seed
+uc2/reachable_destination
 uc2/spawn_rate
 uc2/strategies
 uc2/topology
+uc2/trace_box
 uc2/transport
 uc2/validation_report
-uc2/vertical_slice
 uc2/vocabulary
 uc2/waiting_order
 uc2/wms
@@ -103,7 +117,6 @@ uc2/launcher/index
 uc2/launcher/api
 uc2/launcher/backend
 uc2/launcher/boxes
-uc2/launcher/passthrough
 uc2/launcher/runner
 ```
 

@@ -4,8 +4,8 @@ operation.
 **It is called, not notified.** After each attempt, the screwing resource calls the detector's
 classify workflow with the IRI of the unscrewing operation (`classify_call.ClassifyRequest`),
 which is `running` and holds its time-series reference. The screwing resource finds the workflow
-in the graph by the detector's `:ClassifyCapability`, and reads nothing of the answer: the
-detector ends the operation.
+in the graph by the detector's `:ClassifyCapability`, and acts on nothing of the answer: the
+detector ends the operation. The screwing resource keeps the answer for its dashboard.
 
 **One classification is one commit of the middleware**, `mw.commit()`:
 
@@ -14,13 +14,16 @@ detector ends the operation.
   the operation's time-series reference names (`timeseries.FrameReader`); and the decision tree
   (`decision_tree.classify`). Then the classification as a `prov:Activity`, with the detector's
   resource as its agent (`prov:wasAssociatedWith`) and its end time (`prov:endedAtTime`), and the
-  decision snapshot, a new instance of the ten values that names that activity
+  parameter copy, a new instance of the ten values that names that activity
   (`prov:wasGeneratedBy`), each with `mw.create()`, which joins the commit; and through `transition.update(...)` the operation's
-  outcome, its link to the snapshot, and after a failure outcome the measured end position of its
+  outcome, its link to the parameter copy, and after a failure outcome the measured end position of its
   approach.
-- **Clean exit:** all of that and the operation's `done`, as one write.
+- **Clean exit:** all of that and how the operation ends, as one write. The outcome ScrewIntact
+  ends it `done`. Every other outcome is a failure outcome, and ends it `failed`, with a
+  `svc:hasExecutionResult` that names the outcome (it begins with `ANOMALY`), for example
+  `ANOMALY: MissingScrew`.
 - **Error in the body:** nothing of the body is written, and the operation is committed `failed`,
-  with why as its `svc:executionResult` (it begins with `NOT_CLASSIFIED`): a Screw without its
+  with why as its `svc:hasExecutionResult` (it begins with `NOT_CLASSIFIED`): a Screw without its
   placement values, a frame that the store lacks or that cannot be read, or curves that the tree
   refuses.
 
@@ -41,16 +44,22 @@ libraries give a write no precondition on a value that the writer read earlier.
 
 **The detector sends no notification of its own.** The planner, which issued the operation,
 learns of the end from the middleware: after the store admits the commit that ends the operation
-`done` or `failed`, `mw.commit()` notifies the operation's issuer (`svc:issuedBy`), in the
+`done` or `failed`, after a failure outcome as well, `mw.commit()` notifies the operation's
+issuer (`svc:issuedBy`), in the
 background. A commit that writes nothing, because the operation ended meanwhile, notifies nobody.
 
-The answer of the classify workflow, `ClassifyAnswer`, says what the call did with the operation,
-for a person who calls the workflow. The detector refuses a call, with an error, in two cases
+The answer of the classify workflow, `classify_call.ClassifyAnswer`, says what the call did
+with the operation, for a person who calls the workflow. The detector refuses a call, with an error, in two cases
 only: it cannot read the operation, or its `failed` did not reach the store and the operation is
 still `running`. Then the screwing resource ends the operation `failed` itself.
 
-Its activity feed is on, and so is the middleware's state dashboard, with the library's own boxes
-only, as for every party of use case 2.
+Its activity feed is on, and so is the middleware's state dashboard: the library's own boxes, and
+the boxes "Classifications" and "Screw type values" in the tab "Anomaly detector", which the
+dashboard opens on (`anomaly_detector_dashboard`). They show each classification with its outcome,
+the rule of its exit and the ten values, and what each Screw type held at the
+last read, from what the detector keeps in its memory as it classifies
+(`anomaly_detector_memory`): an open dashboard reads no store. A classification goes into the
+memory once its commit has reached the store.
 
 Run it as `python -m jms_kapps.uc1.anomaly_detector --dataset <name>`. It starts and serves as
 every participant's process does, through `common.process`, with the local InfluxDB unless
@@ -72,22 +81,24 @@ from kapps_semantic_middleware import Mode, SemanticMiddleware
 from kapps_semantic_middleware.dashboard import enable_dashboard
 from kapps_semantic_middleware.vocabulary import SVC, OperationStatus
 from kapps_triplestore_interface import IRI
-from pydantic import BaseModel
 
 from jms_kapps.common.process import process_parser, run_process
 from jms_kapps.common.triplestore import connect
-from jms_kapps.uc1.classify_call import ClassifyRequest
+from jms_kapps.uc1.anomaly_detector_dashboard import TAB as DASHBOARD_TAB
+from jms_kapps.uc1.anomaly_detector_dashboard import register_boxes
+from jms_kapps.uc1.anomaly_detector_memory import DetectorMemory
+from jms_kapps.uc1.classify_call import ClassifyAnswer, ClassifyRequest
 from jms_kapps.uc1.decision_tree import (
     AttemptSignals,
-    EffectiveValues,
+    DetectionResult,
     PhaseSignals,
-    UnscrewingOutcome,
     classify,
 )
 from jms_kapps.uc1.effective_values import (
+    EffectiveValuesWithOrigin,
     UnresolvedValues,
     as_properties,
-    read_effective_values,
+    read_effective_values_with_origin,
 )
 from jms_kapps.uc1.frame import (
     AXIAL_FORCE,
@@ -120,33 +131,25 @@ Create = Callable[..., AbstractContextManager[Any]]
 # names, and where its curves are.
 OPERATION_SCOPE = ClassScope.from_property_chains(
     [
-        [SVC.operationStatus],
-        [SVC.executionResult],
-        [JMS.hasScrew],
+        [SVC.hasOperationStatus],
+        [SVC.hasExecutionResult],
+        [JMS.concernsScrew],
         [JMS.hasTimeSeriesReference],
     ]
 )
 
-# The exit of the tree that is no failure. Every other outcome is a failure outcome.
-NO_FAILURE: UnscrewingOutcome = "ScrewIntact"
+# The exit of the tree that is no failure: it ends the operation `done`. Every other outcome is
+# a failure outcome, and ends it `failed`.
+NO_FAILURE: DetectionResult = "ScrewIntact"
 
 # How the reason of an operation that the detector could not classify begins, in its
-# `svc:executionResult`.
+# `svc:hasExecutionResult`.
 NOT_CLASSIFIED = "the anomaly detector could not classify the attempt: "
 
-
-class ClassifyAnswer(BaseModel):
-    """What the classify workflow answers: what the call did with the operation.
-
-    `ended` is `done` or `failed` when the call ended the operation, and None when it left the
-    operation as it was. `outcome` is the IRI of the Unscrewing outcome of a `done`. `why` says
-    why the operation is `failed`, or why it was left as it was.
-    """
-
-    operation: str
-    ended: str | None = None
-    outcome: str | None = None
-    why: str | None = None
+# How the reason of an operation that ended with a failure outcome begins, in its `svc:hasExecutionResult`,
+# followed by the outcome's local name. Interim text, so that it is told apart from an
+# attempt that was not classified, a detector that was not reached, and an attempt that failed.
+ANOMALY = "ANOMALY: "
 
 
 @dataclass(frozen=True)
@@ -164,14 +167,14 @@ class OperationToClassify:
 def operation_to_classify_from(node: Node) -> OperationToClassify:
     """The operation that a read under `OPERATION_SCOPE` gives, as the detector takes it."""
     data = node.data or {}
-    statuses = data.get(SVC.operationStatus, [])
+    statuses = data.get(SVC.hasOperationStatus, [])
     return OperationToClassify(
         operation=IRI(str(node.id)),
         status=str(statuses[0]) if statuses else None,
-        results=tuple(str(r) for r in data.get(SVC.executionResult, [])),
+        results=tuple(str(r) for r in data.get(SVC.hasExecutionResult, [])),
         screws=tuple(
             IRI(str(getattr(screw, "id", screw)))
-            for screw in data.get(JMS.hasScrew, [])
+            for screw in data.get(JMS.concernsScrew, [])
         ),
         references=tuple(str(r) for r in data.get(JMS.hasTimeSeriesReference, [])),
     )
@@ -195,12 +198,14 @@ class _Ending:
     """How one classification ends: the outcome that it reached, and how its error path left the
     operation."""
 
-    outcome: UnscrewingOutcome | None = None
+    outcome: DetectionResult | None = None
     # Whether it was left as it is, because it was `status`, not `running`.
     left: bool = False
     status: str | None = None
     # Why it was committed `failed`.
     why: str | None = None
+    # What it read of the Screw's effective values, once it has read them.
+    with_origin: EffectiveValuesWithOrigin | None = None
 
     def leave(self, status: str | None) -> None:
         self.left, self.status = True, status
@@ -253,7 +258,8 @@ def left_as_it_is_record(detector: IRI, operation: IRI, status: str | None) -> s
 
 
 class AnomalyDetector:
-    """The anomaly detector, given the middleware's commit and create, and its three reads.
+    """The anomaly detector, given the middleware's commit and create, its three reads, and its
+    memory.
 
     Args:
         detector: The anomaly detector's resource.
@@ -264,6 +270,8 @@ class AnomalyDetector:
         frame: Reads the frame that a time-series reference names.
         clock: The time at which a classification ends, its `prov:endedAtTime`. Timezone-aware;
             UTC unless a test gives another.
+        memory: Where it keeps what its dashboard shows: each classification once its commit
+            has reached the store, and what each Screw type held at its last read.
     """
 
     def __init__(
@@ -273,9 +281,10 @@ class AnomalyDetector:
         commit: Commit,
         create: Create,
         read: Callable[[IRI], OperationToClassify],
-        values: Callable[[IRI], EffectiveValues],
+        values: Callable[[IRI], EffectiveValuesWithOrigin],
         frame: Callable[[str], Frame],
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        memory: DetectorMemory | None = None,
     ) -> None:
         self.detector = IRI(detector)
         self.commit = commit
@@ -284,6 +293,7 @@ class AnomalyDetector:
         self.values = values
         self.frame = frame
         self.clock = clock
+        self.memory = memory if memory is not None else DetectorMemory()
 
     def classify(self, operation: IRI) -> ClassifyAnswer:
         """The classify workflow: classify the attempt of `operation`, and end it, while it is
@@ -300,12 +310,12 @@ class AnomalyDetector:
         ending = _Ending()
         try:
             with self.commit(
-                exit=lambda: self._done_while_running(operation),
+                exit=lambda: self._ended_while_running(operation, ending),
                 error=lambda error: self._failed_while_running(
                     operation, error, ending
                 ),
             ) as transition:
-                values, signals, ending.outcome = self._classify(found)
+                values, signals, ending.outcome = self._classify(found, ending)
                 log_scope(
                     logger,
                     "Anomaly detector",
@@ -313,10 +323,10 @@ class AnomalyDetector:
                     operation,
                     "an empty ClassScope",
                     ClassScope(),
-                    "it creates a new Activity and a new DecisionSnapshot, and reads nothing "
+                    "it creates a new Activity and a new ParameterCopy, and reads nothing "
                     "of them",
                 )
-                # The classification, the PROV witness on the decision (jms_kapps 59). Its IRI
+                # The classification, the PROV witness on the decision. Its IRI
                 # is given, because the middleware mints `<class>_<hex>`, which for a class of
                 # PROV-O would be an IRI in the W3C's namespace.
                 with self.create(
@@ -330,11 +340,11 @@ class AnomalyDetector:
                             str(PROV.endedAtTime): [self.clock()],
                         }
                     )
-                with self.create(str(JMS.DecisionSnapshot), ClassScope()) as snapshot:
+                with self.create(str(JMS.ParameterCopy), ClassScope()) as snapshot:
                     snapshot.update(
                         {
                             str(prop): [value]
-                            for prop, value in as_properties(values).items()
+                            for prop, value in as_properties(values.values).items()
                         }
                         | {
                             str(PROV.wasGeneratedBy): [
@@ -343,10 +353,10 @@ class AnomalyDetector:
                         }
                     )
                 classified: dict[str, list[Any]] = {
-                    str(JMS.hasOutcome): [_link(outcome_iri(ending.outcome))],
-                    str(JMS.usedValues): [_link(IRI(str(snapshot.iri)))],
+                    str(JMS.hasDetectionResult): [_link(outcome_iri(ending.outcome))],
+                    str(JMS.classifiedWith): [_link(IRI(str(snapshot.iri)))],
                 }
-                if ending.outcome != NO_FAILURE:
+                if anomaly_of(ending.outcome) is not None:
                     classified[str(JMS.hasMeasuredApproachEndPosition)] = [
                         approach_end_position(signals)
                     ]
@@ -356,18 +366,38 @@ class AnomalyDetector:
                 return self._left_as_it_is(operation, ending.status)
             if ending.why is None:
                 raise
-            return self._after_failed(operation, ending.why, error)
+            answer = self._after_failed(operation, ending.why, error)
+            if answer.ended == OperationStatus.FAILED:
+                self.memory.not_classified(
+                    operation,
+                    found.screws[0] if len(found.screws) == 1 else None,
+                    ending.with_origin,
+                    ending.why,
+                )
+            return answer
         assert ending.outcome is not None
-        logger.info(
-            "%s: %s is done, with the outcome %s",
-            self.detector.fragment,
-            operation.fragment,
-            ending.outcome,
-        )
+        anomaly = anomaly_of(ending.outcome)
+        self.memory.classified(operation, values, ending.outcome, anomaly)
+        if anomaly is None:
+            logger.info(
+                "%s: %s is done, with the outcome %s",
+                self.detector.fragment,
+                operation.fragment,
+                ending.outcome,
+            )
+        else:
+            logger.warning(
+                "%s: %s is failed, with the outcome %s: %s",
+                self.detector.fragment,
+                operation.fragment,
+                ending.outcome,
+                anomaly,
+            )
         return ClassifyAnswer(
             operation=str(operation),
-            ended=OperationStatus.DONE,
+            ended=OperationStatus.DONE if anomaly is None else OperationStatus.FAILED,
             outcome=str(outcome_iri(ending.outcome)),
+            why=anomaly,
         )
 
     def _after_failed(
@@ -397,8 +427,12 @@ class AnomalyDetector:
             return self._left_as_it_is(operation, found.status)
         raise error
 
-    def _done_while_running(self, operation: IRI) -> list[Update]:
-        """The exit transition: `done`, if the operation is still `running`.
+    def _ended_while_running(self, operation: IRI, ending: _Ending) -> list[Update]:
+        """The exit transition, if the operation is still `running`: `done` after the outcome
+        ScrewIntact, and `failed`, naming it, after any other outcome that `ending` holds.
+
+        That reason is not kept in `ending.why`, which says that the error path asked for
+        `failed`: the `failed` of a failure outcome is the clean exit.
 
         Raises:
             EndedMeanwhile: If it is no longer `running`. Then nothing of the body is written.
@@ -406,7 +440,11 @@ class AnomalyDetector:
         status = self.read(operation).status
         if status != OperationStatus.RUNNING:
             raise EndedMeanwhile(status)
-        return [_status(operation, OperationStatus.DONE)]
+        assert ending.outcome is not None
+        anomaly = anomaly_of(ending.outcome)
+        if anomaly is None:
+            return [_status(operation, OperationStatus.DONE)]
+        return [_failed(operation, anomaly)]
 
     def _failed_while_running(
         self, operation: IRI, error: BaseException, ending: _Ending
@@ -431,10 +469,11 @@ class AnomalyDetector:
         )
 
     def _classify(
-        self, found: OperationToClassify
-    ) -> tuple[EffectiveValues, AttemptSignals, UnscrewingOutcome]:
+        self, found: OperationToClassify, ending: _Ending
+    ) -> tuple[EffectiveValuesWithOrigin, AttemptSignals, DetectionResult]:
         """The effective values of the operation's Screw, the signals of its frame, and the exit
-        of the tree they reach. Nothing is written.
+        of the tree they reach. Nothing is written to the store. The values go into `ending`
+        and, with what the Screw type holds, into the memory, as soon as they are read.
 
         Raises:
             NotClassified: With why, when the attempt cannot be classified.
@@ -451,6 +490,8 @@ class AnomalyDetector:
             raise NotClassified(
                 f"the effective values of {screw.fragment} could not be read: {_text_of(error)}"
             ) from error
+        ending.with_origin = values
+        self.memory.read(values)
         try:
             frame = self.frame(reference)
         except Exception as error:
@@ -459,7 +500,7 @@ class AnomalyDetector:
             ) from error
         signals = attempt_signals(frame)
         try:
-            return values, signals, classify(signals, values)
+            return values, signals, classify(signals, values.values)
         except ValueError as error:
             raise NotClassified(
                 f"the decision tree refused its curves: {error}"
@@ -475,7 +516,8 @@ def build(
     reader: FrameReader | None = None,
 ) -> SemanticMiddleware:
     """The middleware instance of the anomaly detector `resource_iri`, served at `host:port`,
-    with its classify workflow, its notification handler and its state dashboard.
+    with its classify workflow, its notification handler and its dashboard: the middleware's
+    boxes, and its own two in the tab "Anomaly detector", which it opens on.
 
     Args:
         reader: Where the frames are read from. Defaults to the InfluxDB that `INFLUXDB_URL`
@@ -490,8 +532,10 @@ def build(
         port=port,
         activity_feed=True,
     )
-    # The middleware's state dashboard at `/dashboard`, with the library's own boxes.
-    enable_dashboard(middleware)
+    # The middleware's state dashboard at `/dashboard`: the library's boxes, and the detector's
+    # own, which render its memory.
+    memory = DetectorMemory()
+    register_boxes(enable_dashboard(middleware, first_tab=DASHBOARD_TAB), memory)
     frames = reader if reader is not None else FrameReader(connect_influxdb())
 
     def read(operation: IRI) -> OperationToClassify:
@@ -503,8 +547,8 @@ def build(
             operation,
             "OPERATION_SCOPE",
             OPERATION_SCOPE,
-            "it wants the status (operationStatus), the reason of a failure (executionResult), "
-            "the Screw (hasScrew) and where its curves are (hasTimeSeriesReference)",
+            "it wants the status (hasOperationStatus), the reason of a failure (hasExecutionResult), "
+            "the Screw (concernsScrew) and where its curves are (hasTimeSeriesReference)",
         )
         return operation_to_classify_from(
             middleware.fetch(operation, class_scope=OPERATION_SCOPE)
@@ -515,8 +559,9 @@ def build(
         commit=middleware.commit,
         create=middleware.create,
         read=read,
-        values=lambda screw: read_effective_values(ogm, screw),
+        values=lambda screw: read_effective_values_with_origin(ogm, screw),
         frame=frames.read,
+        memory=memory,
     )
 
     @middleware.workflow(
@@ -525,7 +570,8 @@ def build(
     )
     def classify(request: ClassifyRequest) -> ClassifyAnswer:
         """Classify the recorded attempt of one running unscrewing operation, and end the
-        operation: `done` with its outcome and its decision snapshot, or `failed` with why. An
+        operation with its outcome and its parameter copy: `done` for an intact screw, or
+        `failed` naming its failure outcome; or `failed` with why it could not be classified. An
         operation that is not running is left as it is."""
         return detector.classify(IRI(request.operation))
 
@@ -557,7 +603,15 @@ def _the_one(items: Sequence[Any], operation: IRI, what: str) -> Any:
     return items[0]
 
 
-def outcome_iri(outcome: UnscrewingOutcome) -> IRI:
+def anomaly_of(outcome: DetectionResult) -> str | None:
+    """The reason that names the failure outcome `outcome`, for example
+    `ANOMALY: MissingScrew`, or None for the outcome ScrewIntact, which is no failure."""
+    if outcome == NO_FAILURE:
+        return None
+    return ANOMALY + outcome
+
+
+def outcome_iri(outcome: DetectionResult) -> IRI:
     """The individual of the use case's ontology that names the tree's exit `outcome`."""
     return IRI(outcome, base=JMS_NS)
 
@@ -573,7 +627,7 @@ def _link(iri: IRI) -> dict[str, str]:
 
 
 def _status(operation: IRI, status: str) -> Update:
-    return Update(instance_iri=operation, data={str(SVC.operationStatus): [status]})
+    return Update(instance_iri=operation, data={str(SVC.hasOperationStatus): [status]})
 
 
 def _failed(operation: IRI, why: str) -> Update:
@@ -581,8 +635,8 @@ def _failed(operation: IRI, why: str) -> Update:
     return Update(
         instance_iri=operation,
         data={
-            str(SVC.operationStatus): [OperationStatus.FAILED],
-            str(SVC.executionResult): [why],
+            str(SVC.hasOperationStatus): [OperationStatus.FAILED],
+            str(SVC.hasExecutionResult): [why],
         },
     )
 

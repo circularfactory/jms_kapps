@@ -4,10 +4,7 @@ Every GET reads only the monitor's memory: what its background task read last (`
 two PUTs set how the monitor reads, its mode and the interval of its graph read, and change
 nothing else: the monitor writes nothing to the graph. The backend renders no HTML: `/api/state`
 is JSON, and the page in `static/` draws it. The middleware's own welcome at `/` gives way to the
-page, as the transferunits demo's station board replaces it. (Changed on 2026-10-08, jms_kapps 24,
-decided by Etienne on 2026-10-05: a switch on the monitor's page, and a setting for the interval
-of its graph read. Until then the second sentence read: "Every route here answers GET, and reads
-only the monitor's memory: what its background task read last (`memory.py`).")
+page, as the transferunits demo's station board replaces it.
 """
 
 from __future__ import annotations
@@ -41,10 +38,10 @@ from jms_kapps.uc2.vocabulary import local_name
 STATIC = Path(__file__).parent / "static"
 
 # Why the page shows a refusal's report only as the store sent it, or no report at all.
-NO_REPORT_NOTE = "The participant sent no report with this refusal."
-UNREADABLE_NOTE = "The monitor could not read this report as RDF, so it shows it as the store sent it."
+NO_REPORT_NOTE = "The service sent no report with this refusal."
+UNREADABLE_NOTE = "The monitor could not read this report as RDF, so it shows it as the triple store sent it."
 NO_RESULT_NOTE = (
-    "The report names no result, so the monitor shows it as the store sent it."
+    "The report names no result, so the monitor shows it as the triple store sent it."
 )
 
 
@@ -100,10 +97,7 @@ def _by_name(box: IRI) -> tuple[str, str]:
     """Where `box` stands in the Boxes table: by its name, as text sorts it, and by its whole IRI
     where two names are the same.
 
-    (Changed on 2026-10-12, jms_kapps 92, the ticket's interim reading of Sören's decision on
-    jms_kapps 85: a box is named by a UUID, which has no order a person counts in. Until then the
-    table ordered the boxes by number, "Box 2 before Box 10, as a person counts, and a box that the
-    WarehouseManagementSystem did not name after every box it named". Interim, jms_kapps 83.)"""
+    A box is named by a UUID, which has no order a person counts in. Interim name."""
     return (str(_local(box)), str(box))
 
 
@@ -111,8 +105,7 @@ def possible_deadlock(snapshot: Snapshot) -> dict | None:
     """The one "possible deadlock" notice of `snapshot`'s deadlock alarms, or None where it holds
     none: every module involved, each module with an alarm and the modules it asks, in the order
     of the graph's modules, by its local name; and each alarm, oldest first, with its module, its
-    box, the modules it asks and its reason. (Added on 2026-10-11, jms_kapps 77, decided by
-    Etienne.)"""
+    box, the modules it asks and its reason."""
     if not snapshot.alarms:
         return None
     involved = {
@@ -188,15 +181,10 @@ def _query(query: SentQuery, snapshot: Snapshot) -> dict:
 
 def monitor_state(snapshot: Snapshot) -> dict:
     """The modules where they stand, live or offline, with the boxes they hold; the wires between
-    them, each with the way its connections lead; every box, by its name (`_by_name`; by its
-    number until 2026-10-12, jms_kapps 92), with its transport's destination; the newest handovers
-    and the newest refusals, each newest first; the one "possible deadlock" notice, or None
-    (`possible_deadlock`, added on 2026-10-11, jms_kapps 77); how the monitor reads, and the query
-    each of its reads sent last. (Changed on 2026-10-10, jms_kapps 24,
-    decided by Etienne on 2026-10-06: "we can map destinations but not routes". Until then: "the
-    wires between them, each with the way its connections lead and the way boxes from entry to
-    exit modules hop over it; every box, by its number, with its path ahead if its transport is
-    running; the newest handovers and the newest refusals, each newest first".)"""
+    them, each with the way its connections lead; every box, by its name (`_by_name`), with its
+    transport's destination; the newest handovers and the newest refusals, each newest first; the
+    one "possible deadlock" notice, or None (`possible_deadlock`); how the monitor reads, and the
+    query each of its reads sent last. The monitor maps destinations, not routes."""
     held: dict[IRI, list[str]] = defaultdict(list)
     boxes = sorted(snapshot.boxes, key=lambda row: _by_name(row.box))
     for row in boxes:

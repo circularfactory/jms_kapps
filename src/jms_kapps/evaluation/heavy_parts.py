@@ -1,6 +1,4 @@
-"""The heavy parts of a spec with the precision rule, in its rounds (jms_kapps 114, decided by Sören
-on 2026-10-13 as the product owner of the tests, jms_kapps 85, note 1866296, decision 6; interim
-names, jms_kapps 83): which repetition of each the rounds make, and the repetitions a person asks
+"""The heavy parts of a spec with the precision rule, in its rounds (interim names): which repetition of each the rounds make, and the repetitions a person asks
 for. Pure functions over the run summaries, with no store and no clock.
 
 **A heavy part** is one of three:
@@ -25,8 +23,7 @@ level, a replay that broke, failed or reached its highest factor, a sustained lo
 One that a round left **unfinished** (a stop, a run that did not complete, a level skipped for want
 of an approval) goes on in the next round, from its lowest level without a record.
 
-**A repetition on request** (`requested_repetitions`, the option `REPEAT_OPTION`; the target
-form is Sören's ruling of 2026-10-14 on jms_kapps 114): a call names each heavy part with a target
+**A repetition on request** (`requested_repetitions`, the option `REPEAT_OPTION`): a call names each heavy part with a target
 repetition, a ramp by its block (`block3:2`), a replay or a sustained load by its configuration's
 number (`7:2`); for a heavy configuration with replay factors the number names both. The target
 asks the rounds to make sure that repetition exists: while the part's last repetition ended below
@@ -36,13 +33,9 @@ repetition that exists or is under way makes nothing, so a restart with the same
 safe. A repetition has its own number in its records (`sweep.repetition` 2, then 3), and its runs
 take the pick seed of that repetition. A repeated replay replays the same run as its first
 repetition did (`first_replayed`), so the repetitions show the store and the time of day, with
-the same input. (Changed on 2026-10-14, jms_kapps 114: until then the option named a part without
-a target, asked for one more repetition per call, and refused a call where no part it named had
-ended, so a restart with the same command line ran nothing.)
+the same input.
 
-(Until 2026-10-13 pass 1 made the ramps and the replay levels, with the runs of fixed
-repetitions, and a ramp or replay that ended never ran again. Sören's decision put them in the
-rounds, one time each, and again on request.)
+
 """
 
 from __future__ import annotations

@@ -18,7 +18,7 @@ the harness that sleeps between two reads, and one last sample comes at the stop
 `memory_total_bytes`, and the `samples`, each with its time (`at`), `cpu_percent` (None where no
 time passed since the sample before) and `memory_used_bytes`.
 
-(Added on 2026-10-12, jms_kapps 91; every name is interim, jms_kapps 83.)
+Every name is interim.
 """
 
 from __future__ import annotations

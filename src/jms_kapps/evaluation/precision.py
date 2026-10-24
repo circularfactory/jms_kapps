@@ -1,5 +1,4 @@
-"""The precision rule of a sweep (jms_kapps 101, decided by Sören on 2026-10-12, the numbers
-decision, jms_kapps 56): when a configuration has run often enough. Interim names (jms_kapps 83).
+"""The precision rule of a sweep: when a configuration has run often enough. Interim names.
 
 A configuration **meets the rule** when all of these hold, over its valid runs:
 
@@ -11,14 +10,11 @@ A configuration **meets the rule** when all of these hold, over its valid runs:
 A configuration without the wrapper (`uc2-unwrapped`) has no commit latency and is judged on the
 throughput alone. A median of 0 meets no spread: a ratio to it means nothing.
 
-**A throughput median of 0 stops the configuration** (jms_kapps 113, Sören's decision of
-2026-10-13 as the product owner of the tests, jms_kapps 85, note 1866296; interim names, jms_kapps
-83). Where the median of its transports ended per minute is 0 while it has at least
+**A throughput median of 0 stops the configuration** (interim names). Where the median of its transports ended per minute is 0 while it has at least
 `minimum_runs` valid runs, it can never meet the rule, so it needs no more runs
 (`Verdict.zero_median`, `Verdict.stopped`), and its status is `stopped: throughput median 0`,
 also where it made `maximum_runs` before the stop. This holds with the wrapper and without it.
-(Changed on 2026-10-14, jms_kapps 113: until then such a configuration ran until it had made
-`maximum_runs`.)
+
 
 **The numbers are the table's.** `judge` reads a cell of the configurations table (`table`): its
 pooled commit p95 with its interval and its transports' median and IQR, which `table.rule_numbers`
@@ -68,14 +64,13 @@ class Verdict:
     throughput_median: float | None = None
     throughput_iqr: float | None = None
     # Whether the throughput median of its valid runs is 0 while it has at least the minimum of
-    # them: it stops there (added on 2026-10-14, jms_kapps 113).
+    # them: it stops there.
     zero_median: bool = False
 
     @property
     def stopped(self) -> bool:
         """Whether the configuration needs no more runs: it meets the rule, its throughput
-        median is 0 at its minimum of valid runs or later, or it has made its maximum. (Changed
-        on 2026-10-14, jms_kapps 113: until then it met the rule or had made its maximum.)"""
+        median is 0 at its minimum of valid runs or later, or it has made its maximum."""
         return self.met or self.zero_median or self.made >= self.maximum
 
     @property
@@ -83,8 +78,7 @@ class Verdict:
         """The verdict in the words a sweep's line shows. It is `met`, or
         `stopped: throughput median 0` where the median is 0 at the minimum of valid runs or
         later, `precision not reached (n runs)` where the maximum is made without it, or
-        `pending (n runs)`. (Changed on 2026-10-14, jms_kapps 113: until then a median of 0 was
-        `pending (n runs)` until the maximum, and then `precision not reached (n runs)`.)"""
+        `pending (n runs)`."""
         if self.met:
             return "met"
         if self.zero_median:
@@ -121,8 +115,7 @@ def judge(
     """The verdict on a configuration of the table's `numbers` for its valid runs (a cell of the
     table, or `table.rule_numbers`; None where no run is valid), with `made` runs made, and with
     the wrapper or without it. It stops at a throughput median of 0 once there are at least
-    `minimum_runs` valid runs (`Verdict.zero_median`). (Changed on 2026-10-14, jms_kapps 113:
-    until then a median of 0 only failed the spread condition.)"""
+    `minimum_runs` valid runs (`Verdict.zero_median`)."""
     valid = len(numbers["runs"]) if numbers else 0
     unmet: list[str] = []
     if valid < rule.minimum_runs:

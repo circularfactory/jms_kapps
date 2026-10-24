@@ -36,9 +36,7 @@ class Decision:
     `refusals` are the Reserve refusals of the next module that followed, in order. `detour` is
     the one other module it would try when the next module declines, `detour_refusals` that
     module's refusals, and `detoured` whether the box went there. `retries` counts the times it
-    waited and asked again. (Changed on 2026-10-06, jms_kapps 43, decided by Etienne: one detour
-    before waiting. Until then the last sentence read "`refusals` are the Reserve refusals of the
-    next module that followed, in order, each of which the module answered by asking again.")
+    waited and asked again.
     """
 
     at: datetime
@@ -121,8 +119,7 @@ class ModuleMemory:
     def refused(self, box: IRI, refusal: Refusal) -> None:
         """Keep a refusal of the next module's Reserve for `box`, which the module answers by its
         detour or by asking again, on its newest decision on `box`. A refusal with no decision on
-        `box` is not kept. (Changed on 2026-10-06, jms_kapps 43, decided by Etienne: one detour
-        before waiting. Until then "which the module answers by asking again".)"""
+        `box` is not kept."""
         self._change(box, lambda d: replace(d, refusals=(*d.refusals, refusal)))
 
     def detour_refused(self, box: IRI, refusal: Refusal) -> None:

@@ -29,7 +29,7 @@ from jms_kapps.uc2.vocabulary import FC, box_iri, module_iri, transport_iri
 M1, M2 = module_iri(1), module_iri(2)
 B1 = box_iri(1)
 T1 = transport_iri(B1)
-POSSESSOR = "https://w3id.org/circularfactory/Core#hasPossessor"
+POSSESSOR = "http://w3id.org/circularfactory/Core#hasPossessor"
 REPORT = (
     f"_:report <{RDF.type}> <{SH.ValidationReport}> .\n"
     f'_:report <{SH.conforms}> "false"^^<{XSD.boolean}> .\n'

@@ -3,15 +3,14 @@
 A record is a JSON file, `record.json`, in the run's folder. It holds its run kind, `uc2`, and the
 words "iteration one"; the resolved configuration in the TOML form of a configuration file, so that
 it can be run again; the actions the run took, each with its time; each run setting with its
-value, since none is swept; the facts listed for a record (decided by Etienne on 2026-10-11): the
+value, since none is swept; the facts listed for a record: the
 version and the commit of jms_kapps, the middleware, the object-graph mapper and the triple-store
 interface, Python and the OS, the client's CPU, its memory and the network's round trip to the
 server, and what the server's Workbench shows (`store`); the prefill file's digest and header
 lines; the run's transports as the graph holds them at the drain's end; and the spawns the
-WarehouseManagementSystem refused, with their reasons, from its output. Since the observation
-(added on 2026-10-12, jms_kapps 48) it also holds the completion matcher's reads and, for a run
+WarehouseManagementSystem refused, with their reasons, from its output. Since the observation it also holds the completion matcher's reads and, for a run
 that completed, its measures, whether it is valid, the checks it failed and made, and its stuck
-Operations (`observation`). Since jms_kapps 91 it also holds the client host's CPU and memory load
+Operations (`observation`). It also holds the client host's CPU and memory load
 through the warm-up, the window and the drain, as samples with their times (`client_load`;
 the module `client_load` takes them); a record made before has none. Its run kind is
 `uc2-unwrapped` for a run without the wrapper.
@@ -39,7 +38,7 @@ from typing import Any
 from urllib.parse import unquote, urlsplit
 
 # What every record says it is: a UC2 run, through the wrapper (`uc2`) or without it
-# (`uc2-unwrapped`; added on 2026-10-12, jms_kapps 48), of iteration one.
+# (`uc2-unwrapped`), of iteration one.
 RUN_KIND = "uc2"
 UNWRAPPED_RUN_KIND = "uc2-unwrapped"
 ITERATION = "iteration one"
@@ -55,9 +54,7 @@ DISTRIBUTIONS = (
 
 # The WarehouseManagementSystem's one record of a spawn, in its output, as its logging writes it:
 # a box spawned, or a spawn refused with why, and the origin and the destination where they are
-# known (`uc2.wms.spawn_record`). A box is named by a number or by a UUID, `Box-<UUID>` (changed on
-# 2026-10-12, jms_kapps 92: until then the box's name was matched as a word, which no name with a
-# hyphen is).
+# known (`uc2.wms.spawn_record`). A box is named by a number or by a UUID, `Box-<UUID>`.
 _SPAWN_RECORD = re.compile(
     r"INFO:jms_kapps\.uc2\.wms:\w+: "
     r"(?:(?P<spawned>spawned) [A-Za-z0-9_.\-]+ onto .*|spawn refused: (?P<reason>.*?)"
@@ -222,7 +219,7 @@ def spawns_in_window(
     end: datetime,
 ) -> dict[str, Any]:
     """The spawns the WarehouseManagementSystem was asked for in the measured window, from its
-    output lines and the times they arrived (jms_kapps 99, interim names): the **offered** spawns,
+    output lines and the times they arrived (interim names): the **offered** spawns,
     the ones it spawned and the ones it refused, the **accepted** spawns, those it spawned, and
     the **accepted share**, accepted over offered, or None where none was offered. A line counts
     when it arrived from `start` up to `end`; a line without a time stamp counts in no window. No

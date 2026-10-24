@@ -1,6 +1,6 @@
 @prefix : <http://w3id.org/circularfactory/FlexConveyor#> .
-@prefix cfc: <https://w3id.org/circularfactory/Core#> .
-@prefix svc: <https://w3id.org/circularfactory/Service#> .
+@prefix cfc: <http://w3id.org/circularfactory/Core#> .
+@prefix svc: <http://w3id.org/circularfactory/Service#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -13,6 +13,7 @@
 # Structure:
 #   1. The modules and their connections
 #   2. The transport and its box, in SHACL Core
+#   3. Every capability belongs to exactly one resource
 #################################################################
 
 # Changed from the artifact (`turtle/flexconveyor_usecase_JMS_SHACL.ttl` on `paper`, d3201180):
@@ -24,25 +25,36 @@
 # - `:FlexConveyorModuleShape` follows that path. Its property shape has an IRI, so that the
 #   validation report names it.
 # - A box has no lifecycle state, so the rules that tied the box's state to its possession are
-#   keyed on its `:BoxTransportOperation` instead: on the transport's `svc:operationStatus`, and
+#   keyed on its `:BoxTransportOperation` instead: on the transport's `svc:hasOperationStatus`, and
 #   on the box's possessor. Section 2 replaces `:BoxShape` and the three SHACL-SPARQL shapes,
 #   `:CreatedBoxNotOnModuleShape`, `:DeliveredBoxNotPossessedShape` and
 #   `:InTransitBoxPossessedShape`. The origin and the destination are checked on the transport,
 #   which carries them now.
 # - The rules look for a possessing module, not for any possessor, because the
-#   WarehouseManagementSystem holds a box at the end of its journey. (Changed on 2026-10-06,
-#   jms_kapps 41, decided by Etienne: it creates each box on its origin. Until then "at both ends
-#   of its journey".) One rule looks for any
+#   WarehouseManagementSystem holds a box at the end of its journey: it creates each box on its
+#   origin. One rule looks for any
 #   possessor: every box has exactly one (`:BoxHasOnePossessorShape`), which the artifact did not
 #   check.
 # - The possession runs from the box forward to its state, then back to the possessor:
 #   `cfc:hasPossessedWorkpiece`, then the inverse of `cfc:hasPossessor`. Both properties point from
 #   their subject into the PossessionState, so a path that starts with the inverse of
 #   `cfc:hasPossessedWorkpiece` matches nothing.
+# - Every rule in this file is SHACL Core, and the store refuses a write that breaks one at commit.
+#   The one rule in SHACL-SPARQL, which SHACL Core cannot express, is in
+#   `flexconveyor_usecase_sparql_shapes.ttl`, loaded on request; its head says why.
 # vendor-check: off -- the backend the shapes were measured on
-# - Every rule is SHACL Core, so the store refuses a write that breaks one at commit. GraphDB
-#   10.8.5 evaluates SHACL-SPARQL only when the whole repository is validated, never when a write
-#   is committed.
+# - What GraphDB 10.8.5 (RDF4J 4.3.15) does with SHACL-SPARQL at commit, measured with a SPARQL
+#   constraint on a node shape with sh:targetClass: it refuses a write that creates the focus node
+#   together with the violating data, and admits a violating property added later to an existing
+#   focus node, and a violation that a delete on another node causes. Validating the whole dataset
+#   reports those. The rule with a SPARQL target in `flexconveyor_usecase_sparql_shapes.ttl` is
+#   refused at commit in all three cases, see there.
+# - No rule ties an operation's resource (`cfc:executedOn`) to its capability's resource
+#   (`cfc:implementsCapability`). In RDF4J at tag 4.3.15, the engine of GraphDB 10.8.5, `sh:equals`
+#   has no validation at commit: its constraint component logs that it is not implemented and
+#   checks nothing (`EqualsConstraintComponent`). Section 3 checks instead that
+#   every capability belongs to exactly one resource, so the operation's resource follows from its
+#   capability.
 # vendor-check: on
 
 
@@ -139,8 +151,7 @@
     sh:message "A Box is carried by at most one BoxTransportOperation." .
 
 # Every box has exactly one possessor: a module while it travels, from its creation on its origin
-# on, and the WarehouseManagementSystem at the end of its journey (changed on 2026-10-06, jms_kapps
-# 41, decided by Etienne; until then "the WarehouseManagementSystem at both ends of its journey"). The box points at exactly one possession state, and that state has
+# on, and the WarehouseManagementSystem at the end of its journey. The box points at exactly one possession state, and that state has
 # exactly one possessor, so a second resource on a module's state gives every box in it a second
 # possessor. Nested single steps here too: with sh:minCount on the sequence path, even at the top
 # level of a property shape, the store fails with an internal error on every write that removes a
@@ -175,7 +186,7 @@
         sh:message "A BoxTransportOperation's origin and destination must be different modules." ;
     ] ;
     sh:property [
-        sh:path svc:operationStatus ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:path svc:hasOperationStatus ; sh:minCount 1 ; sh:maxCount 1 ;
         sh:in ( "queued" "running" "done" "failed" ) ;
         sh:message "A BoxTransportOperation must have exactly one status: queued, running, done or failed." ;
     ] .
@@ -185,7 +196,7 @@
     sh:message "The Box of a running BoxTransportOperation must be possessed by exactly one FlexConveyorModule." ;
     sh:or (
         [ sh:path [ sh:inversePath :hasBox ] ;
-          sh:node [ sh:property [ sh:path svc:operationStatus ; sh:in ( "queued" "done" "failed" ) ] ] ]
+          sh:node [ sh:property [ sh:path svc:hasOperationStatus ; sh:in ( "queued" "done" "failed" ) ] ] ]
         [ sh:path cfc:hasPossessedWorkpiece ;
           sh:minCount 1 ;
           sh:node [ sh:property [ sh:path [ sh:inversePath cfc:hasPossessor ] ;
@@ -199,7 +210,7 @@
     sh:message "The Box of a done BoxTransportOperation must not be possessed by a FlexConveyorModule." ;
     sh:or (
         [ sh:path [ sh:inversePath :hasBox ] ;
-          sh:node [ sh:property [ sh:path svc:operationStatus ; sh:in ( "queued" "running" "failed" ) ] ] ]
+          sh:node [ sh:property [ sh:path svc:hasOperationStatus ; sh:in ( "queued" "running" "failed" ) ] ] ]
         [ sh:path cfc:hasPossessedWorkpiece ;
           sh:node [ sh:property [ sh:path [ sh:inversePath cfc:hasPossessor ] ;
                                   sh:not [ sh:class :FlexConveyorModule ] ] ] ]
@@ -214,5 +225,34 @@
                                   sh:not [ sh:class :FlexConveyorModule ] ] ] ]
         [ sh:path [ sh:inversePath :hasBox ] ;
           sh:minCount 1 ;
-          sh:node [ sh:property [ sh:path svc:operationStatus ; sh:in ( "queued" "running" "failed" ) ] ] ]
+          sh:node [ sh:property [ sh:path svc:hasOperationStatus ; sh:in ( "queued" "running" "failed" ) ] ] ]
     ) .
+
+
+#################################################################
+# 3. EVERY CAPABILITY BELONGS TO EXACTLY ONE RESOURCE
+#
+# A capability cannot exist without a resource, and a resource can have several: a resource
+# announces itself, then registers the capabilities it has, each with its link in the same commit.
+# So exactly one resource links to each capability (`cfc:hasCapability`), and an operation that
+# implements a capability runs on that capability's resource.
+# The store's SHACL may not follow rdfs:subClassOf, and the middleware types a capability by its
+# use case's class only, so the shape targets cfc:Capability and each of use case 2's capability
+# classes.
+#################################################################
+
+:CapabilityShape rdf:type sh:NodeShape ;
+    sh:targetClass cfc:Capability ,
+        :BoxTransportCapability ,
+        :ReceiveCapability ,
+        :ReserveCapability ,
+        :SetSpawnRateCapability ,
+        :SpawnBoxCapability ;
+    sh:property :CapabilityResourceShape .
+
+# Named rather than anonymous, so a validation report's sh:sourceShape says which rule broke.
+:CapabilityResourceShape rdf:type sh:PropertyShape ;
+    sh:path [ sh:inversePath cfc:hasCapability ] ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:message "A Capability must belong to exactly one resource: exactly one resource links to it with cfc:hasCapability." .

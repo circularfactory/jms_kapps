@@ -1,6 +1,6 @@
 """Routing that keeps boxes flowing, in one module's handshake logic, without a network or a triple
 store: look-ahead acceptance, one detour before waiting, longest-waiting first, and the fault that
-still collides (Etienne, 2026-10-06, jms_kapps 43).
+still collides.
 
 - **Look-ahead acceptance.** A module accepts a Reserve only if it is free and either it is the
   box's destination, or its own next module accepts a plain Reserve for the box at once. That inner
@@ -224,11 +224,8 @@ def test_a_module_whose_next_module_cannot_be_reached_refuses_no_live_route_on(
     world, network, station
 ):
     """No refusal that passes: the giving module treats the module as one that is not
-    reachable, and leaves it out. (Changed on 2026-10-11, jms_kapps 77, decided by Etienne: the
-    look-ahead leaves out a next module that cannot be reached, and refuses "no live route on"
-    where none is left. Until then the test was "a module whose next module cannot be reached
-    refuses for good", with no refusal, and the reason "Module3 is not reachable: the graph
-    names no live ReserveWorkflow of it".)"""
+    reachable, and leaves it out. The look-ahead leaves out a next module that cannot be reached, and refuses
+    "no live route on" where none is left."""
     world.connections = {(M1, M2), (M2, M3)}
     m = station(M2)
     world.unregistered.add(M3)
@@ -632,7 +629,7 @@ def test_a_next_module_that_cannot_carry_the_box_on_is_answered_by_the_detour(
     assert moved(moves, B1)[:1] == [M3]
 
 
-# -- A stop (jms_kapps 42) -------------------------------------------------------------------- #
+# -- A stop -------------------------------------------------------------------- #
 
 
 class ConnectionsThatStop(Reads):

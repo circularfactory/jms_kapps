@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from kapps_triplestore_interface import IRI
 
-JMS_NS = "https://sfb1574.kit.edu/ontologies/JMS_Usecase_Demo#"
+JMS_NS = "http://w3id.org/circularfactory/Unscrewing#"
 PROV_NS = "http://www.w3.org/ns/prov#"
 
 
@@ -18,7 +18,7 @@ class JMS:
     # Classes
     Screw = IRI("Screw", base=JMS_NS)
     ScrewType = IRI("ScrewType", base=JMS_NS)
-    DecisionSnapshot = IRI("DecisionSnapshot", base=JMS_NS)
+    ParameterCopy = IRI("ParameterCopy", base=JMS_NS)
     UnscrewingOperation = IRI("UnscrewingOperation", base=JMS_NS)
     # The product: a Core assembly, which names the Screws it contains, and a Core product, which
     # names its model. Both links are Core's, so this file names neither.
@@ -26,11 +26,12 @@ class JMS:
 
     # Object properties
     hasScrewType = IRI("hasScrewType", base=JMS_NS)
-    # The design, on the product's `cfc:ProductType`, beside `hasScrewType`, the record on the
-    # Screw. Two properties, because a domain is an inference rule: `hasScrewType` on a product
-    # type would make that product type a Screw.
+    # The design, on the `cfc:AssemblyType`, beside `hasScrewType`, the record on the
+    # Screw. Two properties, because a domain is an inference rule: a reasoner that applies
+    # `rdfs:domain` would conclude that an assembly type that carries `hasScrewType` is a Screw.
+    # Nothing in the use cases relies on the store materializing that conclusion.
     hasExpectedScrewType = IRI("hasExpectedScrewType", base=JMS_NS)
-    usedValues = IRI("usedValues", base=JMS_NS)
+    classifiedWith = IRI("classifiedWith", base=JMS_NS)
 
     # Where an unscrewing operation's curves are, in the time-series store
     hasTimeSeriesReference = IRI("hasTimeSeriesReference", base=JMS_NS)
@@ -56,11 +57,11 @@ class JMS:
     # capability that workflow realizes. The planner dispatches each unscrewing operation to
     # `UnscrewingCapability`. Then the capability of the anomaly detector, by which the screwing
     # resource finds the detector's classify workflow.
-    hasScrew = IRI("hasScrew", base=JMS_NS)
+    concernsScrew = IRI("concernsScrew", base=JMS_NS)
     # What the operation works on, and the Screw's link back to the operation. The pair
-    # `hasOperation` is the `owl:inverseOf` `hasScrew`: the store infers it in the operation's own
-    # commit, and the planner also writes it explicitly (Etienne, 2026-10-15).
-    hasWorkpiece = IRI("hasWorkpiece", base=JMS_NS)
+    # `hasOperation` is the `owl:inverseOf` `concernsScrew`: the store infers it in the operation's own
+    # commit, and the planner also writes it explicitly, in that same commit.
+    concernsWorkpiece = IRI("concernsWorkpiece", base=JMS_NS)
     hasOperation = IRI("hasOperation", base=JMS_NS)
     ScrewingResourceService = IRI("ScrewingResourceService", base=JMS_NS)
     UnscrewingWorkflow = IRI("UnscrewingWorkflow", base=JMS_NS)
@@ -69,16 +70,16 @@ class JMS:
 
     # The anomaly detector: its service, and its classify workflow, which realizes the
     # `ClassifyCapability`. Then the class of the tree's exits, and what the detector commits on
-    # an unscrewing operation besides the decision snapshot and the outcome (`hasOutcome`, below):
+    # an unscrewing operation besides the parameter copy and the outcome (`hasDetectionResult`, below):
     # after a failure outcome, the measured end of the approach.
     AnomalyDetectorService = IRI("AnomalyDetectorService", base=JMS_NS)
     AnomalyDetector = IRI("AnomalyDetector", base=JMS_NS)
     ClassifyWorkflow = IRI("ClassifyWorkflow", base=JMS_NS)
-    UnscrewingOutcome = IRI("UnscrewingOutcome", base=JMS_NS)
+    DetectionResult = IRI("DetectionResult", base=JMS_NS)
     hasMeasuredApproachEndPosition = IRI("hasMeasuredApproachEndPosition", base=JMS_NS)
 
     # An unscrewing operation's outcome, and the outcome of an attempt that passed
-    hasOutcome = IRI("hasOutcome", base=JMS_NS)
+    hasDetectionResult = IRI("hasDetectionResult", base=JMS_NS)
     ScrewIntact = IRI("ScrewIntact", base=JMS_NS)
 
     # The learner: its resource class, its service class, and its one resource
@@ -96,12 +97,40 @@ class JMS:
     StartUnscrewingCapability = IRI("StartUnscrewingCapability", base=JMS_NS)
     Planner1 = IRI("Planner1", base=JMS_NS)
 
+    # The screwing resource's class, and its robot, whose controller speaks only MQTT. Each
+    # parameter of the robot is a property of the robot's resource whose node names its topic and
+    # its broker (`READINGS`, `SETPOINT_OF`, below).
+    ScrewingResource = IRI("ScrewingResource", base=JMS_NS)
+    Robot = IRI("Robot", base=JMS_NS)
+    hasRobot = IRI("hasRobot", base=JMS_NS)
+    isRobotOf = IRI("isRobotOf", base=JMS_NS)
+
+    # The robot's readings: one value per sample of an attempt's curve
+    hasRobotPosition = IRI("hasRobotPosition", base=JMS_NS)
+    hasAxialForce = IRI("hasAxialForce", base=JMS_NS)
+    hasUnscrewingTorque = IRI("hasUnscrewingTorque", base=JMS_NS)
+
+    # The state of the robot's attempt, and the command that starts one
+    hasAttemptState = IRI("hasAttemptState", base=JMS_NS)
+    hasAttemptCommand = IRI("hasAttemptCommand", base=JMS_NS)
+
+    # The robot's setpoints, one for each value of the Screw type that an attempt is given
+    hasRobotMinApproachAxialForce = IRI("hasRobotMinApproachAxialForce", base=JMS_NS)
+    hasRobotMinCounterTorque = IRI("hasRobotMinCounterTorque", base=JMS_NS)
+    hasRobotMinPreloadAxialForce = IRI("hasRobotMinPreloadAxialForce", base=JMS_NS)
+    hasRobotPreparationTurningAngle = IRI(
+        "hasRobotPreparationTurningAngle", base=JMS_NS
+    )
+    hasRobotMaxLooseTorque = IRI("hasRobotMaxLooseTorque", base=JMS_NS)
+    hasRobotMinLooseningAxialForce = IRI("hasRobotMinLooseningAxialForce", base=JMS_NS)
+    hasRobotMaxDynamicTorque = IRI("hasRobotMaxDynamicTorque", base=JMS_NS)
+
 
 class PROV:
     """The terms of PROV-O that use case 1 writes, declared in `ontology/integration_usecase.ttl`.
 
-    One PROV witness, on the decision (jms_kapps 59): the classification is an `Activity`, the
-    anomaly detector's resource its agent, and the decision snapshot the entity it generated.
+    One PROV witness, on the decision: the classification is an `Activity`, the
+    anomaly detector's resource its agent, and the parameter copy the entity it generated.
     """
 
     Activity = IRI("Activity", base=PROV_NS)
@@ -114,7 +143,7 @@ class PROV:
     endedAtTime = IRI("endedAtTime", base=PROV_NS)
 
 
-# A Screw type holds these, and a Screw can override its type's value.
+# Only a Screw type holds these (and a parameter copy records them); a Screw holds none.
 TYPE_LEVEL: tuple[IRI, ...] = (
     JMS.hasMinApproachAxialForce,
     JMS.hasMinCounterTorque,
@@ -131,3 +160,36 @@ PLACEMENT: tuple[IRI, ...] = (
     JMS.hasMinScrewHeadPosition,
     JMS.hasMaxScrewHeadPosition,
 )
+
+# The robot's readings, each the parameter of one signal of a frame.
+READINGS: tuple[IRI, ...] = (
+    JMS.hasRobotPosition,
+    JMS.hasAxialForce,
+    JMS.hasUnscrewingTorque,
+)
+
+# The robot's setpoint for each value of the Screw type, in the order of `TYPE_LEVEL`.
+SETPOINT_OF: dict[IRI, IRI] = {
+    JMS.hasMinApproachAxialForce: JMS.hasRobotMinApproachAxialForce,
+    JMS.hasMinCounterTorque: JMS.hasRobotMinCounterTorque,
+    JMS.hasMinPreloadAxialForce: JMS.hasRobotMinPreloadAxialForce,
+    JMS.hasPreparationTurningAngle: JMS.hasRobotPreparationTurningAngle,
+    JMS.hasMaxLooseTorque: JMS.hasRobotMaxLooseTorque,
+    JMS.hasMinLooseningAxialForce: JMS.hasRobotMinLooseningAxialForce,
+    JMS.hasMaxDynamicTorque: JMS.hasRobotMaxDynamicTorque,
+}
+
+# The robot's setpoints, in the order of `TYPE_LEVEL`.
+SETPOINTS: tuple[IRI, ...] = tuple(SETPOINT_OF.values())
+
+# Every parameter of the robot: its readings, the state of its attempt, the command that starts
+# one, and its setpoints. Each is reached over MQTT.
+ROBOT_PARAMETERS: tuple[IRI, ...] = (
+    *READINGS,
+    JMS.hasAttemptState,
+    JMS.hasAttemptCommand,
+    *SETPOINTS,
+)
+
+# The parameters a client may set: the start command and the setpoints. The others it only reads.
+READWRITE: tuple[IRI, ...] = (JMS.hasAttemptCommand, *SETPOINTS)

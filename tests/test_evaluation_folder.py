@@ -1,6 +1,5 @@
-"""The `evaluation` folder stays apart from the demonstration (jms_kapps 52, decided by Etienne on
-2026-10-07): use case 1 and use case 2 import nothing from `jms_kapps.evaluation`, the folder has
-its README, and it holds the two `southward` strategies of jms_kapps 80 and no other. A strategy
+"""The `evaluation` folder stays apart from the demonstration: use case 1 and use case 2 import nothing from `jms_kapps.evaluation`, the folder has
+its README, and it holds the two `southward` strategies and no other. A strategy
 reaches use case 2 only through the entry-point groups, whose discovery skips an entry that cannot
 be imported, with one WARNING each, so the demonstration runs with the folder removed.
 """

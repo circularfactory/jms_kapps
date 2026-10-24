@@ -14,9 +14,11 @@ streams report.
 
 `ontology/flexconveyor_usecase.ttl` declares the classes of this use case.
 `shapes/flexconveyor_usecase_shapes.ttl` holds the SHACL shapes that each write must satisfy.
-The paper prints one of those shapes.
+The paper prints one of those shapes. `shapes/flexconveyor_usecase_sparql_shapes.ttl` holds the one
+rule in SHACL-SPARQL, loaded on request by the shape tests, `jms-uc2 audit` (`audit.py`) and
+`jms-uc2 reachable-destination` (`reachable_destination.py`), and by no launch. `jms-uc2 capability-resource` (`capability_resource.py`) shows the Core
+rule that every capability belongs to exactly one resource refuse two writes that break it.
 
-`vertical_slice.py` is the smallest run that proves every seam: two modules, one box, one
-handover, and one fault the triple store refuses. On any other topology, each module chooses the
-next module of a box on a shortest path to its destination (`routing.py`).
+On any other topology, each module chooses the next module of a box on a shortest path to its
+destination (`routing.py`).
 """

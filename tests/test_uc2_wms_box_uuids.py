@@ -1,5 +1,4 @@
-"""A box gets a UUID, and the WarehouseManagementSystem stops reading all boxes (jms_kapps 92,
-Sören's decision of 2026-10-12 as the product owner of the tests, on jms_kapps 85).
+"""A box gets a UUID, and the WarehouseManagementSystem stops reading all boxes.
 
 - A spawn reads nothing whose size grows with the boxes in the graph: it names its box by a new
   UUID, so that more than one middleware can create boxes without a shared number.

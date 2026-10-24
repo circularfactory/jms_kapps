@@ -1,4 +1,4 @@
-"""The table keeps the replay levels of the store-only baseline apart (jms_kapps 98): one column per
+"""The table keeps the replay levels of the store-only baseline apart: one column per
 factor, and the factor-1 column as it was. A runs folder made from fabricated records, read by
 `jms-eval-table` and `jms-eval-report`; no store, no run.
 """
@@ -235,12 +235,12 @@ def test_the_text_of_the_table_shows_a_column_for_each_factor_and_the_levels(
     assert "| spec 1 | baseline | 1 |" in shown
     assert "| spec 1 | baseline x2 | 1 |" in shown
     section = shown.split("## Replay levels")[1].split("\n## ")[0]
-    # Each level with the repetition of its replay (jms_kapps 114): a record that names none is
+    # Each level with the repetition of its replay: a record that names none is
     # of the first.
     assert (
         "| Configurations | Repetition | Factor | Run | Offered per minute |" in section
     )
-    # The dropped connections have a column of their own (jms_kapps 109).
+    # The dropped connections have a column of their own.
     assert "| spec 1 | 1 | 1 | b1 | 100 | 100 | 100 | 0 | 0 | 0 | 0 |  |" in section
     assert (
         "| spec 1 | 1 | 2 | b2 | 200 | 200 | 100 | 0 | 0 | 0 | 1 | heap refusal |"

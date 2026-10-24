@@ -1,5 +1,5 @@
 # The iteration-one spec of the measurement harness: the design of the numbers decision
-# (jms_kapps 56), with the run timing of the run task (KSM 271, note of 2026-10-11). It explores the
+# with the run timing of the run task. It explores the
 # limits of the store under use case 2 and gives a first benchmark fast; iteration two changes this
 # file, not code.
 #
@@ -8,7 +8,7 @@
 # Files it names (the README of `evaluation` says how):
 # - the 60- and 120-module grids, `../topologies/grid-60.json` and `../topologies/grid-120.json`,
 #   committed in `topologies/`: the 12 x 5 and 24 x 5 grids that `python -m
-#   jms_kapps.evaluation.grid` makes (jms_kapps 94). The 30-module grid is the shipped `grid`, the
+#   jms_kapps.evaluation.grid` makes. The 30-module grid is the shipped `grid`, the
 #   5-module cross the shipped `cross`.
 # - one prefill file for each topology and store size, `<topology>-<size>.ttl` in the prefills
 #   folder of the command, made with `python -m jms_kapps.evaluation.prefill`. A store size is the
@@ -18,8 +18,8 @@
 
 [defaults]
 series = "before"              # the series that the readers show with each number, "before 7"
-                                # (jms_kapps 110): no key of a configuration
-boxes_per_minute = 30           # a normal box rate, not heavy (jms_kapps 56)
+                                #: no key of a configuration
+boxes_per_minute = 30           # a normal box rate, not heavy
 warm_up_seconds = 60            # 1 minute, not measured
 window_seconds = 300            # the measured window, 5 minutes
 drain_bound_seconds = 300       # 5 minutes; a box still waiting then counts as stuck

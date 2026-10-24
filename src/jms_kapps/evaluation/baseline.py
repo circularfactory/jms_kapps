@@ -17,7 +17,7 @@ A baseline run goes through these steps, in order, and records each action it ta
    `uc2`, and a run that did not complete, which has no measures. It resolves the recorded run's
    configuration, refuses a prefill file whose digest is not the recorded one, and, if the
    recorded run was heavy, or the factor is above 1, refuses to start unless an approval covers it
-   (`approval`, jms_kapps 96): the option `--heavy-run-approval` gives the approval file and
+   (`approval`): the option `--heavy-run-approval` gives the approval file and
    `--spec` the spec, and the baseline runs only if the record of the replayed run holds a
    configuration key (a run made from a spec records it) that the approved spec lists, in the
    approval's period. A
@@ -40,7 +40,7 @@ A baseline run goes through these steps, in order, and records each action it ta
    each request of the window has its answer, or its error (the drain), and reads the server's
    views again. The measured window lasts as long as the recorded one.
 
-   **Compressed in time** (`--factor`, jms_kapps 98, interim names, jms_kapps 83). With a factor
+   **Compressed in time** (`--factor`, interim names). With a factor
    above 1 the window's requests keep their order, and the offset of each, so each gap between
    two of them and the window itself, is divided by the factor: the same requests in a shorter
    time (`replay_levels`). A factor of 1, the default, is the replay as described above. Every
@@ -53,15 +53,12 @@ A baseline run goes through these steps, in order, and records each action it ta
    `baseline`, the run it replays, and, for a completed run, its measures in the form of part
    2's (`observation`): every request it sent, those before the window too, as part 2 keeps
    them, so that a refusal among them shows; the window's alone count, each with its offset and
-   how late it left. As for a UC2 run, by Sören's decision of 2026-10-14 as the product owner of
-   the tests, the deletion is a fact of its own in the record (`repository_deletion`), and the
+   how late it left. As for a UC2 run, the deletion is a fact of its own in the record (`repository_deletion`), and the
    outcome says nothing of it: a baseline or a replay level whose replay completed is
    `completed`, with its measures and its level, also where the store did not delete its
-   repository; the last line names such a repository (changed on 2026-10-14, jms_kapps 116:
-   until then "; the repository was not deleted" was added to the outcome, and such a baseline
-   did not count).
+   repository; the last line names such a repository.
 
-**The run limit** (added on 2026-10-13, jms_kapps 106; interim names, jms_kapps 83). A baseline
+**The run limit** (interim names). A baseline
 run, at every factor, has the run limit of a UC2 run (`run_limit`): 30 minutes by default, a run
 setting that the record keeps as `run_settings.run_limit_seconds`. The time counts from the facts
 of step 2 to the start of step 5. A baseline older than its limit ends through step 5, as a stop
@@ -316,8 +313,7 @@ def _with_the_run_settings_of_the_before_series(
     values: Mapping[str, Any], record: Mapping[str, Any]
 ) -> dict[str, Any]:
     """The configuration `values` of a record, with the transit time and the retry wait it lacks.
-    A record of the "before" series holds them under `run_settings` and not in its configuration
-    (jms_kapps 93), so they are read from there, and, where a record says neither, from the values
+    A record of the "before" series holds them under `run_settings` and not in its configuration, so they are read from there, and, where a record says neither, from the values
     every run of that series took (`bench.TRANSIT_SECONDS`, `bench.RETRY_SECONDS`). A record of the
     "after" series holds them in its configuration, which is left as it is."""
     settings = record.get("run_settings")
@@ -505,7 +501,7 @@ def run_baseline(
             "prefill_transaction_statements": PREFILL_TRANSACTION_STATEMENTS,
             "request_timeout_seconds": REQUEST_TIMEOUT_SECONDS,
             "client_load_interval_seconds": CLIENT_LOAD_INTERVAL_SECONDS,
-            # The limit of the whole run (`run_limit`; jms_kapps 106, interim).
+            # The limit of the whole run (`run_limit`; interim).
             "run_limit_seconds": run_limit_seconds,
         },
         "prefill": None,
@@ -683,8 +679,7 @@ def _measures(
 def _outcome(sent: Sent) -> tuple[str, str | None, str | None]:
     """The outcome of a replayed request, as part 2 reads one (`store_requests.answer_of`):
     accepted, or refused with the kind of the refusal and the store's reason; where it got no
-    answer, timed out or connection dropped by its error (`store_requests.unanswered_outcome`,
-    jms_kapps 109), with the error."""
+    answer, timed out or connection dropped by its error (`store_requests.unanswered_outcome`), with the error."""
     if sent.status_code is None:
         return store_requests.unanswered_outcome(sent.error), None, sent.error
     return store_requests.answer_of(

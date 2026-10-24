@@ -9,7 +9,7 @@ goes through the middleware into the store.
 **The anomaly detector is a fake** where a test of the screwing resource needs to control it.
 `FakeDetector` realizes the detector's Classify capability, as the real one does
 (`jms_kapps.uc1.anomaly_detector`), so the screwing resource finds it in the graph. It keeps the
-operation of each call, answers with a fixed unscrewing outcome, and writes nothing: it never ends
+operation of each call, answers with a fixed detection result, and writes nothing: it never ends
 an operation. A test that needs a detector which refuses the call, answers late, or ends the
 operation itself gives it what to do on each call. The detector's own tests serve the real one.
 
@@ -35,6 +35,7 @@ from pydantic import BaseModel
 from jms_kapps.common.process import bind_socket
 from jms_kapps.common.triplestore import connect
 from jms_kapps.uc1.classify_call import ClassifyRequest
+from jms_kapps.uc1.seed import M4_VALUES
 from jms_kapps.uc1.vocabulary import JMS, JMS_NS
 
 # The parties of these tests. None is declared in the ontology: a seed writes each as a
@@ -67,7 +68,7 @@ def served(build: Callable[[int], SemanticMiddleware]) -> Iterator[SemanticMiddl
 
 
 class FixedOutcome(BaseModel):
-    """The fake detector's answer to every call: the same unscrewing outcome, whatever the
+    """The fake detector's answer to every call: the same detection result, whatever the
     curves."""
 
     outcome: str = f"{JMS_NS}ScrewIntact"
@@ -103,7 +104,7 @@ class FakeDetector:
             capability_class=JMS.ClassifyCapability, workflow_class=SVC.Workflow
         )
         def classify(request: ClassifyRequest) -> FixedOutcome:
-            """Keep the call, do what the test asks, and answer the fixed unscrewing outcome."""
+            """Keep the call, do what the test asks, and answer the fixed detection result."""
             self.calls.append(request.operation)
             if self.on_call is not None:
                 self.on_call(middleware, IRI(request.operation))
@@ -130,7 +131,7 @@ def dispatch(planner: SemanticMiddleware, screw: IRI) -> IRI:
         capability_class=JMS.UnscrewingCapability,
         operation_class=JMS.UnscrewingOperation,
     ) as operation:
-        operation.data[str(JMS.hasScrew)] = [{"id": str(screw)}]
+        operation.data[str(JMS.concernsScrew)] = [{"id": str(screw)}]
     return IRI(str(operation.iri))
 
 
@@ -145,4 +146,13 @@ def seed_parties(screws: list[IRI]) -> str:
     return resources + "".join(
         f"<{screw}> a <{JMS.Screw}> ; <{JMS.hasScrewType}> <{JMS.M4}> .\n"
         for screw in screws
+    )
+
+
+def seed_screw_type_values(db) -> None:
+    """Gives the Screw type `:M4` its seven type values, in one commit. An attempt needs them: the
+    screwing resource ends an operation `failed` before the attempt when its Screw type holds none."""
+    OGM(db=db).commit(
+        instance_iri=JMS.M4,
+        data={str(prop): [value] for prop, value in M4_VALUES.items()},
     )

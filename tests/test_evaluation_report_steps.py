@@ -1,4 +1,4 @@
-"""The steps of the report of a spec (jms_kapps 87): `jms-eval-report` also tells where the time goes,
+"""The steps of the report of a spec: `jms-eval-report` also tells where the time goes,
 step by step, from the spans of the runs: `report/steps.csv` and a steps chart in `report.md`. The
 seam is the command on a runs folder made from fabricated records with spans added
 (`_evaluation_records`); the tests check `steps.csv`, not how a chart looks. No store, no network,
@@ -127,7 +127,7 @@ def test_steps_csv_has_a_row_for_each_configuration_role_and_step(
 
     steps = reported(spec_path, runs)
 
-    # The CSV keeps the number and gains the spec's series (jms_kapps 110).
+    # The CSV keeps the number and gains the spec's series.
     assert list(steps.columns) == [
         "configuration",
         "series",
@@ -206,7 +206,7 @@ def test_a_span_outside_the_window_and_a_run_that_does_not_count_are_left_out(
             "DELETE WHERE { GRAPH <urn:x-kapps:write-receipts> { ?s ?p ?o } }",
             "receipt removal",
         ),
-        ("write", "INSERT { <a> <lastHeartbeat> 1 } WHERE { }", "heartbeat update"),
+        ("write", "INSERT { <a> <hasLastHeartbeat> 1 } WHERE { }", "heartbeat update"),
         ("read", "SELECT ?a WHERE { ?a ?b ?c }", "possession: state lookups"),
         (
             "read",
@@ -377,7 +377,7 @@ def test_the_gap_step_is_the_wms_client_time_after_each_all_boxes_read(
 def test_the_wms_s_ask_for_a_returned_box_is_a_step_of_its_own_and_an_old_record_still_reads(
     tmp_path, spec_path, by_number
 ):
-    """jms_kapps 92: when a box comes back, the WMS asks the store about that one box, in one
+    """When a box comes back, the WMS asks the store about that one box, in one
     `ASK`, which is a step of its own. A run of the "before" series, whose WMS still read every box
     at each spawn, keeps its all-boxes read and its gap step beside it, and the table sorts all of
     them."""

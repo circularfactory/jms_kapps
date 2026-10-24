@@ -3,8 +3,8 @@
 The records write through the WarehouseManagementSystem's middleware, which is built here and
 never served: a commit needs only its object-graph mapper. The object-graph mapper finds a
 property of a class only through the property's `rdfs:domain`, so each write here proves that the
-ontology declares one: the transport's own properties, and the middleware's `svc:operationStatus`
-and `svc:executionResult`, whose domain is Core's `cfc:Operation`. The fetch is the one the
+ontology declares one: the transport's own properties, and the middleware's `svc:hasOperationStatus`
+and `svc:hasExecutionResult`, whose domain is Core's `cfc:Operation`. The fetch is the one the
 middleware's event trigger makes when a party is notified of the transport. The seed, which writes
 directly before any party starts, links a box and its transport as the opening does.
 

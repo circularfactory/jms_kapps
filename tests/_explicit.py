@@ -7,6 +7,7 @@ directions itself reads only the explicit statements.
 
 from __future__ import annotations
 
+from kapps_semantic_middleware.vocabulary import SVC
 from kapps_triplestore_interface import IRI, SPARQLQuery
 
 from jms_kapps.common.triplestore import Queryable, bindings
@@ -35,3 +36,19 @@ def explicit_links(
         explicit_objects(db, box, FC.hasTransport),
         explicit_objects(db, transport, FC.hasBox),
     )
+
+
+def explicit_statements(db: Queryable) -> set[tuple[str, str, str]]:
+    """Every explicit statement of the default graph, except heartbeats, which move on their own."""
+    clauses = ["?s ?p ?o", f"FILTER (?p != <{SVC.hasLastHeartbeat}>)"]
+    rows = bindings(
+        db,
+        SPARQLQuery.select(
+            variables=["?s", "?p", "?o"],
+            where_clauses=clauses,
+            include_implicit=False,
+        ),
+        # Each term's lexical value, compared as it is written, with no conversion in between.
+        convert=False,
+    )
+    return {(row["s"]["value"], row["p"]["value"], row["o"]["value"]) for row in rows}

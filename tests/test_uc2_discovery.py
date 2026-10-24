@@ -70,19 +70,19 @@ class Store:
         workflow = URIRef(f"{service}_receive")
         self.graph.add((service, URIRef(SVC.isServiceOf), URIRef(resource)))
         if address:
-            self.graph.add((service, URIRef(SVC.address), Literal(base)))
+            self.graph.add((service, URIRef(SVC.hasAddress), Literal(base)))
         if heartbeat_age is not None:
             beat = datetime.now(UTC) - timedelta(seconds=heartbeat_age)
             self.graph.add(
                 (
                     service,
-                    URIRef(SVC.lastHeartbeat),
+                    URIRef(SVC.hasLastHeartbeat),
                     Literal(beat, datatype=XSD.dateTime),
                 )
             )
         self.graph.add((workflow, URIRef(SVC.isWorkflowOf), service))
         self.graph.add((workflow, RDF.type, URIRef(FC.ReceiveWorkflow)))
-        self.graph.add((workflow, URIRef(SVC.endpoint), Literal(f"{base}/receive")))
+        self.graph.add((workflow, URIRef(SVC.hasEndpoint), Literal(f"{base}/receive")))
         return base
 
 
@@ -213,7 +213,7 @@ def uncounted(store: Store) -> Store:
 
 def test_the_wms_reads_the_modules_with_their_types_and_the_connections_in_one_read():
     """What a spawn reads to pick: the roles of each module, and where the connections lead, so
-    that it picks only a destination the origin reaches (jms_kapps 51)."""
+    that it picks only a destination the origin reaches."""
     store = CountingStore()
     store.graph += shipped_topology("tee").graph(0)
 
@@ -233,7 +233,7 @@ def test_the_wms_reads_the_modules_with_their_types_and_the_connections_in_one_r
 
 def test_the_wms_s_one_read_names_the_direction_of_each_connection():
     """What its strategy is given: the connections as the WMS read them, each with its source,
-    its target and its direction, as a module's are (jms_kapps 52)."""
+    its target and its direction, as a module's are."""
     store = CountingStore()
     store.graph += shipped_topology("tee").graph(0)
 

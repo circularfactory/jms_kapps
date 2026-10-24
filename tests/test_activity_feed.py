@@ -7,7 +7,7 @@ page shows that process's steps next to the middleware's own entries.
 The first test runs `run_process` in a Python process of its own, because the process start sets
 up the logging of its whole process. It needs no triple store: the child's middleware is a FastAPI
 app with the middleware's activity feed on it, and its one route logs what the test asks for. The
-second runs UC1's learner, whose middleware has no activity feed, as its own process on the
+second runs UC1's learner, whose middleware has an activity feed, as its own process on the
 GraphDB, against the dataset `--dataset` names, which it clears.
 """
 
@@ -126,7 +126,7 @@ _LEARNER_ADDRESS = re.compile(r"The learner runs on (http://\S+/),")
 @pytest.mark.posix(reason="SIGINT cannot be sent to a process on Windows")
 @pytest.mark.graphdb
 @pytest.mark.skipif(not triplestore_env_present(), reason="no triple store connection variables")
-def test_uc1_s_learner_which_has_no_activity_feed_still_starts_and_serves_its_dashboard(
+def test_uc1_s_learner_starts_and_serves_its_dashboard_and_its_activity_page(
     dataset,
 ):
     db = connect(dataset)
@@ -145,7 +145,7 @@ def test_uc1_s_learner_which_has_no_activity_feed_still_starts_and_serves_its_da
         ]
 
         assert httpx.get(f"{address}dashboard", timeout=10).status_code == 200
-        assert httpx.get(f"{address}activity", timeout=10).status_code == 404
+        assert httpx.get(f"{address}activity", timeout=10).status_code == 200
 
         learner.process.send_signal(signal.SIGINT)
         assert learner.wait(timeout=STOP_TIMEOUT_SECONDS) == 0

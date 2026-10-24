@@ -40,7 +40,7 @@ from _station import (
 from _wait import eventually
 from fastapi.testclient import TestClient
 from kapps_semantic_middleware import Mode, SemanticMiddleware
-from kapps_semantic_middleware.dashboard import enable_dashboard
+from kapps_semantic_middleware.dashboard import SHORTENING_NOTE, enable_dashboard
 from kapps_triplestore_interface.exceptions import TripleStoreResponseError
 from rdflib.namespace import RDF, SH, XSD
 
@@ -56,7 +56,7 @@ from jms_kapps.uc2.wms_memory import WmsMemory
 from jms_kapps.uc2.wms_process import serve_spawning
 
 SPAWN = "/workflows/spawn_box/execute"
-# The name of a box the WMS spawns: `Box-<UUID>` (jms_kapps 92).
+# The name of a box the WMS spawns: `Box-<UUID>`.
 UUID_BOX = r"Box-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 SET_RATE = "/workflows/set_spawn_rate/execute"
 M1, M2, M3 = module_iri(1), module_iri(2), module_iri(3)
@@ -164,8 +164,7 @@ def test_the_first_box_of_a_rate_is_spawned_at_once_and_the_next_one_an_interval
 def test_a_change_of_rate_counts_from_the_last_due_spawn():
     """From 1 box a minute to 600: the next box is due a tenth of a second after the first, which
     is past, so it comes at once. Then from 6000 to 6: the next is due ten seconds after the last
-    due one. (Added on 2026-10-07, jms_kapps 51, decided by Etienne: "a change of rate counts from
-    the last due spawn".)"""
+    due one. A change of rate counts from the last due spawn."""
     started: list[float] = []
     timer = SpawnTimer(lambda: started.append(time.monotonic()))
     try:
@@ -192,9 +191,7 @@ def test_a_change_of_rate_counts_from_the_last_due_spawn():
 def test_stopping_the_timer_waits_until_every_spawn_under_way_has_ended():
     """The timer spawns on daemon threads, which the end of the process would cut short, mid
     spawn. Its stop at the process's shutdown waits for every spawn under way, and no spawn
-    follows them. (Changed on 2026-10-07, jms_kapps 51, decided by Etienne: spawns of the timer
-    overlap. Until then the test was named "..._waits_until_the_spawn_under_way_has_ended", and
-    its one spawn was followed by none.)"""
+    follows them. Spawns of the timer overlap."""
     some_under_way, may_end = threading.Event(), threading.Event()
     lock = threading.Lock()
     spawned = {"started": 0, "ended": 0}
@@ -228,8 +225,7 @@ def test_a_due_spawn_for_which_no_thread_starts_runs_on_the_timer_s_own_thread(
     monkeypatch, caplog
 ):
     """A process that can start no more threads loses no spawn that was due: the timer spawns on
-    its own thread instead, and says so. (Added on 2026-10-07, jms_kapps 51: "no box is lost
-    silently"; running it on the timer's thread is the build's reading.)"""
+    its own thread instead, and says so. No box is lost silently."""
     start = threading.Thread.start
 
     def no_thread_for_a_spawn(thread: threading.Thread) -> None:
@@ -383,7 +379,7 @@ def test_the_spawn_form_offers_the_entry_and_exit_modules_or_the_wms_s_choice(st
 
 
 def test_where_the_topology_names_no_roles_the_spawn_form_offers_every_module_both_ways():
-    """Added on 2026-10-06, jms_kapps 45, decided by Etienne: roles are optional."""
+    """Roles are optional."""
     world = World()
     world.connections = {(M1, M2), (M2, M1)}
     world.classes[FC.FlexConveyorModule] = [M1, M2]
@@ -417,7 +413,7 @@ def test_a_spawn_from_the_form_left_to_the_wms_answers_in_last_spawns(station):
     assert (answer["origin"], answer["destination"]) == (str(M1), str(M2))
     [(time_of_day, box, way, outcome, reason)] = rows(station.box("last-spawns"))
     assert len(time_of_day) == len("12:34:56")
-    # The box's whole name, `Box-<UUID>` (jms_kapps 92).
+    # The box's whole name, `Box-<UUID>`.
     assert re.fullmatch(UUID_BOX, box), box
     assert box == local_name(answer["box"])
     assert (way, outcome, reason) == ("Module1 → Module2", "accepted", "—")
@@ -516,7 +512,7 @@ def test_held_boxes_and_transports_follow_the_spawns_and_the_notifications(stati
 def test_a_create_the_store_refuses_shows_the_store_s_reason_in_last_spawns(station):
     """As when a neighbour with `skip-reserve` armed has filled the origin since its answer to
     Reserve: nothing is written, so no transport and no held box are shown, and "Last spawns"
-    reads why, the rule the store names and its message (jms_kapps 41)."""
+    reads why, the rule the store names and its message."""
     station.records.fails_with = store_refusal(POSSESSION_REPORT)
 
     spawn_as_the_form_does(station)
@@ -535,9 +531,8 @@ def test_a_create_the_store_refuses_shows_the_store_s_reason_in_last_spawns(stat
 
 def test_a_transport_that_failed_on_the_station_is_shown_failed_with_why(station):
     """Module 1 cannot reach Module 2, the box's destination, and has no other way there: the
-    transport fails with no live route left, and the WMS's dashboard shows that reason. (Changed
-    on 2026-10-11, jms_kapps 77, decided by Etienne: the transport fails only with no live route
-    left. Until then the reason was only checked to start with "Module2".)"""
+    transport fails with no live route left, and the WMS's dashboard shows that reason. The transport fails only
+    with no live route left."""
     spawn_as_the_form_does(station)
     station.world.held[M2].append(box_iri(7))  # Module 2 holds a box of its own
 
@@ -567,6 +562,38 @@ def test_transports_and_held_boxes_show_the_newest_50_and_say_how_many_there_are
         assert len(shown) == 50
         assert shown[0][0].startswith(local_name(newest["box"]))
         assert f"The newest 50 of 51 {things}, newest first." in fragment
+
+
+def test_no_table_of_the_wms_shows_the_shortening_note(station):
+    spawn_as_the_form_does(station)
+    station.tasks.run()
+
+    for box_id in ("last-spawns", "held-boxes", "transports"):
+        assert SHORTENING_NOTE not in station.box(box_id)
+
+
+def test_an_iri_cell_shows_the_local_name_with_the_whole_iri_in_its_title(station):
+    box = spawn_as_the_form_does(station)["box"]
+    station.tasks.run()
+
+    fragment = station.box("held-boxes")
+
+    assert f'<span title="{box}">{local_name(box)}</span>' in fragment
+
+
+def test_the_iri_cells_of_the_wms_tables_wrap_and_the_short_cells_stay_on_one_line(
+    station,
+):
+    spawn_as_the_form_does(station)
+    station.tasks.run()
+
+    held = station.box("held-boxes")
+    cells = re.findall(r"<td([^>]*)>", held)
+    # Box, Transport: wrap. Last known status: one line.
+    assert cells == ["", "", ' style="white-space: nowrap"']
+    transports = re.findall(r"<td([^>]*)>", station.box("transports"))
+    # Transport, Box, Origin → destination, Reason: wrap. Last known status: one line.
+    assert transports == ["", "", "", ' style="white-space: nowrap"', ""]
 
 
 BOXES = ["spawn", "spawn-rate", "last-spawns", "held-boxes", "transports"]
@@ -602,14 +629,12 @@ def test_the_rate_form_posts_to_the_rate_workflow(client):
 
 
 def test_the_rate_box_shows_the_rate_in_force_and_asks_for_it_again(client):
-    assert (
-        in_force(rate_box(client))[0] == "In force: 0 boxes per minute, so none spawns"
-    )
+    assert in_force(rate_box(client))[0] == "Current rate: 0, spawning is off"
 
     set_rate(client, 1.5)
 
     text, attributes = in_force(rate_box(client))
-    assert text == "In force: 1.5 boxes per minute"
+    assert text == "Current rate: 1.5 boxes per minute"
     assert reaches("/dashboard", attributes["hx-get"], "/dashboard/box/spawn-rate")
     assert attributes["hx-select"] == ".rate-in-force"
     assert attributes["hx-swap"] == "outerHTML"

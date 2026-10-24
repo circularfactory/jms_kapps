@@ -1,8 +1,8 @@
-"""The report points of Sören's decisions of 2026-10-12 (jms_kapps 85): the runs of the "after"
+"""The report points: the runs of the "after"
 series go on around the clock, and other use of the KIT GraphDB may overlap them. The report groups
 the runs by hour, marks a run that overlaps a live check or whose server watch shows other
 activity, shows the global page cache's hit share, counts the runs with a deadlock alarm apart and
-shows each dead heartbeat. (Added on 2026-10-12, jms_kapps 97; interim, jms_kapps 83: every name
+shows each dead heartbeat. Interim names: every name
 here, the files `marks.csv`, `hours.csv`, `page_cache.csv`, `deadlock_alarms.csv` and
 `dead_heartbeats.csv`, the option `--live-checks` and the summary's key `points`.)
 
@@ -222,7 +222,7 @@ def other_activity(record: Mapping[str, Any]) -> dict[str, Any]:
 
 def _cache_counts(view: Any) -> tuple[int, int] | None:
     """The hits and the misses of a structures view, or None where it holds no two counters. The
-    KIT server answers `{"cacheHit": n, "cacheMiss": n}` (seen in jms_kapps 95's live check); the
+    KIT server answers `{"cacheHit": n, "cacheMiss": n}` (seen in a live check); the
     nested `cache.hit` and `cache.miss` and the Prometheus names (`graphdb_cache_hit`,
     `graphdb_cache_miss`) are read too, and harm nothing."""
     answer = _answer(view)

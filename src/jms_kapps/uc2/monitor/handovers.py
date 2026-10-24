@@ -8,15 +8,11 @@ each read.
 - **The WarehouseManagementSystem's handover to the origin.** The WarehouseManagementSystem
   creates a box directly on its origin, so a box that a read finds for the first time on its
   transport's origin was handed there by the WarehouseManagementSystem. A box found for the first
-  time anywhere else was not seen handed over. (Changed on 2026-10-06, jms_kapps 41, decided by
-  Etienne. Until then the WarehouseManagementSystem "creates a box in its own possession and
-  hands it to its origin a few milliseconds later, so a read seldom finds the box in between".)
+  time anywhere else was not seen handed over.
 - **Which WarehouseManagementSystem.** The one the graph types as one, found by its class in
   the same read, not an IRI the code knows. Where the graph names none, or several, who handed a
-  new box to its origin is not known, and no handover is listed for it. (Changed on 2026-10-08,
-  jms_kapps 24, decided by Etienne on 2026-10-06: "all information at the monitor must stem from
-  graph polling". Until then the code named the WarehouseManagementSystem's IRI; listing none
-  where the graph names several is the build's reading.)
+  new box to its origin is not known, and no handover is listed for it. All information at the
+  monitor stems from graph polling.
 - **Two handovers between two reads.** A box whose possessor changes twice between two reads, a
   second apart, shows as one handover from the first possessor to the last. At the default
   transit time of 3 s that does not happen, because a box's next handover waits for its move;

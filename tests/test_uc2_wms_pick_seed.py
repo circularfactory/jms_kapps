@@ -1,5 +1,4 @@
-"""The WarehouseManagementSystem's pick takes a seed (jms_kapps 93, decided by Sören on jms_kapps
-85): the same seed and topology give the same sequence of picks, for each strategy, `real` and
+"""The WarehouseManagementSystem's pick takes a seed: the same seed and topology give the same sequence of picks, for each strategy, `real` and
 `southward`. Offline, on the shipped grid as a fake topology: a station whose modules refuse every
 Reserve, so that a spawn ends with its pick in the answer and the world stays as it was.
 """

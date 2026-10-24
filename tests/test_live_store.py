@@ -1,4 +1,4 @@
-"""`jms-live-store` (jms_kapps 121): the four chores of a live check against a stand-in of the
+"""`jms-live-store`: the four chores of a live check against a stand-in of the
 GraphDB REST API, the refusals before any request, and no secret in any output. Nothing reaches a
 store.
 """

@@ -6,13 +6,13 @@ screwing resource writes a frame to the time-series store. The detector and the 
 frames back from it. The frame replay makes a frame from a recording, in place of the robot.
 
 A frame is recorded with phases or without them. A sample outside every phase, or any sample of a
-frame recorded without phases, has no phase. The legacy mock recordings have phases from labels
+frame recorded without phases, has no phase. The example recordings have phases from labels
 that a person wrote, and some of their samples have none: the retract after the disassembly, and
 the missing screw's samples after its approach.
 
 The values are floats. A measured frame has the units that the ontology gives its thresholds:
-force in N, torque in N·m, position in mm along the y axis of the robot frame. The units of the
-legacy mock recordings are not known (see `replay`).
+force in N, torque in N·m, position in mm along the y axis of the robot frame. The replay assumes
+the same units for the example recordings (see `replay`).
 """
 
 from __future__ import annotations
@@ -49,9 +49,9 @@ class Frame:
     Attributes:
         times: The sample times, in nanoseconds since the Unix epoch (UTC), strictly ascending.
         signals: Each signal's values, one for each sample time.
-        phases: Each sample's phase, one of `PHASES`, or None where the phase is not known.
+        phases: Each sample's phase, one of `PHASES`, or None where the sample has no phase.
         source: None for a frame that the robot recorded. For a replayed frame, the recording it
-            replays; a mock recording says that it is mock.
+            replays, under a tag that names the recording.
     """
 
     times: tuple[int, ...]

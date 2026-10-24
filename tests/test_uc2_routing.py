@@ -169,7 +169,7 @@ def test_of_several_pure_corridors_the_one_of_the_lowest_iri_is_named():
     assert pure_corridor(connections) == (M2, M1, M3)
 
 
-# -- Reachability (jms_kapps 51) ---------------------------------------------------------------- #
+# -- Reachability ---------------------------------------------------------------- #
 
 
 def test_a_module_reaches_every_module_its_connections_lead_to_one_way_as_listed():
@@ -187,7 +187,9 @@ def test_a_module_reaches_itself_only_over_a_cycle():
     assert M1 in reachable({(M1, M2), (M2, M1)}, M1)
 
 
-@pytest.mark.parametrize("name", ["cross", "grid", "tee", "pair", "merge-fault-demo"])
+@pytest.mark.parametrize(
+    "name", ["cross", "grid", "line", "tee", "pair", "merge-fault-demo"]
+)
 def test_on_each_shipped_topology_every_origin_reaches_every_destination_but_itself(
     name,
 ):

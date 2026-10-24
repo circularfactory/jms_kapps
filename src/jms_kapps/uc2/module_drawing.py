@@ -172,9 +172,8 @@ def _frame() -> str:
 
 def _box_label(box: IRI) -> str:
     """What the cardboard box says: the box's name, or, for a box named by a UUID, `Box-` and
-    the first four characters of the UUID, as the monitor's disc shows those four. (Added on
-    2026-10-12, jms_kapps 92: a box's whole name, `Box-<UUID>`, does not fit on it. The build's
-    reading of the ticket's interim reading for the monitor; interim, jms_kapps 83.)"""
+    the first four characters of the UUID, as the monitor's disc shows those four: a box's whole
+    name, `Box-<UUID>`, does not fit on it. Interim name."""
     name = local_name(box)
     if name.startswith(UUID_BOX_PREFIX):
         return name[: len(UUID_BOX_PREFIX) + 4]
@@ -290,7 +289,7 @@ def _matrix_cell(
     says = f"{local_name(source)} hands boxes"
     says += f" {direction.lower()}" if direction else ""
     says += f" to {local_name(target)}"
-    says += "; the graph names no direction" if direction is None else ""
+    says += "; the knowledge graph names no direction" if direction is None else ""
     says += f", and {local_name(target)} hands boxes back" if both_ways else ""
     return (
         f"{group}<title>{escape(says)}</title>"

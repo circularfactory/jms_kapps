@@ -1,4 +1,4 @@
-# The validation spec of the measurement harness (jms_kapps 100; interim name, jms_kapps 83): each
+# The validation spec of the measurement harness (interim name): each
 # figure that the evaluation claims, measured once with short windows, so that a reader can check
 # that the harness, the store and the reader's machine work end to end before the long specs run.
 # `jms-eval` runs it when it is given no spec. It is not a measurement: one repetition of each
@@ -32,7 +32,7 @@
 # makes with the seed 1 if they are missing.
 
 [defaults]
-series = "validation"          # the series that the readers show with each number (jms_kapps 110)
+series = "validation"          # the series that the readers show with each number
 boxes_per_minute = 6
 warm_up_seconds = 0             # no warm-up: a short window
 window_seconds = 60

@@ -29,7 +29,7 @@ from jms_kapps.uc2.monitor.wires import wires
 from jms_kapps.uc2.seed import seed_topology
 from jms_kapps.uc2.topology import load_topology, parse_topology, shipped_topology
 from jms_kapps.uc2.transport import operation_status
-from jms_kapps.uc2.vocabulary import FC, FCI_NS, WMS, module_iri
+from jms_kapps.uc2.vocabulary import FC, FC_NS, FCI_NS, WMS, module_iri
 from jms_kapps.uc2.wms import taken_back_record
 
 pytestmark = [
@@ -87,11 +87,8 @@ def test_each_shipped_topology_converted_seeds_the_modules_it_seeded_before(
     dataset, name
 ):
     """The same types, labels and connections, read back from the store as written, and the
-    handover abilities the seed gives every module. (Changed on 2026-10-06, jms_kapps 45, decided
-    by Etienne: the shipped cross names no roles, so it seeds each of its modules as a
-    FlexConveyorModule, as `shipped_as_seeded_before.json` holds it since. Until then the cross
-    seeded Modules 1 and 2 as entry modules and Modules 4 and 5 as exit modules, as before it
-    became a module list.)"""
+    handover abilities the seed gives every module. The shipped cross seeds Modules 1 and 2 as entry modules, Modules 4 and 5 as exit modules and
+    Module 3 as a FlexConveyorModule, as `shipped_as_seeded_before.json` holds it."""
     db = connect(dataset)
 
     seed_topology(db, shipped_topology(name), transit_seconds=0)
@@ -112,7 +109,7 @@ def test_every_module_of_a_seeded_topology_is_a_core_resource_by_the_ontology(
     """Paper claim 1 (§5.2): "Modules are typed as :FlexConveyorModule, a subclass of
     cfc:Resource". The store holds the subclass axiom as use case 2's ontology writes it, and it
     answers every module of the seeded cross as a `cfc:Resource`, although the seed writes each
-    one as a FlexConveyorModule only: the store infers the rest from the ontology."""
+    one as its role or as a FlexConveyorModule only: the store infers the rest from the ontology."""
     db = connect(dataset)
     cross = shipped_topology("cross")
 
@@ -130,8 +127,14 @@ def test_every_module_of_a_seeded_topology_is_a_core_resource_by_the_ontology(
     for module in cross.modules:
         assert str(module.resource) in resources, module.id
         assert explicit_objects(db, module.resource, IRI(str(RDF.type))) == [
-            str(FC.FlexConveyorModule)
+            FC_NS + module.types[0]
         ], module.id
+    # The roles are subclasses of FlexConveyorModule, so Modules 1, 2, 4 and 5 are FlexConveyorModules
+    # by inference, and Module 3 is one as the seed writes it.
+    for role in (FC.EntryModule, FC.ExitModule):
+        assert str(FC.FlexConveyorModule) in explicit_objects(
+            db, role, IRI(str(RDFS.subClassOf))
+        )
 
 
 def test_a_module_listed_with_two_types_gets_both_and_a_one_way_connection_stays_one_way(
@@ -171,9 +174,7 @@ def test_a_module_listed_with_two_types_gets_both_and_a_one_way_connection_stays
     ]
 
 
-def test_the_first_iterations_cross_file_loads_and_a_box_crosses_it(
-    dataset, records
-):
+def test_the_first_iterations_cross_file_loads_and_a_box_crosses_it(dataset, records):
     """From an entry module over Module 3 to an exit module, and back to the
     WarehouseManagementSystem."""
     with participants(dataset, load_topology(str(FIRST_ITERATIONS_CROSS))) as party:
@@ -188,15 +189,12 @@ def test_the_first_iterations_cross_file_loads_and_a_box_crosses_it(
         assert operation_status(party.db, transport) == OperationStatus.DONE
 
 
-def test_the_monitor_reads_the_seeded_cross_without_roles_and_every_connection_leads_both_ways(
+def test_the_monitor_reads_the_seeded_cross_with_its_roles_and_every_connection_leads_both_ways(
     dataset,
 ):
     """On the cross, as the store holds it, every connection leads both ways, and the monitor
     keeps the query it sent for it, exactly as the store received it, with the rows it answered.
-    (Added on 2026-10-06, jms_kapps 45, decided by Etienne. Changed on 2026-10-10, jms_kapps 24,
-    decided by Etienne on 2026-10-06: "we can map destinations but not routes". Until then the
-    monitor treated a topology without roles as one whose every module is an entry and an exit,
-    and found that a box from any module to any other hops over every connection, both ways.)"""
+    The monitor maps destinations but not routes."""
     db = connect(dataset)
     seed_topology(db, shipped_topology("cross"), transit_seconds=0)
 
@@ -204,13 +202,26 @@ def test_the_monitor_reads_the_seeded_cross_without_roles_and_every_connection_l
     modules = reads.modules()
     drawn = wires(modules)
 
-    assert {m.type for m in modules} == {"FlexConveyorModule"}
+    assert {str(m.resource): m.type for m in modules} == {
+        str(module_iri(n)): role
+        for n, role in enumerate(
+            (
+                "EntryModule",
+                "EntryModule",
+                "FlexConveyorModule",
+                "ExitModule",
+                "ExitModule",
+            ),
+            1,
+        )
+    }
     assert len(drawn) == 4
     for wire in drawn:
         assert wire.between == wire.leads_to, wire
     (sent,) = reads.sent()
     assert (sent.read, sent.error) == ("modules", None)
     assert f"<{FC.connectsTo}>" in sent.text
-    # The text, sent again as it is, answers as many rows: one for each connection, since the
-    # four modules around Module 3 have one each, and Module 3 has four.
-    assert sent.rows == len(bindings(db, sent.text)) == 8
+    # The text, sent again as it is, answers as many rows: one for each connection and matching
+    # class. The role modules answer once for their module class and once for their role class:
+    # the four modules around Module 3 have 2 rows each, and Module 3 has four with its one class.
+    assert sent.rows == len(bindings(db, sent.text)) == 12

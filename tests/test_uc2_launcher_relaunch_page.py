@@ -1,5 +1,5 @@
 """The Launcher page across a launch of another topology, in a headless browser, as a person who
-keeps the page open uses it (jms_kapps 6).
+keeps the page open uses it.
 
 The page is the real one, served by the Launcher's real app, so its state route and its launch are
 the server's own. What stands behind the Launcher is fake, and nothing reaches a store: the graph
@@ -59,6 +59,9 @@ class Graph:
     ) -> None:
         pass
 
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
+
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         live = set(self.live)
         return live_services(live, workflows, dict.fromkeys(live, NOWHERE))
@@ -117,7 +120,7 @@ def launch_from_the_page(page: Page, graph: Graph, name: str) -> None:
     graph.live = set()
     page.get_by_label("Topology to launch").select_option(name)
     page.once("dialog", lambda dialog: dialog.accept())
-    page.get_by_role("button", name="Launch this topology").click()
+    page.get_by_role("button", name="Launch", exact=True).click()
 
 
 def topology_ids(page: Page) -> list[str]:
@@ -137,11 +140,10 @@ def process_states(page: Page) -> dict[str, str]:
 def test_an_open_page_draws_the_topology_launched_from_it_while_its_processes_start(
     page: Page, launcher_url, graph
 ):
-    """The case Etienne reported on 2026-10-05: the grid launched after the cross on an open
+    """The case of the grid launched after the cross on an open
     page, whose Topology table kept the cross. Here the page draws the grid's table and status,
     while each of the grid's processes is `starting`, with no address yet. Offline this case
-    draws right on the page before jms_kapps 6 too: the next test makes a `starting` process
-    fail to draw, as the ticket suspected."""
+    draws right on the page too: the next test makes a `starting` process fail to draw."""
     open_on_the_cross(page, launcher_url)
 
     launch_from_the_page(page, graph, "grid")

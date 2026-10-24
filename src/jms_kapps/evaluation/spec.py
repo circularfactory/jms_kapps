@@ -30,20 +30,18 @@ slowest. A block with no key at all is one configuration, of the defaults alone.
 retry wait 1.0 s, 1 repetition), then the spec's defaults,
 then its block, then a flag of the command (`setting`), each over the one before.
 
-**The pick seed** (added on 2026-10-12, jms_kapps 93, decided by Sören on jms_kapps 85; interim
-names, jms_kapps 83). Repetition k of every configuration gets the seed `pick_seed(base, k)` for
+**The pick seed** (interim names). Repetition k of every configuration gets the seed `pick_seed(base, k)` for
 the WarehouseManagementSystem's picks, so that the repetitions of two configurations stay paired.
 The base is `pick_base_seed` of the spec's `[defaults]`, a whole number, or else the command's fixed
 `DEFAULT_BASE_SEED`. The seed is no key of a configuration and no part of its key: all repetitions
 of a configuration keep one key. The sweep writes it into each run's saved configuration.
 
-**The prefill seed** (added on 2026-10-12, jms_kapps 100, interim name, jms_kapps 83). `jms-eval`
+**The prefill seed** (interim name). `jms-eval`
 makes each prefill file that a spec names and that is missing (`harness`), with the seed 1 unless
 the spec's `[defaults]` give `prefill_seed`, a whole number from 0. Like the pick base seed it is
 no key of a configuration and no part of its key.
 
-**The series** (added on 2026-10-14, jms_kapps 110, decided by Sören on 2026-10-13 as the product
-owner of the tests, jms_kapps 85, note 1866296; interim name, jms_kapps 83). The configuration
+**The series** (interim name). The configuration
 numbers of two specs point to different configurations: configuration 7 of the iteration-one spec
 is not configuration 7 of the "after" spec. So a spec names its series in its defaults, `series =
 "before"`, a text, and the readers and the sweep show each number with it, "before 7"
@@ -89,9 +87,9 @@ Each rate is one load level, made by one run, so a ramp has 1 repetition. Its ru
 configurations take `heavy = true` whatever the spec's defaults say, and a ramp whose block or a
 flag says `heavy = false` is refused. They run with the wrapper, since the broken rule reads the
 measures that need it (`ramp`). A ramp's configurations are its own: one that another block lists
-too is refused. (The ramp added on 2026-10-12, jms_kapps 49.)
+too is refused.
 
-**The precision rule** (added on 2026-10-12, jms_kapps 101, interim names, jms_kapps 83). A spec
+**The precision rule** (interim names). A spec
 with a `[precision]` table does not give a fixed number of repetitions to its configurations at
 normal load: each runs until the rule holds (`precision`), in rounds (`rounds`), at most
 `maximum_runs` times.
@@ -105,15 +103,13 @@ normal load: each runs until the rule holds (`precision`), in rounds (`rounds`),
     maximum_runs = 20               # runs made at most
 
 These are settings of the spec outside a configuration's key. A table that gives `pass_sizes` is
-refused: the rounds replaced the passes (jms_kapps 111, decided by Sören on 2026-10-13; until
-then `pass_sizes = [5, 5]` gave the sizes of the first passes). A configuration under the rule is
+refused: the rounds replaced the passes. A configuration under the rule is
 one that is neither a ramp's level nor heavy; its `repetitions` is `maximum_runs`, and the spec,
 a block or a flag that gives it `repetitions` is refused. A ramp's level and a heavy configuration
 are heavy parts (`heavy_parts`): each runs one time, in round 1, and again on request, so one with
-`repetitions` other than 1 is refused (jms_kapps 114, decided by Sören on 2026-10-13; until then
-they kept their fixed repetitions, as in a spec without the rule).
+`repetitions` other than 1 is refused.
 
-**Replay factors** (added on 2026-10-12, jms_kapps 98, interim names, jms_kapps 83). A sweep block
+**Replay factors** (interim names). A sweep block
 may list the factors by which the store-only baseline replays a recorded run compressed in time:
 
 ::
@@ -132,7 +128,6 @@ store requests of a run with the wrapper, so a configuration with factors has `w
 Every factor above 1 is a heavy run (`approval`). Each level has a key of its own, the
 configuration's key and the factor (`replay_levels.level_key`).
 
-(Added on 2026-10-11, jms_kapps 78.)
 """
 
 from __future__ import annotations
@@ -166,8 +161,8 @@ REPETITIONS = "repetitions"
 SPEC_KEYS = (*KEYS, REPETITIONS)
 
 # The command's defaults: the strategies `real`, SHACL on, history collection off, no prefill, the
-# wrapper on (added on 2026-10-12, jms_kapps 48), the transit time 3.0 s and the retry wait 1.0 s
-# (added on 2026-10-12, jms_kapps 93: the values the use case takes by default), and 1 repetition.
+# wrapper on, the transit time 3.0 s and the retry wait 1.0 s (the values the use case takes by
+# default), and 1 repetition.
 # Every other value comes from the spec, or from a flag.
 COMMAND_DEFAULTS: Mapping[str, Any] = {
     "prefill": NO_PREFILL,
@@ -184,24 +179,21 @@ COMMAND_DEFAULTS: Mapping[str, Any] = {
 # What a prefill names to name its topology's name.
 TOPOLOGY_PLACEHOLDER = "{topology}"
 
-# The key that marks a block as a ramp (added on 2026-10-12, jms_kapps 49). A block may say it;
+# The key that marks a block as a ramp. A block may say it;
 # the spec's defaults and the flags may not.
 RAMP = "ramp"
 
 # The key of the spec's defaults that gives the seed of the prefill files that `jms-eval` makes
-# (added on 2026-10-12, jms_kapps 100, interim name): no key of a configuration either.
+# (interim name): no key of a configuration either.
 PREFILL_SEED = "prefill_seed"
 
-# The key of the spec's defaults that names the spec's series (added on 2026-10-14, jms_kapps 110,
-# interim name): no key of a configuration either.
+# The key of the spec's defaults that names the spec's series (interim name): no key of a configuration either.
 SERIES = "series"
 
-# The key of the spec's defaults that gives the base seed of the pick seeds (added on 2026-10-12,
-# jms_kapps 93, interim name): no key of a configuration, so no block and no flag may give it.
+# The key of the spec's defaults that gives the base seed of the pick seeds (interim name): no key of a configuration, so no block and no flag may give it.
 BASE_SEED = "pick_base_seed"
 
-# The key of a block that lists the replay factors of its configurations (added on 2026-10-12,
-# jms_kapps 98, interim name): no key of a configuration, so no default and no flag may give it.
+# The key of a block that lists the replay factors of its configurations (interim name): no key of a configuration, so no default and no flag may give it.
 REPLAY_FACTORS = "replay_factors"
 
 # The tables of a spec.
@@ -210,21 +202,20 @@ _SWEEP = "sweep"
 _PRECISION = "precision"
 
 # The key of a `[precision]` table that gave the sizes of the first passes, until the rounds
-# replaced them (jms_kapps 111): a table that gives it is refused, naming the rounds.
+# replaced them: a table that gives it is refused, naming the rounds.
 PASS_SIZES = "pass_sizes"
 
 
 @dataclass(frozen=True)
 class PrecisionRule:
-    """The settings of the precision rule that a spec's `[precision]` table gives (added on
-    2026-10-12, jms_kapps 101, interim names).
+    """The settings of the precision rule that a spec's `[precision]` table gives (interim names).
 
     A configuration meets the rule when it has `minimum_runs` valid runs, the bootstrap 95 %
     interval of its pooled commit p95 lies within `latency_tolerance` of the p95 on both sides,
     and the IQR of its transports ended per minute is at most `throughput_spread` of their median.
-    At most `maximum_runs` runs are made of it. The sweep works in rounds (`rounds`, jms_kapps
-    111): round k makes repetition k of each configuration that is still open, so the last round
-    is `maximum_runs`.
+    At most `maximum_runs` runs are made of it. The sweep works in rounds (`rounds`): round k
+    makes repetition k of each configuration that is still open, so the last round is
+    `maximum_runs`.
     """
 
     latency_tolerance: float = 0.10
@@ -248,23 +239,22 @@ class Spec:
     # The numbers of the blocks marked as a ramp, from 1.
     ramps: frozenset[int] = frozenset()
     # The replay factors of each block that lists them, by the block's number, each in rising order
-    # (jms_kapps 98, interim name).
+    # (interim name).
     replays: Mapping[int, tuple[float, ...]] = field(default_factory=dict)
     # The base seed the spec gives for the pick seeds, or None where the command's default applies.
     base_seed: int | None = None
     # The precision rule of the spec's `[precision]` table, or None for a spec of fixed
-    # repetitions (added on 2026-10-12, jms_kapps 101, interim name).
+    # repetitions (interim name).
     precision: PrecisionRule | None = None
-    # The seed of the prefill files that `jms-eval` makes, or None for the seed 1 (jms_kapps 100,
-    # interim name).
+    # The seed of the prefill files that `jms-eval` makes, or None for the seed 1 (interim name).
     prefill_seed: int | None = None
-    # The series that the spec's defaults name, or None (jms_kapps 110, interim name).
+    # The series that the spec's defaults name, or None (interim name).
     series_name: str | None = None
 
     @property
     def series(self) -> str:
         """The spec's series: the name its defaults give, else its file name without the
-        extension (jms_kapps 110, interim name)."""
+        extension (interim name)."""
         return self.series_name if self.series_name is not None else self.path.stem
 
 
@@ -276,12 +266,12 @@ class SpecConfiguration:
     lists it first, from 1. `values` holds every key of a configuration as the spec and the flags
     give it, the prefill's topology filled in; `key` is their digest. `ramp` is the number of the
     block of the ramp it is a level of, or None. `ruled` is whether it runs under the spec's
-    precision rule (jms_kapps 101, interim name): then `repetitions` is the rule's maximum.
+    precision rule (interim name): then `repetitions` is the rule's maximum.
     `replay_factors` are the factors its blocks list for the store-only baseline's replay of it,
-    in rising order, or none (jms_kapps 98, interim name); they are no part of its key.
-    `spec_file` is the file name of the spec that lists it (jms_kapps 105, interim name): a record
+    in rising order, or none (interim name); they are no part of its key.
+    `spec_file` is the file name of the spec that lists it (interim name): a record
     of the "before" series is matched to it only when its sweep names that file. `series` is the
-    spec's series (jms_kapps 110, interim name), no part of the key, and `name` the number with
+    spec's series (interim name), no part of the key, and `name` the number with
     it, as the readers and the sweep show a configuration.
     """
 
@@ -299,7 +289,7 @@ class SpecConfiguration:
     @property
     def name(self) -> str:
         """The configuration's number with its series, such as `before 7`: the number alone
-        where it has no series (jms_kapps 110, interim name)."""
+        where it has no series (interim name)."""
         return f"{self.series} {self.number}" if self.series else str(self.number)
 
 
@@ -425,7 +415,7 @@ def configurations(
                     f"configuration has {REPETITIONS} = {repetitions} (from the block, the "
                     f"spec's [{_DEFAULTS}] or a flag): in the rounds a heavy configuration runs "
                     "one time, in round 1, and a person asks for each more repetition with "
-                    "--repeat (decided by Sören on 2026-10-13, jms_kapps 114). Give it "
+                    "--repeat. Give it "
                     f"{REPETITIONS} = 1, or none"
                 )
             if ruled:
@@ -548,7 +538,7 @@ def for_repetition(
 ) -> Configuration:
     """`configuration`, resolved, as repetition `repetition` of it runs: with that repetition's
     pick seed, from the spec's base seed or the default. A sweep and `jms-eval-uc2` run from a
-    spec both make it, so that one run is the same run from either (jms_kapps 96, interim)."""
+    spec both make it, so that one run is the same run from either (interim)."""
     base_seed = DEFAULT_BASE_SEED if spec.base_seed is None else spec.base_seed
     return replace(configuration, wms_pick_seed=pick_seed(base_seed, repetition))
 
@@ -558,7 +548,7 @@ def sweep_fields(
 ) -> dict[str, Any]:
     """What the record of a run made from a spec says of it: the spec, the configuration's number
     and key, and the repetition of how many. A sweep's run and a run of `jms-eval-uc2` made from a
-    spec and the configuration's number record the same fields (jms_kapps 96, interim)."""
+    spec and the configuration's number record the same fields (interim)."""
     return {
         "spec": str(spec.path),
         "configuration": configuration.number,
@@ -586,14 +576,13 @@ def _comparable(values: Mapping[str, Any]) -> dict[str, Any]:
 def fingerprint(configuration: Configuration) -> str:
     """The key of a resolved configuration, computed as the spec computes keys (`_key`) over its
     values made comparable, the pick seed left out: the same for the spec's configuration and the
-    resolved one it gives, and for the configuration text a record keeps (jms_kapps 96,
-    interim)."""
+    resolved one it gives, and for the configuration text a record keeps (interim)."""
     values = tomllib.loads(replace(configuration, wms_pick_seed=None).to_toml())
     return _key(_comparable(values))
 
 
 def lists(listed: SpecConfiguration, configuration: Configuration) -> bool:
-    """Whether `configuration`, resolved, is the configuration `listed` (jms_kapps 96, interim)."""
+    """Whether `configuration`, resolved, is the configuration `listed` (interim)."""
     return _key(_comparable(listed.values)) == fingerprint(configuration)
 
 
@@ -634,7 +623,7 @@ def _base_seed(value: Any) -> int | None:
 
 
 def _series_of(value: Any) -> str | None:
-    """The series that the spec's defaults name: None where they name none (jms_kapps 110).
+    """The series that the spec's defaults name: None where they name none.
 
     Raises:
         SpecRefused: If it is no text, or an empty one.
@@ -669,7 +658,7 @@ def _precision(table: Any) -> PrecisionRule | None:
 
     Raises:
         SpecRefused: If it is no table, names a key the rule does not know, gives `pass_sizes`,
-            which the rounds replaced (jms_kapps 111), or has a value out of range: the
+            which the rounds replaced, or has a value out of range: the
             tolerances are numbers above 0, the minimum is at least 2, so that the valid runs
             come from at least two rounds, and at most the maximum.
     """
@@ -680,8 +669,8 @@ def _precision(table: Any) -> PrecisionRule | None:
         raise SpecRefused(f"{_PRECISION} is a table, {where}")
     if PASS_SIZES in table:
         raise SpecRefused(
-            f"{where} gives {PASS_SIZES}, and the passes are no more: the rounds replaced them "
-            "(decided by Sören on 2026-10-13, jms_kapps 111). A call makes round after round, "
+            f"{where} gives {PASS_SIZES}, and the passes are no more: the rounds replaced them. "
+            "A call makes round after round, "
             "and round k makes repetition k of each configuration that does not meet the rule "
             f"and has fewer than maximum_runs runs. Remove {PASS_SIZES} from the spec"
         )
@@ -734,7 +723,7 @@ def _precision(table: Any) -> PrecisionRule | None:
 
 def valid_factor(value: Any) -> bool:
     """Whether `value` is a replay factor: a finite number from 1. Below 1 a replay would be slower
-    than the recorded run, which is no load to find a limit with (jms_kapps 98, interim)."""
+    than the recorded run, which is no load to find a limit with (interim)."""
     return (
         isinstance(value, int | float)
         and not isinstance(value, bool)
@@ -890,14 +879,13 @@ def _filled(prefill: Any, topology: Any) -> Any:
     return prefill.replace(TOPOLOGY_PLACEHOLDER, Path(str(topology)).stem)
 
 
-# The keys that joined a configuration's key with the run settings of the spec (jms_kapps 93):
+# The keys that joined a configuration's key with the run settings of the spec:
 # the records of the "before" series were keyed without them.
 LATER_KEYS = ("transit_seconds", "retry_seconds")
 
 
 def legacy_key(configuration: SpecConfiguration) -> str:
-    """The key that a record of the "before" series holds for `configuration` (jms_kapps 105,
-    interim name): the digest of its values without the transit time and the retry wait."""
+    """The key that a record of the "before" series holds for `configuration` (interim name): the digest of its values without the transit time and the retry wait."""
     return _key({k: v for k, v in configuration.values.items() if k not in LATER_KEYS})
 
 

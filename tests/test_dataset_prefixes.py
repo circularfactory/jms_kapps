@@ -31,10 +31,10 @@ from jms_kapps.uc2.topology import load_topology
 EXPECTED = {
     "fc": "http://w3id.org/circularfactory/FlexConveyor#",
     "fci": "http://w3id.org/circularfactory/FlexConveyorInstances#",
-    "cfc": "https://w3id.org/circularfactory/Core#",
-    "svc": "https://w3id.org/circularfactory/Service#",
-    "mes": "https://w3id.org/circularfactory/MES#",
-    "jms": "https://sfb1574.kit.edu/ontologies/JMS_Usecase_Demo#",
+    "cfc": "http://w3id.org/circularfactory/Core#",
+    "svc": "http://w3id.org/circularfactory/Service#",
+    "mes": "http://w3id.org/circularfactory/MES#",
+    "uns": "http://w3id.org/circularfactory/Unscrewing#",
     "sh": "http://www.w3.org/ns/shacl#",
 }
 
@@ -175,7 +175,7 @@ def test_a_seed_deletes_a_name_its_last_import_made_up():
 
     seed_uc1(
         store,
-        individuals=f"@prefix ns5: <{EXPECTED['jms']}> .\nns5:M5 a ns5:ScrewType .\n",
+        individuals=f"@prefix ns5: <{EXPECTED['uns']}> .\nns5:M5 a ns5:ScrewType .\n",
     )
 
     assert "ns5" not in store.namespaces
@@ -185,7 +185,7 @@ def test_a_seed_deletes_a_name_its_last_import_made_up():
     ("prefix", "namespace"),
     [
         # As on KIT's `Tests`, which other projects share.
-        ("", "https://www.sfb1574.kit.edu/ontologies/TransferUnit#"),
+        ("", "http://www.sfb1574.kit.edu/ontologies/TransferUnit#"),
         ("ns3", "http://example.org/another-vocabulary#"),
         ("flex", EXPECTED["fc"]),
         ("ns", EXPECTED["fc"]),

@@ -21,8 +21,10 @@ from jms_kapps.common.services import (
     MAX_HEARTBEAT_AGE_SECONDS,
     live_resources,
     reader,
+    reader_of_one,
     services,
 )
+from jms_kapps.common.supervision import why_not_ready
 from jms_kapps.uc2.vocabulary import FC, WMS, module_iri
 
 M1, M2 = module_iri(1), module_iri(2)
@@ -65,13 +67,13 @@ class Store:
         service = URIRef(f"{resource}_service_{port}")
         self.graph.add((service, URIRef(SVC.isServiceOf), URIRef(resource)))
         if address:
-            self.graph.add((service, URIRef(SVC.address), Literal(base)))
+            self.graph.add((service, URIRef(SVC.hasAddress), Literal(base)))
         if heartbeat_age is not None:
             beat = datetime.now(UTC) - timedelta(seconds=heartbeat_age)
             self.graph.add(
                 (
                     service,
-                    URIRef(SVC.lastHeartbeat),
+                    URIRef(SVC.hasLastHeartbeat),
                     Literal(beat, datatype=XSD.dateTime),
                 )
             )
@@ -83,7 +85,7 @@ class Store:
                 self.graph.add(
                     (
                         workflow,
-                        URIRef(SVC.endpoint),
+                        URIRef(SVC.hasEndpoint),
                         Literal(f"{base}/{workflow_class.fragment}"),
                     )
                 )
@@ -191,6 +193,22 @@ def test_a_live_service_with_many_workflows_is_one_service_in_one_read():
 
     assert {s.resource: len(s.workflows) for s in read} == {M1: 3, WMS: 2}
     assert store.reads == 1
+
+
+def test_the_reader_of_one_reads_one_resource_s_service_that_is_not_live_in_one_read():
+    """What a supervisor reads of a process whose service stopped being ready: that resource's
+    services only, live or not, with their workflows, and what is missing reads as why."""
+    store = Store()
+    store.service(M1, 40001, heartbeat_age=STALE, workflows=(FC.ReserveWorkflow,))
+    store.service(M2, 40002)
+
+    found = list(reader_of_one(store)(M1, (FC.ReserveWorkflow, FC.ReceiveWorkflow)))
+
+    assert [s.resource for s in found] == [M1]
+    assert found[0].workflows.keys() == {FC.ReserveWorkflow}
+    assert store.reads == 1
+    why = why_not_ready(found, (FC.ReserveWorkflow,), datetime.now(UTC))
+    assert why is not None and why.startswith("its last heartbeat is ")
 
 
 def test_a_heartbeat_counts_as_fresh_up_to_the_age_it_is_given():

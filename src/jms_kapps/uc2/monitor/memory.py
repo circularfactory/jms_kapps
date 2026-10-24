@@ -4,13 +4,12 @@ participants' refusals.
 A page poll reads only this memory, so an open tab causes no load: the reads below run on their
 own cadence whether a tab is open or not.
 
-It has two modes, which a page switches: **"graph + streams"**, in which it starts, and **"graph
-only"**, in which it sees what a dashboard sees that sees only the knowledge graph. Both read the
-graph; only "graph + streams" finds and follows the streams. A page also sets the interval of the
-graph read, from 0.5 s to 10 s. A change applies at once. (Added on 2026-10-08, jms_kapps 24,
-decided by Etienne on 2026-10-05: "the monitor should have an option to be graph read only. this
-means no event streams like the simulation of a real dashboard that only sees the knowledge
-graph. we should also be able to set a polling interval there (like every second)".)
+It has two modes, which a page switches: **"graph + streams"**, and **"graph only"**, in which the
+monitor process starts unless the Launcher is told to collect the refusals (the memory itself
+starts in "graph + streams" unless it is given a mode). In "graph only" it sees what a dashboard
+sees that sees only the knowledge graph. Both read the graph; only "graph + streams" finds and
+follows the streams. A page also sets the interval of the graph read, from 0.5 s to 10 s. A
+change applies at once.
 
 - **Every second**, or at the interval a page set, the graph: the modules and their connections,
   which participants are live (an address and a heartbeat younger than 90 s), every box with its
@@ -35,19 +34,7 @@ graph. we should also be able to set a polling interval there (like every second
 - It keeps each `deadlock_alarm` event, once, while the graph shows its box on the module that
   raised it: a read of the graph that shows the box elsewhere, or not at all, drops the alarm for
   good. In "graph only" a snapshot holds none, since an alarm is no fact of the graph, and the
-  alarms kept show again in "graph + streams". (Added on 2026-10-11, jms_kapps 77, decided by
-  Etienne: "The monitor in "graph + streams" shows one "possible deadlock" notice [...], for the
-  alarms whose box the graph still shows on that module. In "graph only" it shows none and says
-  why, as for refusals.")
-
-(Changed on 2026-10-08 and 2026-10-10, jms_kapps 24, decided by Etienne on 2026-10-05 and
-2026-10-06: the two modes, the interval, and the WarehouseManagementSystem read by its class.
-Until then the bullets began "**Every second**, the graph: the modules and their connections,
-which participants are live (an address and a heartbeat younger than 90 s), and every box with
-its transport and possessor." and "**Every 5 s**, the streams: where each participant serves its
-handover event stream, through", the second had no last sentence, and the last ended "A
-participant that is followed again, after it was offline, is read on after the last event read
-of it, so no refusal comes back.")
+  alarms kept show again in "graph + streams". The page says why none shows, as for refusals.
 """
 
 from __future__ import annotations
@@ -133,8 +120,7 @@ class Snapshot:
     first; `error` says why the last read of the graph failed, if it did. In "graph only"
     `refusals` is empty: a refused write leaves no trace in the graph. `queries` is the query each
     read sent last. `alarms` are the deadlock alarms whose box the last read of the graph shows on
-    the module that raised them, oldest first, and none in "graph only" (added on 2026-10-11,
-    jms_kapps 77, decided by Etienne)."""
+    the module that raised them, oldest first, and none in "graph only"."""
 
     modules: tuple[ModuleRow, ...] = ()
     live: frozenset[IRI] = frozenset()
@@ -172,6 +158,7 @@ class MonitorMemory:
         reads: MonitorReads,
         *,
         read_stream: ReadStream = read_sse,
+        mode: Mode = GRAPH_AND_STREAMS,
         graph_seconds: float = GRAPH_SECONDS,
         discover_seconds: float = DISCOVER_SECONDS,
     ) -> None:
@@ -192,7 +179,7 @@ class MonitorMemory:
         self._followers: dict[IRI, _Follower] = {}
         # The id of the last event read of each participant, kept when it is no longer followed.
         self._last_read: dict[IRI, str] = {}
-        self._mode: Mode = GRAPH_AND_STREAMS
+        self._mode: Mode = mode
         # When the background task reads the graph next, and finds the streams next, in
         # `time.monotonic()`: 0 is at once.
         self._next_read = 0.0
@@ -268,7 +255,7 @@ class MonitorMemory:
         """
         if not SHORTEST_GRAPH_SECONDS <= seconds <= LONGEST_GRAPH_SECONDS:
             raise ValueError(
-                f"The graph read's interval is from {SHORTEST_GRAPH_SECONDS:g} s to "
+                f"The interval of the knowledge graph read is from {SHORTEST_GRAPH_SECONDS:g} s to "
                 f"{LONGEST_GRAPH_SECONDS:g} s, not {seconds:g} s."
             )
         with self._lock:
@@ -294,10 +281,7 @@ class MonitorMemory:
     def _run(self) -> None:
         """Read the graph when its read is due, find the streams when a discovery is due in
         "graph + streams", each on its own interval, and wait for the next that is due or for a
-        change, until the task stops. (Changed on 2026-10-10, jms_kapps 24, after the review: a
-        discovery waited for the next read of the graph, so the streams were found every 10 s
-        at a graph read of 10 s. Until then: "Read the graph, find the streams when a discovery
-        is due in "graph + streams", and wait for the interval or a change".)"""
+        change, until the task stops."""
         while not self._stop.is_set():
             self._wake.clear()
             with self._lock:
@@ -397,7 +381,7 @@ class MonitorMemory:
     def take(self, event: HandoverEvent) -> None:
         """Keep `event` if it is a refusal not kept yet, in the order of the events' times, and
         only the newest `KEPT_REFUSALS`; or if it is a deadlock alarm not kept yet, in the same
-        order, and only the newest `KEPT_ALARMS` (added on 2026-10-11, jms_kapps 77)."""
+        order, and only the newest `KEPT_ALARMS`."""
         if isinstance(event, DeadlockAlarm):
             with self._lock:
                 if any(other.id == event.id for other in self._alarms):

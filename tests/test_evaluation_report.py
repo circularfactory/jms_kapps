@@ -1,4 +1,4 @@
-"""The report of a spec (jms_kapps 86): `jms-eval-report` turns the runs below a folder into tables
+"""The report of a spec: `jms-eval-report` turns the runs below a folder into tables
 and charts, `report/` beside the records. The seam is the command on a runs folder made from
 fabricated records (`_evaluation_records`): the tests check the files, their columns and their
 values, not how a chart looks. No store, no network, no run.
@@ -25,7 +25,7 @@ from jms_kapps.evaluation.spec import configurations, read_spec
 
 README = Path(jms_kapps.__file__).parent / "evaluation" / "README.md"
 
-# The error of a store request whose client gave up because the time ran out (jms_kapps 109).
+# The error of a store request whose client gave up because the time ran out.
 READ_TIMEOUT = (
     "ReadTimeout: HTTPConnectionPool(host='graphdb', port=7200): Read timed out."
 )
@@ -181,7 +181,7 @@ def test_the_report_reads_the_records_of_the_before_series_and_of_the_after_seri
     tmp_path, spec_path, by_number
 ):
     """The 35 records of iteration one hold `transports.highest_box_before_the_window`; a record
-    of today does not (jms_kapps 90). The report reads both, and the key changes no number."""
+    of today does not. The report reads both, and the key changes no number."""
     runs = tmp_path / "runs"
     numbers = {
         "commit_latencies": [1.0, 2.0, 3.0],
@@ -647,7 +647,7 @@ def test_the_readme_describes_the_command_and_its_files():
 def test_the_report_and_the_table_read_the_runs_of_the_before_series_beside_those_with_a_watch(
     tmp_path, spec_path, by_number
 ):
-    """jms_kapps 95: a record of the "before" series has no samples and none of the watch's
+    """A record of the "before" series has no samples and none of the watch's
     counters; a record of the "after" series has them. Both are runs of the same configuration,
     and the report and the table give the same numbers for both."""
     runs = tmp_path / "runs"
@@ -681,7 +681,7 @@ def test_the_report_and_the_table_read_the_runs_of_the_before_series_beside_thos
 def test_the_report_still_reads_a_record_of_the_before_series_whose_key_the_new_keys_changed(
     tmp_path, spec_path, by_number
 ):
-    """jms_kapps 93: every configuration's key changed, so a run of the "before" series is of no
+    """Every configuration's key changed, so a run of the "before" series is of no
     configuration of the spec any more. Its record, with the transit time under `run_settings`
     and no pick seed, is still read: the report counts it and goes on with the runs of the
     "after" series."""

@@ -1,6 +1,6 @@
-"""The precision rule (jms_kapps 101): a configuration runs until the bootstrap 95 % interval of its
+"""The precision rule: a configuration runs until the bootstrap 95 % interval of its
 pooled commit p95 is within 10 % of it and the IQR of its throughput is at most 10 % of the median,
-with at least 10 valid runs and at most 20 runs made. The rounds plan the runs (jms_kapps 111):
+with at least 10 valid runs and at most 20 runs made. The rounds plan the runs:
 round k makes repetition k of each open configuration.
 
 The seam is the round planner over run summaries (`rounds`), tested with fake summaries made from
@@ -252,13 +252,13 @@ def test_a_spread_exactly_at_the_limit_holds_and_a_zero_median_does_not():
     assert not judge(numbers, made=10, wrapper=False, rule=RULE).met
 
 
-# --- the stop at a throughput median of 0 (jms_kapps 113) -------------------------------------
+# --- the stop at a throughput median of 0 -------------------------------------
 
 
 def test_a_throughput_median_of_0_at_the_minimum_of_valid_runs_stops_the_configuration(
     spec,
 ):
-    """Sören's decision of 2026-10-13 (jms_kapps 85, note 1866296): a configuration whose
+    """A configuration whose
     throughput median is 0 after its minimum of valid runs stops there; the next round plans no
     run for it, and it does not run to 20."""
     _, c = spec
@@ -311,7 +311,7 @@ def test_only_valid_runs_count_toward_the_minimum_of_the_stop(spec):
 
 
 def test_the_half_of_the_calibration_pair_without_the_wrapper_stops_too(spec):
-    """It is judged on the throughput alone (jms_kapps 101), so the same stop applies to it."""
+    """It is judged on the throughput alone, so the same stop applies to it."""
     _, c = spec
     unwrapped = c[2]
     bare = [
@@ -512,7 +512,7 @@ def test_the_table_marks_a_configuration_stopped_at_a_throughput_median_of_0(spe
     """Its precision entry and its row in the section "Precision rule" name the configuration,
     its runs and the mark "stopped: throughput median 0", apart from "precision not reached"; a
     configuration that ran to 20 before the stop, as the "after" series may have, has that mark
-    too (jms_kapps 113)."""
+    too."""
     found, c = spec
 
     def made(configuration: SpecConfiguration, count: int) -> list[RunSummary]:
@@ -732,7 +732,7 @@ def test_a_spec_gives_either_the_rule_or_a_fixed_number_of_repetitions(tmp_path)
 
 def test_a_ramp_and_a_heavy_configuration_run_one_time_outside_the_rule(tmp_path):
     """A ramp's levels and a heavy configuration are heavy parts: each runs one time, in round 1,
-    and again on request (jms_kapps 114); one with other repetitions is refused
+    and again on request; one with other repetitions is refused
     (`test_evaluation_sweep_heavy.py`)."""
     path = tmp_path / "spec.toml"
     path.write_text(

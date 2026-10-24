@@ -1,5 +1,5 @@
 """The table gives each ramp its judgement and its comparison with the replay of the matching UC2
-configuration (jms_kapps 99, interim names). A runs folder made from fabricated levels; no store,
+configuration (interim names). A runs folder made from fabricated levels; no store,
 no run.
 """
 

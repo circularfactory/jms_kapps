@@ -184,16 +184,18 @@ def test_a_product_the_graph_does_not_hold_raises() -> None:
 
 def test_an_operation_gives_its_outcome_by_its_local_name() -> None:
     """The local name is what the dashboard shows."""
-    mapper = Mapper({OPERATION: {JMS.hasOutcome: [ref("ScrewIntact")]}})
+    mapper = Mapper({OPERATION: {JMS.hasDetectionResult: [ref("ScrewIntact")]}})
     mapper._data = {
-        OPERATION: {JMS.hasOutcome: [type("Ref", (), {"id": str(JMS.ScrewIntact)})()]}
+        OPERATION: {
+            JMS.hasDetectionResult: [type("Ref", (), {"id": str(JMS.ScrewIntact)})()]
+        }
     }
 
     assert read_outcome(mapper, OPERATION) == "ScrewIntact"
 
 
 def test_the_outcome_is_read_through_a_class_scope() -> None:
-    """Never at the FULL level: a load under `cfc:Operation` recurses (kapps_ogm 35)."""
+    """Never at the FULL level: a load under `cfc:Operation` recurses."""
     mapper = Mapper({OPERATION: None})
 
     read_outcome(mapper, OPERATION)
@@ -205,19 +207,24 @@ def test_an_operation_with_no_outcome_gives_none() -> None:
     """An operation that ended `failed` holds none."""
     assert read_outcome(Mapper({OPERATION: None}), OPERATION) is None
     assert read_outcome(Mapper({OPERATION: {}}), OPERATION) is None
-    assert read_outcome(Mapper({OPERATION: {JMS.hasOutcome: []}}), OPERATION) is None
+    assert (
+        read_outcome(Mapper({OPERATION: {JMS.hasDetectionResult: []}}), OPERATION)
+        is None
+    )
 
 
 def test_a_failed_operation_gives_its_reason() -> None:
-    """The reason is what the screwing resource or the detector wrote as `svc:executionResult`."""
-    mapper = Mapper({OPERATION: {SVC.executionResult: ["NOT_CLASSIFIED: no curves"]}})
+    """The reason is what the screwing resource or the detector wrote as `svc:hasExecutionResult`."""
+    mapper = Mapper(
+        {OPERATION: {SVC.hasExecutionResult: ["NOT_CLASSIFIED: no curves"]}}
+    )
 
     assert read_failure_reason(mapper, OPERATION) == "NOT_CLASSIFIED: no curves"
     assert mapper.scopes == [FAILURE_SCOPE]
 
 
 def test_several_reasons_are_joined() -> None:
-    mapper = Mapper({OPERATION: {SVC.executionResult: ["first", "second"]}})
+    mapper = Mapper({OPERATION: {SVC.hasExecutionResult: ["first", "second"]}})
 
     assert read_failure_reason(mapper, OPERATION) == "first; second"
 
@@ -226,7 +233,9 @@ def test_an_operation_with_no_reason_gives_none() -> None:
     assert read_failure_reason(Mapper({OPERATION: None}), OPERATION) is None
     assert read_failure_reason(Mapper({OPERATION: {}}), OPERATION) is None
     assert (
-        read_failure_reason(Mapper({OPERATION: {SVC.executionResult: []}}), OPERATION)
+        read_failure_reason(
+            Mapper({OPERATION: {SVC.hasExecutionResult: []}}), OPERATION
+        )
         is None
     )
 

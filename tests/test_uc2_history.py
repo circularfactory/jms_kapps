@@ -5,13 +5,13 @@ A stand-in store records every request a reset sends, in order: each import with
 each clear, the shapes, each query and update, and each prefix request. A reset with the option
 sends the history plugin's switch after it loaded the use case 2 ontology, and a reset without it
 sends no request of the plugin's at all, neither on nor off. The plugin's IRIs are read from
-`jms_kapps.uc2.history`, the one module that names them. (Added on 2026-10-10, jms_kapps 22.)
+`jms_kapps.uc2.history`, the one module that names them.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from _disposable import disposable
@@ -199,6 +199,91 @@ def test_the_server_s_time_keeps_the_server_s_zone():
         2026, 10, 1, 14, 3, 7, 123000, tzinfo=timezone(timedelta(hours=2))
     )
     assert history.point_in_time(now) == IRI(history.HISTORY_NS + "20261001140307")
+
+
+# -- The change list -------------------------------------------------------------------------- #
+
+
+def change(transaction: str, timestamp: str, value: str, insert: bool) -> dict:
+    """One row of the change list, as the store answers it."""
+    return {
+        "transaction": {"type": "uri", "value": history.HISTORY_NS + transaction},
+        "timestamp": {"type": "literal", "value": timestamp},
+        "object": {"type": "uri", "value": value},
+        "insert": {"type": "literal", "value": "true" if insert else "false"},
+    }
+
+
+def test_the_change_list_query_names_the_subject_and_the_predicate():
+    box = box_iri(1)
+
+    query = history.change_list_query(box, CFC.hasPossessedWorkpiece)
+
+    assert f"<{history.HISTORY_NS}listWithFilter>" in query
+    assert f"<{box}> <{CFC.hasPossessedWorkpiece}>" in query
+    for variable in ("?transaction", "?timestamp", "?object", "?insert"):
+        assert variable in query.split("WHERE")[0]
+
+
+def test_a_change_list_becomes_its_changes_in_the_order_of_their_time():
+    """The store's rows in any order; the changes come in the order of their timestamps, each
+    with its transaction, its value, and whether it was inserted or deleted."""
+    box = box_iri(1)
+    state_1, state_2 = (f"{box}-state-{n}" for n in (1, 2))
+    store = Answers(
+        [
+            change("20261024090531246", "2026-10-24T11:05:31.246+02:00", state_2, True),
+            change(
+                "20261024090531246", "2026-10-24T11:05:31.246+02:00", state_1, False
+            ),
+            change("20261024090530484", "2026-10-24T11:05:30.484+02:00", state_1, True),
+        ]
+    )
+
+    found = history.changes(store, box, CFC.hasPossessedWorkpiece)
+
+    plus_two = timezone(timedelta(hours=2))
+    assert found == [
+        history.Change(
+            IRI(history.HISTORY_NS + "20261024090530484"),
+            datetime(2026, 10, 24, 11, 5, 30, 484000, tzinfo=plus_two),
+            box,
+            CFC.hasPossessedWorkpiece,
+            state_1,
+            True,
+        ),
+        history.Change(
+            IRI(history.HISTORY_NS + "20261024090531246"),
+            datetime(2026, 10, 24, 11, 5, 31, 246000, tzinfo=plus_two),
+            box,
+            CFC.hasPossessedWorkpiece,
+            state_1,
+            False,
+        ),
+        history.Change(
+            IRI(history.HISTORY_NS + "20261024090531246"),
+            datetime(2026, 10, 24, 11, 5, 31, 246000, tzinfo=plus_two),
+            box,
+            CFC.hasPossessedWorkpiece,
+            state_2,
+            True,
+        ),
+    ]
+    assert store.queries == [history.change_list_query(box, CFC.hasPossessedWorkpiece)]
+
+
+def test_a_change_s_time_in_utc_is_its_timestamp_converted():
+    """The timestamps carry the server's offset; the transaction IRIs are in UTC."""
+    store = Answers(
+        [change("20261024090530484", "2026-10-24T11:05:30.484+02:00", "queued", True)]
+    )
+
+    [found] = history.changes(store, box_iri(1), CFC.hasPossessedWorkpiece)
+
+    assert found.timestamp.astimezone(UTC) == datetime(
+        2026, 10, 24, 9, 5, 30, 484000, tzinfo=UTC
+    )
+    assert found.transaction.endswith("20261024090530484")
 
 
 # -- The live tests' guard -------------------------------------------------------------------- #

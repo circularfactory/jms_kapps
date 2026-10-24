@@ -37,7 +37,7 @@ from jms_kapps.uc2.handshake import (
     reserved_record,
 )
 from jms_kapps.uc2.seed import place_box
-from jms_kapps.uc2.topology import Module, Topology
+from jms_kapps.uc2.topology import Connection, Module, Topology
 from jms_kapps.uc2.transport import (
     TransportRecords,
     boxes,
@@ -65,7 +65,7 @@ pytestmark = [
 
 B1 = box_iri(1)
 
-# The term the UC2 ontology had for a Convey workflow, until jms_kapps 41 took it out.
+# The term the UC2 ontology once had for a Convey workflow, taken out since.
 CONVEY_WORKFLOW = IRI("ConveyWorkflow", base=FC_NS)
 
 # A journey of one hop takes well under a second on a local store; the shared KIT store is slower.
@@ -95,8 +95,7 @@ def in_order(records: list[str], expected: list[str]) -> bool:
 def test_a_box_goes_from_the_wms_over_one_hop_and_back_through_queued_running_and_done(
     dataset, records
 ):
-    """Paper claim 4 (§5.2), by the parties' own records: the hop as the code makes it since
-    jms_kapps 40. Module 2 accepts Module 1's Reserve, then its Receive, and carries the box on to
+    """Paper claim 4 (§5.2), by the parties' own records: the hop as the code makes it. Module 2 accepts Module 1's Reserve, then its Receive, and carries the box on to
     the WMS, which takes it back done; the store holds a graph that breaks no rule."""
     with participants(dataset) as party:
         spawned = party.spawn()
@@ -155,8 +154,8 @@ class _CountedCreation:
 class Exchanges:
     """What the parties served in this process send each other, in the order they send it: each
     call a party makes of a peer's workflow, as ("call", the calling party, its request's class,
-    the endpoint), the class of the plain Reserve of a look-ahead as "ReserveRequest (plain)"
-    (added on 2026-10-06, jms_kapps 43), each commit that a party asks of its middleware, a handover's and a create's
+    the endpoint), the class of the plain Reserve of a look-ahead as "ReserveRequest (plain)",
+    each commit that a party asks of its middleware, a handover's and a create's
     included, as ("commit", its resource), and each notification, as ("notify", the notifying
     resource, the notified one)."""
 
@@ -175,21 +174,18 @@ class Exchanges:
             self._add(("call", IRI(caller), kind, endpoint))
             return call_peer(endpoint, request, timeout)
 
-        commit, handover = SemanticMiddleware.commit, SemanticMiddleware.handover
+        commit = SemanticMiddleware.commit
         create, notify = SemanticMiddleware.create, SemanticMiddleware.notify
         nested = _Nested()
 
         # A commit is counted where a party asks for it, at the middleware's public calls: each
-        # `mw.commit()` is one, and so is each `mw.handover()`, whose entry commits the change of
-        # possession with the changes it is given, and each `mw.create()` that is not inside the
-        # body of another, whose write it joins.
+        # `mw.commit()` is one, and so is each `possession.handover(mw, ...)`, whose entry is a
+        # `mw.commit(verb="handover")` that commits the change of possession with the changes it is
+        # given, and each `mw.create()` that is not inside the body of another, whose write it
+        # joins.
         def committing(middleware, *args, **kwargs):
             self._add(("commit", IRI(str(middleware.resource))))
             return commit(middleware, *args, **kwargs)
-
-        def handing_over(middleware, **kwargs):
-            self._add(("commit", IRI(str(middleware.resource))))
-            return handover(middleware, **kwargs)
 
         def creating(middleware, *args, **kwargs):
             if nested.depth == 0:
@@ -204,7 +200,6 @@ class Exchanges:
         monkeypatch.setattr(process, "call_peer", call)
         monkeypatch.setattr(wms_process, "call_peer", call)
         monkeypatch.setattr(SemanticMiddleware, "commit", committing)
-        monkeypatch.setattr(SemanticMiddleware, "handover", handing_over)
         monkeypatch.setattr(SemanticMiddleware, "create", creating)
         monkeypatch.setattr(SemanticMiddleware, "notify", notifying)
 
@@ -230,18 +225,16 @@ def test_a_spawn_and_a_hop_each_make_one_commit_between_their_calls(
     """Paper claims 3 and 4 (§5.2). Claim 3: a party finds a peer's workflow in the graph and
     calls it directly. Every party serves on a port that the system gave it at its start, so no
     address exists anywhere but in the graph, and each call goes to the endpoint that the graph
-    names for the peer's workflow of its class. Claim 4, the hop as the code makes it since
-    jms_kapps 40: the giver asks the receiver's Reserve, makes one commit, the handover, conveys
+    names for the peer's workflow of its class. Claim 4, the hop as the code makes it: the giver asks the receiver's Reserve, makes one commit, the handover, conveys
     the box, its own move, and calls the receiver's Receive; no party exposes a Convey.
 
     The spawn: the WMS asks Module 1's Reserve, makes one commit, which creates the box on
-    Module 1 with its transport, and notifies Module 1 (Etienne, 2026-10-06, jms_kapps 41). The
+    Module 1 with its transport, and notifies Module 1. The
     hop: Module 1 asks Module 2's Reserve, commits the handover, conveys the box, and calls
     Module 2's Receive; Module 2 carries the box on from there, and gives it back. Module 2 calls
     nothing of Module 1, no party calls a workflow of the WMS, and no notification passes between
-    the two modules (Etienne, 2026-10-06). The spawn's box starts its journey once. Module 1
-    looks ahead before it answers the WMS: it asks Module 2's plain Reserve for the box (Etienne,
-    2026-10-06, jms_kapps 43)."""
+    the two modules. The spawn's box starts its journey once. Module 1
+    looks ahead before it answers the WMS: it asks Module 2's plain Reserve for the box."""
     exchanges = Exchanges(monkeypatch)
     with participants(dataset) as party:
         # Nobody exposes a Convey.
@@ -285,7 +278,7 @@ def box_on_module_1(db) -> None:
 def test_a_spawn_onto_an_occupied_origin_is_refused_by_its_reserve_and_writes_nothing(
     dataset,
 ):
-    """The WMS asks the origin's Reserve before it writes anything (Etienne, 2026-10-05)."""
+    """The WMS asks the origin's Reserve before it writes anything."""
     with participants(dataset, before_start=box_on_module_1) as party:
         spawned = party.spawn(origin=str(M1), destination=str(M2))
 
@@ -321,6 +314,25 @@ STRANDED_ENTRY = Topology(
     ]
 )
 
+# The two modules, and Module 3, which Module 1 also leads to and which has no connection on: a
+# dead end on the way to Module 2. Module 1 reaches Module 2, so a transport from Module 1 to
+# Module 2 is one the shapes admit, wherever its box is.
+DEAD_END = Topology(
+    modules=[
+        Module(
+            id="Module1",
+            label="Module 1",
+            types=["EntryModule"],
+            connections=[
+                Connection(direction="East", to="Module2"),
+                Connection(direction="South", to="Module3", port=1),
+            ],
+        ),
+        Module(id="Module2", label="Module 2", types=["ExitModule"]),
+        Module(id="Module3", label="Module 3"),
+    ]
+)
+
 
 def assigned_to(db, transport: IRI) -> list[IRI]:
     """The modules `transport` is assigned to (`cfc:executedOn`): one, read from the graph."""
@@ -334,16 +346,12 @@ def test_a_spawn_onto_an_origin_with_no_route_to_the_destination_is_refused_by_i
     dataset,
 ):
     """Module 3 has no connection to Module 2: its look-ahead finds no next module, so it refuses
-    the WMS's Reserve, and nothing is written (Etienne, 2026-10-06, jms_kapps 43). Until then the
-    box was spawned there, and its transport failed with the same reason.
+    the WMS's Reserve, and nothing is written.
 
     The WMS now refuses such a spawn itself, before it asks the origin, since Module 2 cannot be
     reached from Module 3; the look-ahead still refuses the WMS's Reserve, which is asked here as
-    the WMS asks it. (Changed on 2026-10-07, jms_kapps 51, a consequence of Etienne's decision
-    "the WMS picks only an exit that it can reach from the origin"; that the test asks the Reserve
-    itself, so that the look-ahead's refusal stays proven, is the build's reading, since the ticket
-    says the look-ahead tests pass unchanged. Until then the spawn itself was refused with
-    "Module3 refused to reserve: Module3 has no route to Module2".)"""
+    the WMS asks it. The test asks the Reserve itself, so that the look-ahead's refusal stays
+    proven."""
     with participants(dataset, STRANDED_ENTRY) as party:
         spawned = party.spawn(origin=str(M3), destination=str(M2))
         reserve = workflow_endpoint(party.db, M3, FC.ReserveWorkflow)
@@ -365,20 +373,24 @@ def test_a_spawn_onto_an_origin_with_no_route_to_the_destination_is_refused_by_i
 
 
 def box_stranded_on_module_3(db) -> None:
-    """Setup before any party starts: Box 1 on Module 3, its transport running to Module 2."""
-    place_box(OGM(db=db), B1, on=M3, origin=M3, destination=M2)
+    """Setup before any party starts: Box 1 on Module 3, its transport running from Module 1 to
+    Module 2, as a hop from Module 1 leaves it. Module 1 reaches Module 2, so the store admits the
+    transport (`:ReachableDestinationShape` checks the origin); Module 3 has no connection on, so
+    it has no route to Module 2."""
+    place_box(OGM(db=db), B1, on=M3, origin=M1, destination=M2)
 
 
 def test_a_module_that_cannot_go_on_fails_the_transport_and_notifies_the_wms(
     dataset, records
 ):
-    """Box 1 is on Module 3, which has no connection to Module 2, its destination: once Module 3
-    carries it on, its transport fails with the reason, and the box stays there, its transport
-    assigned to Module 3. Module 3 starts on a Receive, as at every module after the origin.
-    (Changed on 2026-10-06, jms_kapps 43: the WMS no longer spawns a box onto such an origin, so
-    the seed puts Box 1 there. Until then a spawn from Module 3 put it there.)"""
+    """Box 1 is on Module 3, a dead end that Module 1 leads to, with no connection to Module 2, its
+    destination: once Module 3 carries it on, its transport fails with the reason, and the box
+    stays there, its transport assigned to Module 3. Module 3 starts on a Receive from Module 1, as
+    at every module after the origin. The WMS spawns no box onto such an origin, so the seed puts
+    Box 1 there. The seeded transport starts at Module 1, which reaches Module 2, so the shapes,
+    the reachable-destination rule among them, admit it."""
     with participants(
-        dataset, STRANDED_ENTRY, before_start=box_stranded_on_module_3
+        dataset, DEAD_END, before_start=box_stranded_on_module_3
     ) as party:
         transport = transport_iri(B1)
         receive = workflow_endpoint(party.db, M3, FC.ReceiveWorkflow)
@@ -450,8 +462,7 @@ def test_two_boxes_go_one_after_the_other_through_the_same_modules(dataset, reco
     the next module's Reserve and Receive, which answer at once; the next module carries the box
     on from its Receive, on a thread of its own. So no call waits on the worker it runs beside:
     the second box finds every worker free again. The WMS names each box by a UUID of its own,
-    `Box-<UUID>`. (Changed on 2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85: "a new
-    box gets a UUID". Until then the two boxes were Box 1 and Box 2.)"""
+    `Box-<UUID>`."""
     spawned_boxes: list[IRI] = []
     with participants(dataset) as party:
         for _ in (1, 2):

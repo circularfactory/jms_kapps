@@ -2,8 +2,7 @@
 `evaluation`: its module imports the report, and pandas with it, only when the command runs, and
 says which extra to install when pandas or matplotlib is missing.
 
-The release's install check imports every command's module on a plain install. (Added on
-2026-10-16: the check failed on the report's top-level import of pandas.)
+The release's install check imports every command's module on a plain install, so the report's top-level import of pandas must not fail it.
 """
 
 from __future__ import annotations

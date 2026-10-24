@@ -4,8 +4,7 @@
 Each process loads its strategy by its name at start; a name it does not know ends it at start
 with a readable reason, before it reads or writes the store, and `jms-uc2` with an unknown name
 exits with that reason before anything is cleared. None of these tests reaches a store: the
-store's connection variables are taken away from every process they start. (Added on
-2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07.)
+store's connection variables are taken away from every process they start.
 """
 
 from __future__ import annotations

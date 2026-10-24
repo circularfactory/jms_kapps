@@ -1,4 +1,4 @@
-"""`jms-eval-uc2`, the command of one UC2 run of the measurement harness (jms_kapps 47): what it
+"""`jms-eval-uc2`, the command of one UC2 run of the measurement harness: what it
 refuses before anything reaches a store. The GraphDB connection variables are removed first, so
 that no test here can reach one.
 """
@@ -90,8 +90,8 @@ def test_without_a_configured_graphdb_the_run_does_not_start(tmp_path, capsys):
 def test_without_opentelemetry_a_run_with_the_wrapper_is_refused_before_it_starts(
     tmp_path, monkeypatch, capsys
 ):
-    """A plain install of jms_kapps has no OpenTelemetry, the extra `evaluation` (jms_kapps
-    48): a run with the wrapper is refused, and says how to install it; nothing is created."""
+    """A plain install of jms_kapps has no OpenTelemetry, the extra `evaluation`: a run with the
+    wrapper is refused, and says how to install it; nothing is created."""
     monkeypatch.setattr(wrapper, "missing", lambda: ["opentelemetry.sdk"])
     runs = tmp_path / "runs"
 

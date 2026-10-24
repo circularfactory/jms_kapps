@@ -1,6 +1,4 @@
-"""The series prefix of the configuration numbers (jms_kapps 110, from Sören's decision of 2026-10-13
-as the product owner of the tests, jms_kapps 85, note 1866296, the changed reading "the 60- and
-120-module cells are configurations 7 to 14"): the numbers stay, but the report, the table, the
+"""The series prefix of the configuration numbers: the numbers stay, but the report, the table, the
 charts and the sweep's lines give each its series, "before 7" and "after 7", so that the 30-module
 grid at 10M of the iteration-one spec and the 60-module grid at 1k of the "after" spec cannot be
 confused. A spec names its series in its defaults, outside every configuration's key.
@@ -151,7 +149,7 @@ def test_the_shipped_specs_name_their_series_and_keep_their_keys(name, series):
 
 
 def test_the_records_of_the_before_series_still_match(tmp_path):
-    """A record of the "before" series holds the legacy key (jms_kapps 105)."""
+    """A record of the "before" series holds the legacy key."""
     found = configurations(read_spec(ITERATION_ONE))
     seventh = found[6]
     made = before(record("before-7", seventh), seventh, spec="iteration-one.toml")
@@ -407,8 +405,8 @@ def test_the_readme_says_how_a_spec_names_its_series_and_that_approvals_are_issu
     text = " ".join((EVALUATION / "README.md").read_text(encoding="utf-8").split())
 
     assert 'series = "before"' in text
-    assert "jms_kapps 110" in text
-    assert "issued before the merge is issued again" in text
+    assert "jms_kapps 110" not in text
+    assert "part of the file's SHA-256; an approval covers one spec as written" in text
 
 
 def test_the_glossary_lists_every_new_public_name_of_the_series():

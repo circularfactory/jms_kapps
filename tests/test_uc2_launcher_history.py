@@ -5,9 +5,8 @@ option each launch hands to its seed.
 A launch with the option has its reset turn on the store's history collection; one without it
 leaves the collection as it was (`test_uc2_history.py`). The children are processes that only
 sleep, and the graph is a fake that records the option of each seed and calls no process live, as
-in `test_uc2_launcher_strategies.py`. Nothing reaches a store. (Added on 2026-10-10,
-jms_kapps 22, with the names Etienne decided on 2026-10-07: `jms-uc2 --collect-history`, the
-checkbox "collect history", and the field `collect_history`.)
+in `test_uc2_launcher_strategies.py`. Nothing reaches a store. The names are `jms-uc2 --collect-history`, the checkbox "collect
+history", and the field `collect_history`.
 """
 
 from __future__ import annotations
@@ -39,6 +38,9 @@ class FakeGraph:
         self, topology: Topology, transit_seconds: float, *, collect_history: bool
     ) -> None:
         self.collected.append(collect_history)
+
+    def service_of(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        return []
 
     def services(self, workflows: Collection[IRI]) -> list[Service]:
         return []

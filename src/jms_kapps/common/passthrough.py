@@ -1,29 +1,30 @@
-"""The Launcher's one port: every page of every process of a run, passed through the Launcher.
+"""One port for a run: every page of every process of the run, passed through the run's own page.
 
-A request to `/p/<id>/<path>` goes on to `<path>` at the live service of the process `<id>`, and
-its answer comes back as it comes: a page, a form's post to a workflow, a dashboard box, and a stream,
-which reaches the reader part by part. So a person who reaches the Launcher's port reaches every
-page of the run, and over SSH, WSL or VS Code one forwarded port is enough. Every other process
-takes a free port at each start, which a forward would have to follow.
+Use case 2's Launcher, on port 8090, and the page of use case 1, on port 8091, each serve this. A
+request to `/p/<id>/<path>` goes on to `<path>` at the live service of the process `<id>`, and its
+answer comes back as it comes: a page, a form's post to a workflow, a dashboard box, and a stream,
+which reaches the reader part by part. So a person who reaches the port of the run's page reaches
+every page of the run, and over SSH, WSL or VS Code one forwarded port is enough. Every other
+process takes a free port at each start, which a forward would have to follow.
 
 **Nothing is rewritten.** Every page that a process serves asks for what it needs by a relative
-path, so the same page works at the process's own address and under `/p/<id>/`. The Launcher
+path, so the same page works at the process's own address and under `/p/<id>/`. The passthrough
 passes the request's path and query, its headers and its body on as they came, and the answer's
 status, headers and body back, a redirect included, which the browser follows.
 
 **Only what the supervisor holds is reached**: the address that it read when the process turned
-live, as the fault switches use it. A request never reads the graph, so the pages work while the
-graph is away, and an id is looked up among the processes of the current launch only.
+live. A request never reads the graph, so the pages work while the graph is away, and an id is
+looked up among the processes of the current run only.
 
-**A stream ends at both ends.** When its reader goes away, the Launcher closes its connection to
-the process, so the process's stream ends too. The streams of a run end on their own every two
-seconds, and the reader connects again, so an open page holds no stop of the Launcher longer than
+**A stream ends at both ends.** When its reader goes away, the passthrough closes its connection
+to the process, so the process's stream ends too. The streams of a run end on their own every two
+seconds, and the reader connects again, so an open page holds no stop of the server longer than
 that.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Callable, Iterable
 from contextlib import asynccontextmanager
 from urllib.parse import quote
 
@@ -34,12 +35,11 @@ from kapps_triplestore_interface import IRI
 from starlette.types import Receive, Scope, Send
 
 from jms_kapps.common.supervision import ChildSnapshot
-from jms_kapps.uc2.vocabulary import FCI_NS
 
-# The path under which the Launcher passes requests through to its processes, one each.
+# The path under which the run's page passes requests through to its processes, one each.
 PASSTHROUGH = "p"
 
-# The headers of one connection, which end at the Launcher and are not passed on either way, with
+# The headers of one connection, which end at the run's page and are not passed on either way, with
 # each header that a `Connection` header names.
 _HOP_BY_HOP = frozenset(
     {
@@ -54,7 +54,7 @@ _HOP_BY_HOP = frozenset(
     }
 )
 
-# Nor these of a request: `host` names the Launcher, and the connection to the process names the
+# Nor these of a request: `host` names the run's page, and the connection to the process names the
 # process; the client states the length of the body it sends on.
 _OF_THE_REQUEST = _HOP_BY_HOP | {"host", "content-length"}
 
@@ -68,18 +68,31 @@ _METHODS = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
 
 def process_id(resource: IRI) -> str:
-    """The id of the process of `resource` in the Launcher's paths: the resource's name in `fci:`.
+    """The id of the process of `resource` in the paths of the passthrough: the fragment of the
+    resource's IRI, its name after the `#`.
 
-    Every process of a run has its resource there, a module's under its id in the topology, which
-    a topology allows only as a name that is safe in a path.
+    Every process of a run has its resource in a namespace that ends in `#`: use case 2's in `fci:`,
+    a module's under its id in the topology, which a topology allows only as a name that is safe in
+    a path; use case 1's in its own namespace, under the names its ontology gives them.
+
+    Raises:
+        ValueError: The IRI has no fragment, so no path would reach its process.
     """
-    return str(resource).removeprefix(FCI_NS)
+    if not resource.fragment:
+        raise ValueError(f"{resource} has no name after a '#' to pass requests through by")
+    return resource.fragment
+
+
+def process_of(children: Iterable[ChildSnapshot], id: str) -> ChildSnapshot | None:
+    """The process among `children`, the processes of the current run, whose id is `id`
+    (`process_id`), or None where none has it."""
+    return next((c for c in children if process_id(c.resource) == id), None)
 
 
 def process_path(resource: IRI) -> str:
-    """Where the Launcher passes requests through to the process of `resource`: `p/<id>/`.
+    """Where the passthrough passes requests through to the process of `resource`: `p/<id>/`.
 
-    Relative, so that a link reaches the process through whatever address the Launcher page was
+    Relative, so that a link reaches the process through whatever address the run's page was
     opened at, over SSH, WSL or a forwarded port. Every page a process serves uses relative paths
     too, so it works there as it does at the process's own address.
     """
@@ -122,12 +135,12 @@ class _Answer(StreamingResponse):
 
 
 class Passthrough:
-    """Serves each process of the run under `/p/<id>/` on the Launcher's app.
+    """Serves each process of the run under `/p/<id>/` on the app of the run's page.
 
     Args:
         process: The process whose id is given (see `process_id`), as the supervisor holds it
-            now, or None where there is none. `Launcher.process` is the real one. (Changed on
-            2026-10-11, jms_kapps 33: until then it raised a `KeyError` where there was none.)
+            now, or None where there is none. Use case 2's is `Launcher.process`; use case 1's
+            looks the id up in the supervisor's snapshot.
     """
 
     def __init__(self, process: Callable[[str], ChildSnapshot | None]) -> None:
@@ -176,8 +189,8 @@ class Passthrough:
             )
         if child.address is None:
             return PlainTextResponse(
-                f"{child.name} has no live service to pass this request to. The Launcher "
-                "page shows its state.",
+                f"{child.name} has no live service to pass this request to. The page of "
+                "the run shows its state.",
                 503,
             )
         if self._connections is None:

@@ -1,6 +1,4 @@
-""" "Timed out" and "connection dropped" are two outcomes of a store request (jms_kapps 109, from
-Sören's decision of 2026-10-13 as the product owner of the tests, jms_kapps 85, note 1866296,
-decision 2): a request whose client gave up because the time ran out is timed out, one whose
+""" "Timed out" and "connection dropped" are two outcomes of a store request: a request whose client gave up because the time ran out is timed out, one whose
 connection closed, reset or failed before an answer is connection dropped. Both count toward the
 1 % of the broken rule, whose signal is now "refused or unanswered".
 
@@ -36,7 +34,7 @@ from jms_kapps.evaluation.table import main as table_main
 EVALUATION = Path(jms_kapps.__file__).parent / "evaluation"
 ROOT = EVALUATION.parents[2]
 
-# The reason of iteration one's four unanswered requests (jms_kapps 91), as their records keep it.
+# The reason of iteration one's four unanswered requests, as their records keep it.
 ITERATION_ONE_REASON = (
     "ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed "
     "connection without response'))"
@@ -607,7 +605,7 @@ def test_the_readme_and_the_glossary_say_the_two_outcomes_and_the_new_signal_nam
     for text in (readme, glossary):
         assert "connection dropped" in text
         assert "refused or unanswered" in text
-    assert "jms_kapps 109" in readme and "jms_kapps 109" in glossary
+    assert "jms_kapps 109" not in readme and "jms_kapps 109" in glossary
     assert "connection_dropped_in_window" in readme
     # A request with neither an answer nor an error.
     assert (

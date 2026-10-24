@@ -1,4 +1,4 @@
-"""The run's own transports (jms_kapps 90): the harness learns them from the
+"""The run's own transports: the harness learns them from the
 WarehouseManagementSystem's "queued" lines, and every read of its names them.
 
 The synthetic run is part 1's run against the stand-ins of `_evaluation_fakes`: boxes named by a
@@ -245,7 +245,7 @@ def test_the_status_record_of_the_wms_is_what_the_harness_reads():
 def test_a_synthetic_run_of_boxes_the_wms_names_by_uuid_counts_every_spawn_and_finds_each_transport(
     tmp_path,
 ):
-    """The WarehouseManagementSystem names each box by a new UUID (jms_kapps 92): its own records,
+    """The WarehouseManagementSystem names each box by a new UUID: its own records,
     the box spawned and its transport queued, made by its own formatters, name three such boxes.
     The harness counts the three spawns, finds the three transports in the graph, and none of the
     queued transports is missing there."""

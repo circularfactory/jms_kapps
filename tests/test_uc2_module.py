@@ -67,9 +67,7 @@ ARRIVAL_BOUND_SECONDS = 33.0
 
 # Two store errors that are no refusal, in the form GraphDB 10.8.5 answers them through the
 # triplestore interface: a dataset that does not exist, and an update the store cannot parse.
-UNKNOWN_REPOSITORY = (
-    "Error while querying GraphDB (404) - Unknown dataset: jms-kapps"
-)
+UNKNOWN_REPOSITORY = "Error while querying GraphDB (404) - Unknown dataset: jms-kapps"
 MALFORMED_UPDATE = (
     "Error while querying GraphDB (400) - MALFORMED QUERY: closing brace missing"
 )
@@ -324,7 +322,9 @@ def test_a_queued_transport_whose_box_the_module_does_not_hold_stays_queued(
     "error",
     [
         ConnectionError("the store is down"),
-        TripleStoreResponseError(f"Error while querying GraphDB (500) - {SECOND_REPORT}"),
+        TripleStoreResponseError(
+            f"Error while querying GraphDB (500) - {SECOND_REPORT}"
+        ),
     ],
     ids=["no store error", "a report in the text only"],
 )
@@ -600,7 +600,7 @@ SPAWN_BOUND_SECONDS = 30.0
 
 def test_a_reservation_for_the_wms_lapses_30_s_after_its_answer(timers, tasks, m2):
     """The WMS's Reserve sets a bound as a module's does, without the transit time, and starts
-    nothing: the origin calls nothing of the WMS (Etienne, 2026-10-06, jms_kapps 41)."""
+    nothing: the origin calls nothing of the WMS."""
     assert m2.reserve(ReserveRequest(box=B1, source_module=WMS)).accepted
 
     assert timers.seconds == [SPAWN_BOUND_SECONDS]
@@ -867,7 +867,7 @@ def test_a_giver_whose_receive_is_not_reachable_after_its_commit_writes_nothing(
     """The possession has changed and the box has moved when Module 2's Receive cannot be
     reached. Nothing is undone: the box is on Module 2, and the transport is assigned to it. So
     Module 1 writes nothing and notifies no one, and says why in one warning: only the assigned
-    module writes the transport (Etienne, 2026-10-06, jms_kapps 42). Module 2, the box's
+    module writes the transport. Module 2, the box's
     possessor, ends it at the bound of its reservation."""
     receive_not_reachable(world, moves, m1)
 
@@ -879,7 +879,7 @@ def test_a_giver_whose_receive_is_not_reachable_after_its_commit_writes_nothing(
     assert logged(caplog, logging.WARNING) == [
         (
             "Module1: Box1 is on Module2, so Box1_transport is Module2's to end: Module2 is "
-            "not reachable: the graph names no live ReceiveWorkflow of it"
+            "not reachable: the knowledge graph names no live ReceiveWorkflow of it"
         )
     ]
     world.unregistered.discard(M2)
@@ -915,10 +915,8 @@ def test_a_module_whose_next_module_has_no_live_service_cannot_go_on_and_does_no
     world, notifications, waits, m1, m2
 ):
     """Module 2 deregistered, so the graph names no live Reserve of it: it is not reachable, and
-    Module 1 has no other way to it. (Changed on 2026-10-11, jms_kapps 77, decided by Etienne: a
-    next module that cannot be reached is left out, and the transport fails only with no live
-    route left. Until then the reason was "Module2 is not reachable: the graph names no live
-    ReserveWorkflow of it".)"""
+    Module 1 has no other way to it. A next module that cannot be reached is left out, and the
+    transport fails only with no live route left."""
     world.unregistered.add(M2)
 
     m1.box_transport(running_on_module_1(world))
@@ -933,8 +931,7 @@ def test_a_module_whose_next_module_has_no_live_service_cannot_go_on_and_does_no
 def test_a_box_over_a_free_path_makes_the_module_wait_for_no_positive_time(
     world, waits, m1, m2
 ):
-    """With a transit time of 0 the module conveys at once: a free path costs no wait (jms_kapps 8;
-    the real simulated move at 0 s calls no sleep either, in `test_uc2_transit_time`)."""
+    """With a transit time of 0 the module conveys at once: a free path costs no wait (the real simulated move at 0 s calls no sleep either, in `test_uc2_transit_time`)."""
     m1.box_transport(running_on_module_1(world))
 
     assert world.possessor_of(B1) == M2
@@ -1203,10 +1200,8 @@ def test_a_module_whose_next_module_refuses_the_call_fails_the_transport_with_wh
     """Module 2's process is gone, so the call of its Reserve is refused, and Module 1 has no
     other way on. Module 1 leaves Module 2 out, keeps the box, ends the transport failed with
     no live route left, and tells the WMS: one warning that says why Module 2 is left out, one
-    that the box stays, nothing raised. (Changed on 2026-10-11, jms_kapps 77, decided by
-    Etienne: a next module that cannot be reached is left out, and the transport fails only with
-    no live route left. Until then the reason was "Module2 is not reachable: [Errno 111]
-    Connection refused", in the one warning.)"""
+    that the box stays, nothing raised. A next module that cannot be reached is left out, and the
+    transport fails only with no live route left."""
     network.fails_with[M2] = REFUSED
 
     m1.box_transport(running_on_module_1(world))
@@ -1230,10 +1225,8 @@ def test_a_module_waiting_for_a_next_module_that_goes_away_stops_waiting_and_fai
 ):
     """Module 2 is occupied, so Module 1 waits its retry time, and meanwhile Module 2's process
     goes, as at a stop. The next ask is refused: Module 1 leaves Module 2 out, has no other way
-    on, and the transport fails. (Changed on 2026-10-11, jms_kapps 77, decided by Etienne: a
-    next module that cannot be reached is left out, and the transport fails only with no live
-    route left. Until then the reason was "Module2 is not reachable: [Errno 111] Connection
-    refused".)"""
+    on, and the transport fails. A next module that cannot be reached is left out, and the transport
+    fails only with no live route left."""
     world.held[M2].append(B2)
     waits.meanwhile.append(lambda: network.fails_with.update({M2: REFUSED}))
 
@@ -1249,10 +1242,8 @@ def test_when_the_wms_cannot_be_told_either_the_module_logs_one_warning_that_say
     caplog, world, network, notifications, m1
 ):
     """At a stop the WMS has gone too. The module ends the transport, and says why and that the
-    WMS was not told in one line, the use case's IRIs by their names. (Changed on 2026-10-11,
-    jms_kapps 77, decided by Etienne: the module first leaves Module 2 out, in a warning of its
-    own, and the reason is that no live route is left. Until then the one warning read "Module1:
-    Box1 stays here: Module2 is not reachable: [Errno 111] Connection refused; [...]".)"""
+    WMS was not told in one line, the use case's IRIs by their names. The module first leaves Module 2 out, in a warning of its
+    own, and the reason is that no live route is left."""
     network.fails_with[M2] = REFUSED
     notifications.undelivered_to[WMS] = NotificationUndelivered(
         f"{WMS} has no live Service to notify of {T1}"
@@ -1303,11 +1294,8 @@ def test_a_call_that_times_out_or_fails_is_left_out_with_why_on_one_line(
 ):
     """The warning that leaves Module 2 out says why on one line, the error's first line: an
     error status's message has a second line with a link. The transport's reason, whose record
-    keeps the store's report on the lines after it, names the module left out. (Changed on
-    2026-10-11, jms_kapps 77, decided by Etienne: a next module that cannot be reached is left
-    out, and the transport fails only with no live route left. Until then the test was "a call
-    that times out or fails ends the transport with why on one line", and the reason was
-    "Module2 is not reachable: <why>".)"""
+    keeps the store's report on the lines after it, names the module left out. A next module that cannot be reached is left out, and the transport
+    fails only with no live route left."""
     network.fails_with[M2] = error
 
     m1.box_transport(running_on_module_1(world))
@@ -1440,8 +1428,7 @@ def test_on_the_cross_a_box_goes_from_an_entry_over_module_3_to_its_exit(
 def test_of_two_shortest_paths_the_box_takes_the_one_through_the_lowest_iri(
     world, network, station
 ):
-    """Module 2 looks ahead to Module 4 before it accepts (changed on 2026-10-06, jms_kapps 43,
-    decided by Etienne; until then the calls were Module 2's Reserve and its Receive alone)."""
+    """Module 2 looks ahead to Module 4 before it accepts."""
     world.connections = {(M1, M3), (M1, M2), (M2, M4), (M3, M4)}
     m1, *_ = station(M1, M2, M3, M4)
     world.place(B1, M1, destination=M4)
@@ -1615,7 +1602,7 @@ def test_a_handover_without_asking_refused_then_a_reserve_refused_otherwise_fail
     reason, report_recorded = recorded(world, T1)
     assert reason == (
         "the triple store refused the handover; asked again: Module2 is not reachable: "
-        "the graph names no live ReserveWorkflow of it"
+        "the knowledge graph names no live ReserveWorkflow of it"
     )
     assert report_recorded == FIRST_REPORT
     assert notifications.sent == [(T1, WMS)]
@@ -1711,7 +1698,9 @@ def test_a_retry_that_is_reserved_hands_the_box_over_the_proper_way(
     [
         TripleStoreResponseError(UNKNOWN_REPOSITORY),
         TripleStoreResponseError(MALFORMED_UPDATE),
-        TripleStoreResponseError(f"Error while querying GraphDB (500) - {FIRST_REPORT}"),
+        TripleStoreResponseError(
+            f"Error while querying GraphDB (500) - {FIRST_REPORT}"
+        ),
     ],
     ids=["unknown dataset", "malformed update", "a report in the text only"],
 )
@@ -1911,9 +1900,9 @@ def test_the_transport_a_module_is_handed_is_read_from_the_node_the_intake_gives
             FC.hasBox: [Node(id=B1)],
             FC.hasOrigin: [Node(id=M1)],
             FC.hasDestination: [Node(id=M2)],
-            SVC.operationStatus: [OperationStatus.RUNNING],
+            SVC.hasOperationStatus: [OperationStatus.RUNNING],
             CFC.executedOn: [Node(id=M1)],
-            SVC.executionResult: ["Module2 has no route to Module1"],
+            SVC.hasExecutionResult: ["Module2 has no route to Module1"],
         },
     )
 
@@ -1935,7 +1924,7 @@ def test_a_transport_with_no_assignment_and_no_result_reads_as_none():
             FC.hasBox: [Node(id=B1)],
             FC.hasOrigin: [Node(id=M1)],
             FC.hasDestination: [Node(id=M2)],
-            SVC.operationStatus: [OperationStatus.QUEUED],
+            SVC.hasOperationStatus: [OperationStatus.QUEUED],
         },
     )
 

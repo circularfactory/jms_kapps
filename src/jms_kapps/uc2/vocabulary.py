@@ -88,6 +88,7 @@ class FC:
     )
     DoneTransportBoxReleasedShape = IRI("DoneTransportBoxReleasedShape", base=FC_NS)
     BoxOnModuleHasTransportShape = IRI("BoxOnModuleHasTransportShape", base=FC_NS)
+    ReachableDestinationShape = IRI("ReachableDestinationShape", base=FC_NS)
 
 
 def local_name(iri: str) -> str:
@@ -101,10 +102,8 @@ def local_name(iri: str) -> str:
 
 # The vocabularies whose terms a person reads by prefix in the store's workbench, such as
 # `fc:BoxShape` or `sh:MaxCountConstraintComponent`. The use case's individuals are not among them:
-# a page names them by local name, such as `Module3`, as it names them everywhere else. Until
-# 2026-10-06 the monitor's refusal cards named terms by these prefixes too, through a function of
-# this module; they now show the middleware's short form, the local name (jms_kapps 38,
-# decided by Etienne).
+# a page names them by local name, such as `Module3`, as it names them everywhere else. The
+# monitor's refusal cards show the middleware's short form, the local name, not these prefixes.
 PREFIXES = {
     "fc": FC_NS,
     "cfc": CORE_NS,
@@ -139,33 +138,25 @@ def transit_time_literal(seconds: float) -> Literal:
 def box_iri(n: int) -> IRI:
     """The IRI of Box `n`: a box named by a number, as a seed or a test names the boxes it places
     itself. The WarehouseManagementSystem names each box it spawns by a UUID (`new_box_iri`).
-    (Changed on 2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85. Until then: "The IRI
-    of Box `n`.", the name of every box.)"""
+    """
     return IRI(f"Box{n}", base=FCI_NS)
 
 
 UUID_BOX_PREFIX = "Box-"
-"""What the local name of a box named by a UUID starts with, before its UUID. (Added on 2026-10-12,
-jms_kapps 92; interim, jms_kapps 83.)"""
+"""What the local name of a box named by a UUID starts with, before its UUID (interim)."""
 
 
 def uuid_box_iri(box_id: uuid.UUID) -> IRI:
     """The IRI of the box named by the UUID `box_id`: `Box-<UUID>`, in the instances'
-    namespace, as the WarehouseManagementSystem and the prefill name their boxes. (Added on
-    2026-10-12, jms_kapps 92; interim, jms_kapps 83.)"""
+    namespace, as the WarehouseManagementSystem and the prefill name their boxes. Interim name."""
     return IRI(f"{UUID_BOX_PREFIX}{box_id}", base=FCI_NS)
 
 
 def new_box_iri() -> IRI:
     """The IRI of a new box, named by a new random UUID (version 4): how the
     WarehouseManagementSystem names each box it spawns, so that more than one middleware can
-    create boxes without a shared number, and without reading the boxes in the graph.
-
-    (Added on 2026-10-12, jms_kapps 92, decided by Sören on jms_kapps 85: "a new box gets a UUID,
-    so that more than one middleware can create boxes without a shared number". Until then the
-    WarehouseManagementSystem numbered a box after the highest-numbered box in the graph, through
-    `box_number`, which read the number of a box named `Box<n>`; no code reads a box's number any
-    more. Interim, jms_kapps 83.)
+    create boxes without a shared number, and without reading the boxes in the graph. Interim
+    name.
     """
     return uuid_box_iri(uuid.uuid4())
 
@@ -176,16 +167,13 @@ def transport_iri(box: IRI) -> IRI:
 
     Only they call it, to choose the IRI of what they create. No party finds a transport by it:
     a box links to its transport by `fc:hasTransport`, so a party that holds a box reads the
-    transport through the box. (Changed on 2026-10-06, jms_kapps 39, decided by Etienne. Until
-    then it read: "The IRI of the BoxTransportOperation that carries `box`. A box has one, so it
-    names it.")
+    transport through the box.
     """
     return IRI(f"{box.fragment}_transport", base=FCI_NS)
 
 
 # The WarehouseManagementSystem. Every run seeds it and starts its process beside the topology
-# (`run_core`). (Changed on 2026-10-10, jms_kapps 31, decided by Etienne. Until then: "The
-# Launcher seeds it and starts its process beside every topology, as it does the monitor's.")
+# (`run_core`).
 WMS = IRI("WarehouseManagementSystem1", base=FCI_NS)
 
 # The monitor, whose own code writes nothing. A plain `cfc:Resource` behind a plain `svc:Service`,

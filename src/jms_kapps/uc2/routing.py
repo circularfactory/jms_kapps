@@ -22,25 +22,14 @@ box, and asks its strategy again with the connections to each module left out re
 module the box came from: so with `real`, `next_module_choices` and `detour` are then given the
 connections without those to the modules left out, and avoid no module the box came from, which
 may then be the next module or the detour. The functions here do not change: they route over the
-connections they are given. (Added on 2026-10-11, jms_kapps 77, decided by Etienne: "The module
-the box came from is now a valid choice", and "The strategy is asked again with the connections to
-each left-out module removed and no module the box came from".)
+connections they are given.
 
 **A pure two-way corridor** (`pure_corridor`) is a module whose only two connections both run both
 ways: two boxes that meet head-on there, one each way, could wait for each other forever, with no
 neighbour to step aside to. The load check refuses a topology that has one. Any other cycle of
 connections loads: a box looks ahead before it moves, and takes a detour where it can, and boxes
 on a cycle that still wait for each other raise the deadlock alarm, the visible backstop, which
-fails nothing (added on 2026-10-11, jms_kapps 77, decided by Etienne).
-
-(Changed on 2026-10-06, jms_kapps 43, decided by Etienne: the load check refuses only a pure
-two-way corridor, and a declined Reserve leads to one detour. Until then the third paragraph read:
-"A module that is refused as occupied waits and asks the same next module again, with no bound. So
-two boxes, each on the module the other one goes to next, wait for each other forever, and so do
-more boxes around a longer cycle. `hop_cycle` finds such a cycle before a run, among the hops of
-boxes that go from an entry module to an exit module (`hops_from_entries_to_exits`, which the
-monitor draws strong): where those hops hold no cycle, every wait of such boxes ends, because a
-box on its destination gives itself back.")
+fails nothing.
 """
 
 from __future__ import annotations
@@ -105,8 +94,7 @@ def next_module_choices(
     Args:
         connections: Each connection as (the module that has it, the module it leads to).
         avoid: The modules no path may pass: the module the box came from, so that it never goes
-            straight back. (Added on 2026-10-06, jms_kapps 43: the build's reading of the
-            detour's "never the module the box came from", for every choice of the next module.)
+            straight back, for every choice of the next module.
 
     Returns:
         The modules, or none when no path leads from `here` to `destination`, or `here` is the
@@ -135,9 +123,6 @@ def detour(
     module the box came from), from which a path leads to `destination` without passing `here`
     again: a step that only leads back is no detour. Of several, the one nearest to the
     destination wins, then the lowest IRI, so the module the next module ties with comes first.
-    (Added on 2026-10-06, jms_kapps 43, decided by Etienne: "if we reserve something and it gets
-    declined we should try a detour before asking again". That a step which only leads back is no
-    detour, and the order of several, are the build's readings.)
     """
     connections = list(connections)
     hops, leads_to = _hops_to(connections, destination, without={here})
@@ -151,9 +136,8 @@ def reachable(connections: Iterable[tuple[IRI, IRI]], origin: IRI) -> set[IRI]:
     """Every module a box on `origin` can reach: each module the connections lead to from it, one
     way, as listed, over any number of hops. `origin` itself only where a cycle leads back to it.
 
-    The WarehouseManagementSystem picks only a destination that its origin reaches. (Added on
-    2026-10-07, jms_kapps 51, decided by Etienne: "the WMS picks only an exit that it can reach
-    from the origin, for every topology".)
+    The WarehouseManagementSystem picks only a destination that its origin reaches, for every
+    topology.
     """
     leads_to: dict[IRI, set[IRI]] = defaultdict(set)
     for source, target in connections:
@@ -177,8 +161,7 @@ def pure_corridor(
 
     Two boxes that meet head-on on such a module, one each way, could wait for each other
     forever: neither has a neighbour to step aside to. A module with a third connection, or one
-    of whose two connections runs one way, is none. (Added on 2026-10-06, jms_kapps 43, decided
-    by Etienne: the load check "refuses only a pure two-way corridor".)
+    of whose two connections runs one way, is none.
     """
     links = set(connections)
     leads_to: dict[IRI, set[IRI]] = defaultdict(set)

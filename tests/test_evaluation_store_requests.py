@@ -1,4 +1,4 @@
-"""How the observation reads one store request (jms_kapps 48): its kind, the statuses it writes,
+"""How the observation reads one store request: its kind, the statuses it writes,
 its receipt, and the store's answer, worded as GraphDB words it. The updates are those the
 triple-store interface renders for a checked write, as the object-graph mapper sends a commit.
 Nothing reaches a store.
@@ -23,7 +23,7 @@ from jms_kapps.uc2.vocabulary import FC, FCI_NS
 OPERATION = URIRef(f"{FCI_NS}Box7_transport")
 BOX = URIRef(f"{FCI_NS}Box7")
 RECEIPT = URIRef("urn:uuid:0d9a5c35-6b0e-4a51-9f5e-1d2a3b4c5d6e")
-STATUS = URIRef(str(SVC.operationStatus))
+STATUS = URIRef(str(SVC.hasOperationStatus))
 
 
 def status(value: str) -> Literal:
@@ -58,7 +58,7 @@ def test_the_box_is_the_one_the_request_names_for_the_operation():
 def test_a_brace_or_a_status_inside_a_literal_does_not_count():
     reason = Literal('no live route } "done" { to Module9', datatype=XSD.string)
     failed = commit(
-        "running", "failed", (OPERATION, URIRef(str(SVC.executionResult)), reason)
+        "running", "failed", (OPERATION, URIRef(str(SVC.hasExecutionResult)), reason)
     )
 
     assert store_requests.status_writes(failed) == [
@@ -69,13 +69,13 @@ def test_a_brace_or_a_status_inside_a_literal_does_not_count():
 def test_a_query_or_a_delete_writes_no_status():
     assert (
         store_requests.status_writes(
-            f'SELECT ?s WHERE {{ ?s <{SVC.operationStatus}> "done" }}'
+            f'SELECT ?s WHERE {{ ?s <{SVC.hasOperationStatus}> "done" }}'
         )
         == []
     )
     assert (
         store_requests.status_writes(
-            f'DELETE DATA {{ <{OPERATION}> <{SVC.operationStatus}> "done" }}'
+            f'DELETE DATA {{ <{OPERATION}> <{SVC.hasOperationStatus}> "done" }}'
         )
         == []
     )

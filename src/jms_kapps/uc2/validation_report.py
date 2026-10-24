@@ -7,11 +7,7 @@ middleware's `kapps_semantic_middleware.validation_report` reads it, as RDF. Wha
 clause that a module's or the WarehouseManagementSystem's own log line of a refusal, and the reason
 the WarehouseManagementSystem keeps of a transport that failed, put after what was refused, and the
 clause of the rules' messages, which the reason the WarehouseManagementSystem shows of a refused
-spawn or a failed transport puts after that. (The messages clause added on 2026-10-06, jms_kapps
-41, decided by Etienne: "Last spawns" shows the store's reason.)
-
-Changed on 2026-10-06 (jms_kapps 38, decided by Etienne): until then this module was
-"the one reader of a validation report", jms_kapps' own, which the middleware's replaced.
+spawn or a failed transport puts after that.
 """
 
 from __future__ import annotations

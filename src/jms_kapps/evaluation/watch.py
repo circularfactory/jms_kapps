@@ -1,6 +1,6 @@
 """The server watch: from the load's start to the drain's end, the harness reads the server's
 resource view and measures one round trip about every `WATCH_INTERVAL_SECONDS`, and keeps each
-sample with its time (added on 2026-10-12, jms_kapps 95).
+sample with its time.
 
 Other use of the same GraphDB may overlap a run, and the samples are what shows it: the CPU load,
 the heap and the round trip of the server across the whole run, not only at its start and end.

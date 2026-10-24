@@ -26,7 +26,7 @@ def find_repo_root(start: Path) -> Path | None:
 def withheld_text(path: Path) -> str:
     """The text of a development-only file, or a skip where the public tree withholds it.
 
-    The release withholds some files from the public tree, such as `CONTEXT.md` in the beta,
+    The release withholds some files from the public tree, such as `CONTEXT.md`,
     while `tests/` ships whole. A test that reads such a file to check that it agrees with a
     shipped one runs in the development checkout and skips in a public one.
     """

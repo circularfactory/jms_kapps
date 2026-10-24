@@ -16,9 +16,7 @@ class and the entry-point group it is registered in; its name is its entry's nam
   asks again with the connections to each module left out removed and with no module the box
   came from, which is then a valid choice; at a look-ahead, the module that holds the box stays
   the module it came from. So `real` and every strategy that names only neighbours a connection
-  leads to need no change for it. (Added on 2026-10-11, jms_kapps 77, decided by Etienne: "The
-  strategy is asked again with the connections to each left-out module removed and no module the
-  box came from".)
+  leads to need no change for it.
 - A **WMS strategy** (`WmsStrategy`) answers `origin_and_destination`: given the candidates of a
   spawn (each free origin the spawn allows, with the destinations it allows that the origin
   reaches, narrowed to what the request names), the station's connections as the WMS read them in
@@ -48,8 +46,8 @@ the other kind, or of none; and of two strategies of one kind with one name, the
 counts, and one WARNING names the other. No registry holds strategies beyond the entry points.
 Use case 2 imports nothing from the `evaluation` folder, so the demonstration runs without it.
 
-(Added on 2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07: "a strategy is chosen at
-start in the Launcher, for the WMS and for the modules; the default is today's real behaviour".)
+A strategy is chosen at start in the Launcher, for the WMS and for the modules; the default is
+the real behaviour.
 """
 
 from __future__ import annotations
@@ -79,9 +77,7 @@ REAL = "real"
 """The name of the demonstration's strategy of each kind, the default of both."""
 
 Choose = Callable[[Sequence[IRI]], IRI]
-"""Picks one module out of several. `random.choice` is the WarehouseManagementSystem's. (Moved here
-from `wms` on 2026-10-10, jms_kapps 52, where it read "`random.choice` is the real one.", which
-would now read as the strategy `real`.)"""
+"""Picks one module out of several. `random.choice` is the WarehouseManagementSystem's."""
 
 
 # The two kinds are plain classes, not abstract ones, so that each can be named as the kind it is
@@ -112,12 +108,10 @@ class ModuleStrategy:
             destination: The box's destination, never `module`.
             came_from: The module the box came from, or None at its origin, at a look-ahead for
                 the WarehouseManagementSystem's spawn, and when the module asks again after it
-                left out a neighbour that cannot be reached (added on 2026-10-11, jms_kapps 77,
-                decided by Etienne).
+                left out a neighbour that cannot be reached.
             ahead: The module reserved ahead for the box at `module`'s look-ahead, or None.
             connections: Every connection of the station, as `module` read them for this choice,
-                without those to a module it left out for the box (added on 2026-10-11,
-                jms_kapps 77, decided by Etienne).
+                without those to a module it left out for the box.
         """
         raise NotImplementedError
 

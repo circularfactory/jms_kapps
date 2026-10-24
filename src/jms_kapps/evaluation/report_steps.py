@@ -1,6 +1,5 @@
 """The steps of a run (`report`): where its time goes, step by step, from the spans its participants
-wrote. Iteration one of the measurement harness. (Added on 2026-10-12, jms_kapps 87; interim,
-jms_kapps 83: every name here.)
+wrote. Iteration one of the measurement harness. Every name here is interim.
 
 **A step** is keyed by its role (`WMS` or `module`) and its name.
 
@@ -15,7 +14,7 @@ jms_kapps 83: every name here.)
   request that the store did not accept is a step of its own, with ` (not accepted)` after it.
 - One step has no span and is measured from the spans around it: `GAP_STEP`, the time from the end
   of the WMS's read of all boxes to its next Reserve call, which is the WMS's client time after
-  that read. Only the records of the "before" series have it: since jms_kapps 92 the WMS reads no
+  that read. Only the records of the "before" series have it: the WMS now reads no
   box to name one, and asks about the one box that comes back in an `ASK` of its own category
   (`HELD_BOX_ASK`); the old records still read and sort as before.
 
@@ -105,15 +104,14 @@ def _all(*matchers: Matcher) -> Matcher:
 
 ALL_BOXES = "all boxes (WMS next_box)"
 """The WMS's read of every box, which numbered the next box at each spawn: only in the records of
-the "before" series, as the WMS of jms_kapps 92 reads no box to name one."""
+the "before" series, as the WMS reads no box to name one."""
 
 HELD_BOX_ASK = "possession: ASK for one box (WMS return)"
 """The WMS's `ASK` whether it holds the one box that came back (`uc2.discovery.holds_query`), in
-place of its read of every box it holds (added on 2026-10-12, jms_kapps 92; interim, jms_kapps
-83)."""
+place of its read of every box it holds (interim)."""
 
 # The categories of a read, in the order they are tried: the first that matches is the category.
-# Adding a category is one line. (The prototype of 2026-10-12, jms_kapps 85.)
+# Adding a category is one line.
 READ_CATEGORIES: tuple[tuple[str, Matcher], ...] = (
     (
         ALL_BOXES,
@@ -172,7 +170,7 @@ WRITE_CATEGORIES: tuple[tuple[str, Matcher], ...] = (
         "receipt removal",
         _starts("DELETE WHERE { GRAPH <urn:x-kapps:write-receipts>"),
     ),
-    ("heartbeat update", _has("lastHeartbeat")),
+    ("heartbeat update", _has("hasLastHeartbeat")),
     # A checked write is an update that inserts a receipt (`store_requests.receipt_written`).
     (
         "checked write (commit body)",

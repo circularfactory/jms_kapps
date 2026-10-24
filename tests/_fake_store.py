@@ -12,7 +12,7 @@ It words its refusals as GraphDB does, each as GraphDB answered it on a recorded
 - **A refusal for want of heap** of a query: HTTP 500 with the text "Insufficient free Heap Memory
   249Mb for group by and distinct". GraphDB's answer to a startup query of a module of the
   5-module cross on jms_kapps' own stack, measured on 2026-10-02 (the startup-failure report of
-  the middleware, KSM 326), when its free heap was under its floor of 250 MB.
+  the middleware), when its free heap was under its floor of 250 MB.
 
 A test chooses which request the stand-in refuses, or answers late, by a rule on the request's
 text. rdflib does not know GraphDB's own graphs, so the stand-in reads them as GraphDB does before

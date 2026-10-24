@@ -1,6 +1,6 @@
-"""The monitor page with boxes named by a UUID, `Box-<UUID>` (jms_kapps 92), in a headless browser.
+"""The monitor page with boxes named by a UUID, `Box-<UUID>`, in a headless browser.
 
-The interim reading of the ticket, on Sören's decision on jms_kapps 85: the small disc on a box's
+The interim reading: the small disc on a box's
 destination, and the box's square on the module that holds it, show the first four characters of
 the box's UUID; the box's colour comes from its UUID; the Boxes table orders the boxes by name.
 

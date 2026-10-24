@@ -9,3 +9,8 @@ build/
 .env
 # pytest-playwright's traces, screenshots and videos, with its --tracing, --screenshot, --video
 test-results/
+
+# Local agent output: the orchestrator's run logs per task, and scratch notes. A build's
+# handoff and briefs under .claude/log/<ticket>/ stay trackable; only runs/ is machine output.
+.claude/log/*/runs/
+.scratch/

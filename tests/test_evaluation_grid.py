@@ -1,4 +1,4 @@
-"""The grid script of the measurement harness (jms_kapps 94): it makes a topology file of W columns
+"""The grid script of the measurement harness: it makes a topology file of W columns
 and H rows in the pattern of the shipped 30-module grid, and the 60- and 120-module grids of
 iteration one are its 12 x 5 and 24 x 5 grids, committed. Nothing here reaches a store.
 """

@@ -10,7 +10,7 @@ that each reads a request the same way. Nothing here sends a request.
 **Its kind:** a read (a SPARQL query, or a read of statements), a write (a SPARQL update, or a write
 of statements or of a graph), the login, or other.
 
-**The statuses it writes.** A write that inserts `svc:operationStatus` for an Operation writes that
+**The statuses it writes.** A write that inserts `svc:hasOperationStatus` for an Operation writes that
 status for it: the Operation is the subject, and the status the object, of that statement in the
 update's `INSERT` template. A statement that the update only deletes, or only reads in its
 `WHERE`, writes nothing. The box is the one the request names for the Operation, as the
@@ -30,13 +30,9 @@ where its client gave up because the time ran out, and **connection dropped** wh
 closed, reset or failed before an answer, a connection that the host refused too
 (`unanswered_outcome`, from the error its client raised: its type, the part before the first
 colon). An error of neither class counts as connection dropped, and so does a request without an
-answer whose record holds no error, in a new record and an earlier one alike (changed on
-2026-10-15 after a review: until then an earlier record's "timed out" without an error
-stayed timed out). Both count toward the 1 % of the broken rule (`ramp`). (Changed on 2026-10-14, jms_kapps 109, decided by Sören as the product owner
-of the tests, jms_kapps 85, note 1866296, decision 2: until then every request without an answer
-was timed out, and the four unanswered requests of iteration one, all dropped connections, were
-counted as timeouts. A record written before keeps "timed out"; its readers classify such a
-request by its error, `outcome_of`, and change no record file.)
+answer whose record holds no error, in a new record and an earlier one alike. Both count toward the 1 % of the broken rule (`ramp`). A record written before keeps
+"timed out"; its readers classify such a request by its error, `outcome_of`, and change no
+record file.
 """
 
 from __future__ import annotations
@@ -63,7 +59,7 @@ LOGIN = "login"
 OTHER = "other"
 
 # The outcomes of a store request. A request without an answer is timed out or connection dropped
-# (jms_kapps 109, interim name: `CONNECTION_DROPPED`, `UNANSWERED`).
+# (interim name: `CONNECTION_DROPPED`, `UNANSWERED`).
 ACCEPTED = "accepted"
 REFUSED = "refused"
 TIMED_OUT = "timed out"
@@ -72,7 +68,7 @@ UNANSWERED = (TIMED_OUT, CONNECTION_DROPPED)
 
 # The errors of a client that gave up because the time ran out, by their type's name: those of
 # requests (which the participants' triple-store interface uses), of httpx (the replay's client),
-# of urllib3 and of Python itself (jms_kapps 109, interim name).
+# of urllib3 and of Python itself (interim name).
 TIMEOUT_ERRORS = frozenset(
     {
         "ReadTimeout",
@@ -89,7 +85,7 @@ TIMEOUT_ERRORS = frozenset(
 )
 
 # The errors of a connection that closed, reset or failed before an answer, a connection that the
-# host refused too, by their type's name (jms_kapps 109, interim name). In a UC2 record a dropped
+# host refused too, by their type's name (interim name). In a UC2 record a dropped
 # connection is requests' `ConnectionError`, whose message names `RemoteDisconnected`.
 DROPPED_ERRORS = frozenset(
     {
@@ -173,7 +169,7 @@ def status_writes(text: str | None) -> list[StatusWrite]:
         return []
     found = []
     for match in re.finditer(
-        rf"<(?P<operation>[^<>\s]+)>\s+<{re.escape(str(SVC.operationStatus))}>\s+"
+        rf"<(?P<operation>[^<>\s]+)>\s+<{re.escape(str(SVC.hasOperationStatus))}>\s+"
         r'"(?P<status>[^"\\]*)"',
         inserted,
     ):
@@ -256,7 +252,7 @@ def error_type(error: str | None) -> str | None:
 
 def unanswered_outcome(error: str | None) -> str:
     """The outcome of a store request that got no answer, by the `error` its client raised, as a
-    record keeps it (jms_kapps 109, interim name): `TIMED_OUT` where the time ran out
+    record keeps it (interim name): `TIMED_OUT` where the time ran out
     (`TIMEOUT_ERRORS`), else `CONNECTION_DROPPED`: a connection that closed, reset or failed
     before an answer (`DROPPED_ERRORS`), an error of neither class, which `known_error` tells
     apart, and no error at all (None)."""
@@ -264,8 +260,7 @@ def unanswered_outcome(error: str | None) -> str:
 
 
 def known_error(error: str | None) -> bool:
-    """Whether `error` is of one of the two classes of `unanswered_outcome` (jms_kapps 109,
-    interim name)."""
+    """Whether `error` is of one of the two classes of `unanswered_outcome` (interim name)."""
     found = error_type(error)
     return found in TIMEOUT_ERRORS or found in DROPPED_ERRORS
 
@@ -273,10 +268,9 @@ def known_error(error: str | None) -> bool:
 def outcome_of(request: Mapping[str, Any]) -> str | None:
     """The outcome of a store request as a record holds it (`outcome`, with its `reason`), where
     a request "timed out" is classified by its error (`unanswered_outcome`): a record written
-    before jms_kapps 109 says "timed out" for each request without an answer, a dropped
+    before the rename says "timed out" for each request without an answer, a dropped
     connection too. One that holds no error is connection dropped, as a new record's request
-    without an answer and without an error is (changed on 2026-10-15 after a review:
-    until then it kept "timed out"). A reader takes this, and no record file is changed (interim
+    without an answer and without an error is. A reader takes this, and no record file is changed (interim
     name)."""
     outcome = request.get("outcome")
     if outcome == TIMED_OUT:

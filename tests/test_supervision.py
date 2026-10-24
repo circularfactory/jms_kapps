@@ -124,7 +124,7 @@ def test_a_command_line_is_printed_and_shown_in_the_form_of_the_platforms_shell(
     monkeypatch, supervisor, echoed
 ):
     """On Windows in the form cmd.exe and PowerShell take, so that the line runs when pasted
-    there: not in POSIX quoting, which puts the IRI's `#` in single quotes (jms_kapps 15)."""
+    there: not in POSIX quoting, which puts the IRI's `#` in single quotes."""
     monkeypatch.setattr(
         supervision,
         "PLATFORM",
@@ -272,7 +272,7 @@ def test_a_closed_terminal_takes_no_echo_and_the_children_are_still_read_and_sto
 ):
     """A launcher whose terminal has closed cannot print a line. The supervisor still reads each
     child's output, so that no pipe fills and blocks a child, and a stop still reaches every
-    child (jms_kapps 32)."""
+    child."""
     monkeypatch.setattr(sys, "stdout", ClosedTerminal())
     supervisor = Supervisor(reading(live), stop_timeout=5.0)
     supervisor.spawn(A, "A", GRACEFUL)
@@ -354,7 +354,7 @@ def test_a_stop_that_fails_for_one_child_still_reaches_every_later_child(
     """A stop signal can fail: on Windows a CTRL_BREAK fails to a child that exited meanwhile, or
     when the launcher has no console. The failure is recorded, in the echo and in the child's
     output, and the stop goes on: every later child still gets its stop. The child whose stop
-    failed runs on, and the stop kills it at its timeout (jms_kapps 15).
+    failed runs on, and the stop kills it at its timeout.
 
     The stop that succeeds is a kill here, which every platform has, so that the test needs no
     stop that a child handles itself."""
@@ -414,7 +414,7 @@ def test_a_child_that_exits_unasked_is_printed_failed_once_with_its_exit_code(
     supervisor, live, echoed
 ):
     """A bench launcher has no page, so a child that turns `failed` shows in the terminal: one
-    line, with its name and its exit code (jms_kapps 31)."""
+    line, with its name and its exit code."""
     live.add(A)
     supervisor.spawn(A, "Module 1", python("raise SystemExit(3)"))
 
@@ -452,7 +452,7 @@ def test_a_child_that_exits_with_code_0_once_the_stop_has_begun_has_stopped(
     """A stop signal can reach a child before the stop asks it, as a terminal's Ctrl+C reaches
     every process of the launcher's process group. Once the stop has begun, a child that exits
     with code 0 has stopped, whether a read finds the exit or the stop does, and no line says it
-    failed. An exit with any other code still fails (jms_kapps 70)."""
+    failed. An exit with any other code still fails."""
     live.update({A, B})
     supervisor.spawn(A, "A", python("raise SystemExit(0)"))
     supervisor.spawn(B, "B", python("raise SystemExit(3)"))
@@ -492,8 +492,7 @@ def test_a_child_that_a_stop_signal_to_its_process_group_ends_once_the_stop_has_
     supervisor, live, echoed, stop
 ):
     """A served child that stops cleanly exits with code 0, whichever stop signal began its
-    stop, so the supervisor reads it as stopped and prints no line that it failed (jms_kapps
-    104)."""
+    stop, so the supervisor reads it as stopped and prints no line that it failed."""
     live.add(A)
     supervisor.spawn(A, "A", SERVED_IN_ITS_OWN_GROUP)
     eventually(
@@ -509,6 +508,121 @@ def test_a_child_that_a_stop_signal_to_its_process_group_ends_once_the_stop_has_
 
     assert state_of(supervisor, A).state == "stopped", echoed
     assert failed_lines(echoed) == []
+
+
+# A child served as a module is, by `run_process`, in a process group of its own, with a lifespan
+# that says when it has registered and when it has deregistered, as a middleware's does. With a
+# file named in `sys.argv[1]`, its build waits for that file and then sends itself the signal whose
+# number the file holds: the signal reaches it while it still builds, after it entered
+# `run_process` and before the server takes the signals. Without one, its build returns at once.
+STARTING_IN_ITS_OWN_GROUP = """
+import contextlib
+import os
+import signal
+import sys
+import time
+from pathlib import Path
+from types import SimpleNamespace
+
+from fastapi import FastAPI
+
+from jms_kapps.common.platforms import PLATFORM
+from jms_kapps.common.process import run_process
+
+if PLATFORM.HANGUP is not None:
+    os.setpgrp()
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    print("registered", flush=True)
+    yield
+    print("deregistered", flush=True)
+
+
+def build(port):
+    if len(sys.argv) > 1:
+        trigger = Path(sys.argv[1])
+        print("building", flush=True)
+        deadline = time.monotonic() + 30
+        while not trigger.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        signal.raise_signal(int(trigger.read_text()))
+        time.sleep(30)
+    return SimpleNamespace(app=FastAPI(lifespan=lifespan))
+
+
+run_process("127.0.0.1", build, lambda address: "serving on " + address)
+"""
+
+EVERY_STOP_SIGNAL = [
+    pytest.param(signal.SIGINT, id="Ctrl+C"),
+    pytest.param(
+        signal.SIGTERM,
+        id="SIGTERM",
+        marks=pytest.mark.posix(
+            reason="SIGTERM to a process is a forced kill on Windows"
+        ),
+    ),
+    pytest.param(
+        getattr(signal, "SIGHUP", None),
+        id="SIGHUP",
+        marks=pytest.mark.posix(reason="Windows has no SIGHUP"),
+    ),
+]
+
+
+@pytest.mark.parametrize("stop", EVERY_STOP_SIGNAL)
+def test_a_child_that_a_stop_signal_reaches_while_it_starts_has_stopped(
+    supervisor, live, echoed, tmp_path, stop
+):
+    """A stop signal can reach a child before its server takes the signals, while it still
+    builds its middleware, as a Ctrl+C right after a launch reaches every process of the
+    launcher's process group. Once the stop has begun, the child ends at once, without finishing
+    its build, exits with code 0 and prints no traceback, so the supervisor reads it as stopped.
+    It had registered nothing yet, so it has nothing to deregister."""
+    trigger = tmp_path / "signal"
+    supervisor.spawn(A, "A", python(STARTING_IN_ITS_OWN_GROUP) + [str(trigger)])
+    eventually(lambda: "building" in state_of(supervisor, A).output)
+
+    supervisor.begin_stop()
+    asked = time.monotonic()
+    trigger.write_text(str(int(stop)))
+    eventually(lambda: not state_of(supervisor, A).stoppable, timeout=10)
+    supervisor.refresh()
+    supervisor.stop_all()
+
+    output = state_of(supervisor, A).output
+    assert time.monotonic() - asked < 10, output
+    assert state_of(supervisor, A).state == "stopped", echoed
+    assert failed_lines(echoed) == []
+    assert not any("Traceback" in line for line in output), output
+    assert "registered" not in output, output
+
+
+@pytest.mark.posix(reason="a signal to a process group, and SIGHUP, are POSIX only")
+@pytest.mark.parametrize("stop", EVERY_STOP_SIGNAL)
+def test_a_registered_child_that_a_stop_signal_to_its_process_group_ends_deregisters_first(
+    supervisor, live, echoed, stop
+):
+    """A child that a stop signal reaches once it has registered still deregisters before it
+    exits, and exits with code 0, so the supervisor reads it as stopped."""
+    live.add(A)
+    supervisor.spawn(A, "A", python(STARTING_IN_ITS_OWN_GROUP))
+    eventually(lambda: "registered" in state_of(supervisor, A).output)
+    supervisor.refresh()
+
+    supervisor.begin_stop()
+    os.killpg(state_of(supervisor, A).pid, stop)
+    eventually(lambda: not state_of(supervisor, A).stoppable)
+    supervisor.refresh()
+    supervisor.stop_all()
+
+    output = state_of(supervisor, A).output
+    assert "deregistered" in output, output
+    assert state_of(supervisor, A).state == "stopped", echoed
+    assert failed_lines(echoed) == []
+    assert not any("Traceback" in line for line in output), output
 
 
 def test_a_child_that_exits_with_code_0_before_the_stop_has_begun_has_failed(
@@ -545,6 +659,162 @@ def test_a_live_child_whose_service_stops_being_live_is_printed_failed_without_a
     supervisor.refresh()
 
     assert failed_lines(echoed) == ["A failed: its service is not ready any more."] * 2
+
+
+RESERVE_CLASS = IRI("http://example.org/plant#ReserveWorkflow")
+RECEIVE_CLASS = IRI("http://example.org/plant#ReceiveWorkflow")
+
+
+def stale(heartbeat_age: float, workflows: Collection[IRI] = ()) -> Service:
+    """A's service with its address, whose last heartbeat is `heartbeat_age` seconds old."""
+    found = live_service(A, "http://127.0.0.1:4001", workflows)
+    beat = datetime.now(UTC) - timedelta(seconds=heartbeat_age)
+    return Service(found.iri, found.resource, found.address, beat, found.workflows)
+
+
+def deregistered() -> Service:
+    """A's service after its deregistration: no address and no endpoint, a fresh heartbeat."""
+    found = live_service(A)
+    return Service(found.iri, found.resource, None, found.heartbeat, {})
+
+
+def without(*classes: IRI) -> Service:
+    """A's live service, with each workflow it registers but those of `classes`."""
+    found = live_service(A, "http://127.0.0.1:4001", (RESERVE_CLASS, RECEIVE_CLASS))
+    left = {c: e for c, e in found.workflows.items() if c not in classes}
+    return Service(found.iri, found.resource, found.address, found.heartbeat, left)
+
+
+class OneService:
+    """The supervisor's read of one service, live or not: what it reads to say why a live child
+    turned `failed`. It answers `found`, and counts the reads."""
+
+    def __init__(self, found: list[Service]) -> None:
+        self.found = found
+        self.reads: list[tuple[IRI, frozenset[IRI]]] = []
+
+    def __call__(self, resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        self.reads.append((resource, frozenset(workflows)))
+        return self.found
+
+
+@pytest.mark.parametrize(
+    "found, line",
+    [
+        (lambda: [stale(95.4)], "A failed: its last heartbeat is 95 s old."),
+        (lambda: [deregistered()], "A failed: its service has no address."),
+        (
+            lambda: [without(RECEIVE_CLASS)],
+            "A failed: its service has no ReceiveWorkflow any more.",
+        ),
+        (
+            lambda: [without(RESERVE_CLASS, RECEIVE_CLASS)],
+            "A failed: its service has no ReceiveWorkflow, ReserveWorkflow any more.",
+        ),
+        (list, "A failed: its service is not in the knowledge graph."),
+    ],
+    ids=["stale heartbeat", "no address", "a workflow gone", "two gone", "no service"],
+)
+def test_a_live_child_that_turns_failed_is_printed_with_what_the_supervisor_saw(
+    live, echoed, found, line
+):
+    """The line says which part of ready is missing: one read of the child's own service, live
+    or not, with the workflows the child registers. `found` is made at the read's time, so that
+    a heartbeat's age is that of the read."""
+    one = OneService(found())
+    supervisor = Supervisor(reading(live), echo=echoed.append, service_of=one)
+    supervisor.spawn(A, "A", RUNS, workflows=(RESERVE_CLASS, RECEIVE_CLASS))
+    try:
+        live.add(A)
+        supervisor.refresh()
+        live.discard(A)
+        supervisor.refresh()
+
+        assert state_of(supervisor, A).state == "failed"
+        assert state_of(supervisor, A).why_failed == line[len("A failed: ") : -1]
+    finally:
+        supervisor.stop_all()
+
+    assert failed_lines(echoed) == [line]
+    assert one.reads == [(A, frozenset({RESERVE_CLASS, RECEIVE_CLASS}))]
+
+
+def test_the_supervisor_reads_why_only_on_the_turn_to_failed(live, echoed):
+    """Neither a live child nor a failed one is read again on a poll: one read for each turn."""
+    one = OneService([deregistered()])
+    supervisor = Supervisor(reading(live), echo=echoed.append, service_of=one)
+    supervisor.spawn(A, "A", RUNS)
+    try:
+        live.add(A)
+        for _ in range(3):
+            supervisor.refresh()
+        assert one.reads == []
+
+        live.discard(A)
+        for _ in range(3):
+            supervisor.refresh()
+        assert len(one.reads) == 1
+
+        live.add(A)
+        supervisor.refresh()
+        assert state_of(supervisor, A).why_failed is None
+        live.discard(A)
+        supervisor.refresh()
+        supervisor.refresh()
+    finally:
+        supervisor.stop_all()
+
+    assert len(one.reads) == 2
+
+
+def test_a_read_of_why_that_fails_keeps_the_plain_line_and_the_child_failed(
+    live, echoed
+):
+    def away(resource: IRI, workflows: Collection[IRI]) -> list[Service]:
+        raise ConnectionError("the graph is away")
+
+    supervisor = Supervisor(reading(live), echo=echoed.append, service_of=away)
+    supervisor.spawn(A, "A", RUNS)
+    try:
+        live.add(A)
+        supervisor.refresh()
+        live.discard(A)
+        supervisor.refresh()
+
+        assert state_of(supervisor, A).state == "failed"
+        assert state_of(supervisor, A).why_failed == "its service is not ready any more"
+    finally:
+        supervisor.stop_all()
+
+    assert failed_lines(echoed) == ["A failed: its service is not ready any more."]
+
+
+def test_a_service_that_reads_ready_again_keeps_the_plain_line(live, echoed):
+    """It turned ready between the two reads: the supervisor says nothing it did not see."""
+    one = OneService([live_service(A, "http://127.0.0.1:4001")])
+    supervisor = Supervisor(reading(live), echo=echoed.append, service_of=one)
+    supervisor.spawn(A, "A", RUNS)
+    try:
+        live.add(A)
+        supervisor.refresh()
+        live.discard(A)
+        supervisor.refresh()
+    finally:
+        supervisor.stop_all()
+
+    assert failed_lines(echoed) == ["A failed: its service is not ready any more."]
+
+
+def test_a_child_that_exited_says_why_it_failed_in_its_snapshot(live, echoed):
+    supervisor = Supervisor(reading(live), echo=echoed.append)
+    supervisor.spawn(A, "A", python("raise SystemExit(3)"))
+    try:
+        eventually(lambda: not state_of(supervisor, A).stoppable)
+        supervisor.refresh()
+
+        assert state_of(supervisor, A).why_failed == "its process exited with code 3"
+    finally:
+        supervisor.stop_all()
 
 
 def test_a_child_that_does_not_turn_live_in_time_is_printed_failed_with_the_start_timeout(
@@ -785,7 +1055,7 @@ class HangingStore:
 @pytest.mark.posix(reason="kills the child with SIGKILL")
 def test_a_read_that_hangs_does_not_delay_the_watch_finding_an_exit():
     """The watch finds a process that exits within one watch interval, while the read of the
-    heartbeats it started before the exit still hangs, however long it hangs (jms_kapps 32)."""
+    heartbeats it started before the exit still hangs, however long it hangs."""
     store = HangingStore()
     supervisor = Supervisor(reader(store), echo=lambda _: None)
     supervisor.spawn(A, "A", RUNS)
@@ -856,14 +1126,14 @@ class Services:
         self.graph.add((service, URIRef(SVC.isServiceOf), URIRef(resource)))
         if address:
             self.graph.add(
-                (service, URIRef(SVC.address), Literal("http://127.0.0.1:40001"))
+                (service, URIRef(SVC.hasAddress), Literal("http://127.0.0.1:40001"))
             )
         if heartbeat_age is not None:
             beat = datetime.now(UTC) - timedelta(seconds=heartbeat_age)
             self.graph.add(
                 (
                     service,
-                    URIRef(SVC.lastHeartbeat),
+                    URIRef(SVC.hasLastHeartbeat),
                     Literal(beat, datatype=XSD.dateTime),
                 )
             )
@@ -954,3 +1224,110 @@ def test_the_guard_lets_a_forced_launcher_go_on_although_a_service_is_live(servi
 
     refuse_if_live(reader(services), dataset="test-dataset", force=True)
     refuse_if_live(unread, dataset="test-dataset", force=True)
+
+
+# A child without a service: a device process, such as use case 1's robot controller stand-in,
+# which speaks only its protocol and registers nothing in the graph. Its state rests on its
+# process alone.
+
+
+def test_a_child_without_a_service_is_live_while_its_process_runs(supervisor, live):
+    """No service is read for it: it is live from its spawn, with no address, while the reader
+    lists no resource at all, and it stays so through a refresh."""
+    supervisor.spawn(
+        A, "Device", python("import time; time.sleep(30)"), has_service=False
+    )
+    assert state_of(supervisor, A).state == "live"
+
+    supervisor.refresh()
+
+    child = state_of(supervisor, A)
+    assert child.state == "live"
+    assert child.address is None
+    assert child.stoppable
+    assert child.unconfirmed_for is None
+
+
+def test_a_child_without_a_service_that_exits_unasked_has_failed_with_its_exit_code(
+    supervisor, live, echoed
+):
+    supervisor.spawn(A, "Device", python("raise SystemExit(3)"), has_service=False)
+
+    def failed() -> bool:
+        supervisor.refresh()
+        return state_of(supervisor, A).state == "failed"
+
+    eventually(failed)
+
+    child = state_of(supervisor, A)
+    assert child.why_failed == "its process exited with code 3"
+    assert "Device failed: its process exited with code 3." in echoed
+    # It registered no service, so none can be left behind.
+    assert supervisor.may_not_have_deregistered() == set()
+
+
+def test_the_readiness_gate_counts_a_child_without_a_service_live(supervisor, live):
+    """A run of a middleware child and a device child is ready once the middleware's service is
+    live: the device needs no read."""
+    supervisor.spawn(A, "Middleware", python("import time; time.sleep(30)"))
+    supervisor.spawn(
+        B, "Device", python("import time; time.sleep(30)"), has_service=False
+    )
+    live.add(A)
+
+    supervisor.wait_until_ready(timeout=5.0)
+
+    assert {c.name: c.state for c in supervisor.snapshot()} == {
+        "Middleware": "live",
+        "Device": "live",
+    }
+
+
+def test_a_child_without_a_service_that_a_stop_ends_has_stopped(supervisor, live):
+    supervisor.spawn(
+        A, "Device", python("import time; time.sleep(30)"), has_service=False
+    )
+    supervisor.refresh()
+
+    supervisor.stop(A)
+
+    child = state_of(supervisor, A)
+    assert child.state == "stopped"
+    assert not child.stoppable
+    assert supervisor.may_not_have_deregistered() == set()
+
+
+def test_a_child_without_a_service_that_a_stop_signal_ends_once_the_stop_has_begun_has_stopped(
+    supervisor, live
+):
+    """An exit with code 0 after `begin_stop`, before the supervisor asks: as a terminal's Ctrl+C
+    reaches the device too."""
+    supervisor.spawn(A, "Device", python("import time; time.sleep(0.3)"), has_service=False)
+    supervisor.begin_stop()
+
+    def stopped() -> bool:
+        supervisor.refresh()
+        return state_of(supervisor, A).state == "stopped"
+
+    eventually(stopped)
+
+
+def test_a_child_without_a_service_is_never_unconfirmed_while_the_graph_is_away(live):
+    """Its state is this process's own knowledge, so a read that fails leaves it confirmed, and
+    live."""
+
+    def failing(workflows):
+        raise ConnectionError("graph away")
+
+    supervisor = Supervisor(failing, echo=lambda line: None, stop_timeout=5.0)
+    try:
+        supervisor.spawn(
+            A, "Device", python("import time; time.sleep(30)"), has_service=False
+        )
+        with pytest.raises(ConnectionError):
+            supervisor.refresh()
+        child = state_of(supervisor, A)
+        assert child.state == "live"
+        assert child.unconfirmed_for is None
+    finally:
+        supervisor.stop_all()

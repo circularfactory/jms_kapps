@@ -46,6 +46,8 @@ ASSET_PATHS = [
     "uc1/ontology/integration_usecase.ttl",
     "uc1/data/unscrewing_timeseries/success.csv",
     "uc1/data/unscrewing_timeseries/missing_screw.csv",
+    "uc1/static/page.js",
+    "uc1/static/style.css",
     "uc2/ontology/flexconveyor_usecase.ttl",
     "uc2/shapes/flexconveyor_usecase_shapes.ttl",
     "uc2/topologies/cross.json",

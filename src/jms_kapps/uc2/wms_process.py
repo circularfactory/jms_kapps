@@ -3,25 +3,21 @@
 The process registers `:WarehouseManagementSystemService` and its two workflows in the graph,
 serves them over REST, and takes every notification through the middleware's notification handler.
 A spawn creates the box directly on its origin and notifies the origin, so no module calls a
-workflow of the WarehouseManagementSystem, and it moves no box. (Changed on 2026-10-06, jms_kapps
-41, decided by Etienne. Until then it registered three workflows: "The third workflow is its
-Convey, which the origin of a spawn calls once it has reserved itself for the box".) A spawn
-is how a person, or a program, starts a box on its journey: a POST to `spawn_box`. The spawn rate
-is how many boxes a minute the WarehouseManagementSystem spawns on its own, each when it is due,
-whether the one before it has ended or not: a POST to `set_spawn_rate`, where 0 stops (changed on
-2026-10-07, jms_kapps 51, decided by Etienne; until then "one after another"). A person makes both
-posts from the forms of the WarehouseManagementSystem's own dashboard, at `/dashboard`, in the tab
-"WMS", which also shows its last spawns, the boxes it holds and the transports it opened, from its
+workflow of the WarehouseManagementSystem, and it moves no box. A spawn is how a person, or a
+program, starts a box on its journey: a POST to `spawn_box`. The spawn rate is how many boxes a
+minute the WarehouseManagementSystem spawns on its own, one at each interval of the rate, also
+while earlier spawns are still on their way: a POST to `set_spawn_rate`, where 0 stops. At most as
+many spawns are under way at once as the topology has modules that may be an origin; one beyond
+that is refused with "every origin has a spawn under way". A person makes both posts from the
+forms of the WarehouseManagementSystem's own dashboard, at `/dashboard`, in the tab "WMS", which
+also shows its last spawns, the boxes it holds and the transports it opened, from its
 memory. A program posts the same JSON to the same two routes. A notification is how a module
 tells it that a transport has ended: the box is back, or the transport failed. It serves its
 handover event stream, as a module does. Uvicorn runs on the main thread, so that a signal
 reaches it and the middleware deregisters on the way out. From the stop signal on, the
 WarehouseManagementSystem refuses every spawn, and its shutdown waits for every spawn of the timer
 that is under way, so that no spawn is cut short between the create of its box and the
-notification of its origin. (Changed on 2026-10-06, jms_kapps 41, decided by Etienne. Until then
-"so that no transport is cut short". Changed again on 2026-10-07, jms_kapps 51, decided by
-Etienne: the timer's spawns overlap. Until then "waits for a spawn of the timer that is under
-way".)
+notification of its origin.
 
 Run it as `python -m jms_kapps.uc2.wms_process`, the command line `wms_command` builds. The
 Launcher does.
@@ -83,10 +79,9 @@ WMS_WORKFLOWS = (FC.SpawnBoxWorkflow, FC.SetSpawnRateWorkflow)
 
 def wms_command(dataset: str, *, pick_seed: int | None = None) -> list[str]:
     """The command line that runs the WarehouseManagementSystem against `dataset`. It takes
-    no transit time: it moves no box. (Changed on 2026-10-06, jms_kapps 41, decided by Etienne:
-    until then it took the transit time of "the simulated move of a box onto its origin".) With
+    no transit time: it moves no box. With
     `pick_seed` it ends with `--pick-seed <pick_seed>`: the seed of the generator it picks its
-    modules with, unseeded where None. (Added on 2026-10-12, jms_kapps 93, interim name.)"""
+    modules with, unseeded where None. Interim name."""
     return [
         sys.executable,
         "-m",
@@ -108,11 +103,9 @@ def build(
 ) -> SemanticMiddleware:
     """The WarehouseManagementSystem's middleware instance, with its two workflows, its
     notification handler, its handover event stream and its dashboard. `choose` picks a module
-    out of several, at random unless a test says otherwise. (Added on 2026-10-06, jms_kapps 45, the
-    build's reading: `choose`, so that a live test can cover every ordered pair of modules in a few
-    boxes.) `strategy`, named `strategy_name`, picks the origin and the destination of a spawn
-    among its candidates, with `choose` (added on 2026-10-10, jms_kapps 52, decided by Etienne on
-    2026-10-07)."""
+    out of several, at random unless a test says otherwise, so that a live test can cover every
+    ordered pair of modules in a few boxes. `strategy`, named `strategy_name`, picks the origin and
+    the destination of a spawn among its candidates, with `choose`."""
     middleware = SemanticMiddleware(
         mode=Mode.RESOURCE,
         resource_iri=str(WMS),
@@ -180,16 +173,11 @@ def serve_spawning(
         origins: The modules a spawn may name as its origin, which the dashboard's form offers:
             the entry modules of the FlexConveyor station, or every module where it names none.
         destinations: Those a spawn may name as its destination, which the form offers: its
-            exit modules, or every module where it names none. (Changed on 2026-10-06,
-            jms_kapps 45, decided by Etienne: roles are optional. Until then the two were
-            `entry_modules`, "The entry modules of the FlexConveyor station, which the
-            dashboard's form offers as the origin", and `exit_modules`, "Its exit modules, which
-            the form offers as the destination".)
+            exit modules, or every module where it names none.
 
     Returns:
         The timer, stopped. It stops again when the middleware shuts down, once every spawn
-        under way has ended, or a bound has passed. (Changed on 2026-10-07, jms_kapps 51, decided
-        by Etienne. Until then "once the spawn under way, if there is one, has ended".)
+        under way has ended, or a bound has passed.
     """
     timer = SpawnTimer(lambda: spawn(SpawnBoxRequest()))
 
@@ -211,9 +199,7 @@ def serve_spawning(
         Leave out the origin to have a free entry module picked, and the destination to have an
         exit module picked; on a topology that names no such role, any free module, and any
         module but the origin. A picked destination is one the origin reaches, and a picked
-        origin one that reaches a destination. (Changed on 2026-10-06, jms_kapps 45, decided by
-        Etienne: roles are optional. Until then the sentence ended at "picked". The sentence on
-        what a pick reaches added on 2026-10-07, jms_kapps 51, decided by Etienne.)
+        origin one that reaches a destination.
         """
         return spawn(request)
 
@@ -259,7 +245,6 @@ def main() -> None:
     args = wms_parser().parse_args()
     # Before the store is read: a WMS given a strategy it does not know does not start. Its
     # process ends with the reason, which the Launcher page shows with the state `failed`.
-    # (Added on 2026-10-10, jms_kapps 52, decided by Etienne on 2026-10-07.)
     try:
         strategy = chosen(WmsStrategy, args.wms_strategy, found(WmsStrategy))
     except UnknownStrategy as unknown:

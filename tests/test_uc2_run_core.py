@@ -5,7 +5,7 @@ until each is ready, and stops them, importing nothing from the Launcher's API o
 starting no monitor.
 
 The tests without a store run real child processes, each a few lines of Python, against a stand-in
-of the graph: a process registers its service by creating a file named after its resource, then,
+of the graph (`_registering_graph.py`): a process registers its service by creating a file named after its resource, then,
 a moment later, its workflows, one line each, as a middleware writes its service and its first
 heartbeat before its workflows; and it deregisters on SIGTERM by removing the file. The live test
 runs the real modules and WarehouseManagementSystem on the dataset `--dataset` names, which
@@ -16,13 +16,11 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from collections.abc import Collection, Iterator
-from pathlib import Path
-from urllib.parse import quote, unquote
+from collections.abc import Iterator
 
 import httpx
 import pytest
-from _services import live_services
+from _registering_graph import RegisteringGraph
 from _wait import eventually
 from kapps_semantic_middleware.credentials import triplestore_env_present
 from kapps_semantic_middleware.vocabulary import OperationStatus
@@ -30,7 +28,7 @@ from kapps_triplestore_interface import IRI
 
 from jms_kapps.common import supervision
 from jms_kapps.common.platforms import PLATFORM
-from jms_kapps.common.services import Service, live_resources, reader
+from jms_kapps.common.services import live_resources, reader
 from jms_kapps.common.supervision import Supervisor, refuse_if_live
 from jms_kapps.common.triplestore import bindings, connect
 from jms_kapps.uc2.discovery import workflow_endpoint
@@ -40,64 +38,6 @@ from jms_kapps.uc2.topology import Topology, shipped_topology
 from jms_kapps.uc2.transport import operation_status
 from jms_kapps.uc2.vocabulary import MONITOR, WMS
 from jms_kapps.uc2.wms_process import WMS_WORKFLOWS, wms_command, wms_parser
-
-# How long after its service a stand-in process registers its workflows, in seconds.
-WORKFLOWS_LATER = 2.0
-
-
-class RegisteringGraph:
-    """A graph in which a process's service is live from its start until it is asked to stop, and
-    has its workflows from `WORKFLOWS_LATER` after its start. It records each topology it seeds."""
-
-    def __init__(self, registry: Path) -> None:
-        self.registry = registry
-        self.seeded: list[Topology] = []
-
-    def seed(
-        self,
-        topology: Topology,
-        transit_seconds: float,
-        *,
-        collect_history: bool = False,
-    ) -> None:
-        self.seeded.append(topology)
-
-    def command(self, resource: IRI) -> list[str]:
-        """The process of `resource`, which registers the workflows its participant registers."""
-        marker = self.registry / quote(str(resource), safe="")
-        workflows = WMS_WORKFLOWS if resource == WMS else MODULE_WORKFLOWS
-        return [
-            sys.executable,
-            "-c",
-            (
-                "import pathlib, signal, sys, time\n"
-                f"marker = pathlib.Path({str(marker)!r})\n"
-                "def deregister(*_):\n"
-                "    marker.unlink(missing_ok=True)\n"
-                "    sys.exit(0)\n"
-                "signal.signal(signal.SIGTERM, deregister)\n"
-                "marker.touch()\n"
-                f"time.sleep({WORKFLOWS_LATER})\n"
-                f"marker.write_text({chr(10).join(str(w) for w in workflows)!r})\n"
-                "time.sleep(60)\n"
-            ),
-        ]
-
-    def registered(self) -> dict[IRI, set[IRI]]:
-        """Each resource whose process has registered its service, with its workflows so far."""
-        return {
-            IRI(unquote(marker.name)): {
-                IRI(line) for line in marker.read_text().split()
-            }
-            for marker in self.registry.iterdir()
-        }
-
-    def services(self, workflows: Collection[IRI]) -> list[Service]:
-        found = []
-        for resource, registered in self.registered().items():
-            [service] = live_services([resource], set(workflows) & registered)
-            found.append(service)
-        return found
 
 
 @pytest.fixture
@@ -172,8 +112,7 @@ def test_the_participants_of_a_run_are_the_modules_and_the_wms_and_never_the_mon
     pair,
 ):
     """Each with its strategy on its command line, `real` where the caller names none, and each
-    module's with the deadlock alarm time after it, 300 s where the caller names none (changed on
-    2026-10-11, jms_kapps 77, decided by Etienne; a module's line ended with its strategy)."""
+    module's with the deadlock alarm time after it, 300 s where the caller names none."""
     started = participants_of(
         pair, module_command=lambda resource: [str(resource)], wms_command=["wms"]
     )
@@ -207,9 +146,8 @@ def test_a_caller_outside_the_launcher_chooses_the_two_strategies_through_the_ru
 ):
     """The bench launcher names the strategies of a run as the Launcher's launch fields do,
     `module_strategy` and `wms_strategy`: every module's command line carries the one, the
-    WMS's the other, and each process reads its own with its own parser. (Added on 2026-10-10,
-    jms_kapps 52 merged into jms_kapps 31: the two options go on the command lines the run core
-    builds.)"""
+    WMS's the other, and each process reads its own with its own parser. The two options go on the command lines the run core
+    builds."""
     started = participants_of(
         pair,
         module_command=lambda resource: module_command(resource, "test-dataset"),

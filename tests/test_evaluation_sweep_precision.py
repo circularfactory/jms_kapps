@@ -1,4 +1,4 @@
-"""The sweep under the precision rule (jms_kapps 101), in rounds (jms_kapps 111): round k makes
+"""The sweep under the precision rule, in rounds: round k makes
 repetition k of each open configuration, in the spec's order, and one call goes on round after
 round until the stop time, the stop file or the end of the rule. A call after a stop goes on at the
 round that the records show, a record holds the maximum and its round, `--list` shows where each
@@ -70,7 +70,7 @@ ITERATION_ONE = AFTER_SERIES.parent / "iteration-one.toml"
 README = Path(jms_kapps.__file__).parent / "evaluation" / "README.md"
 
 # The configurations' keys of the shipped specs on main 13a0869, before the rounds: the rounds
-# change no key, so the runs made before them stay valid (jms_kapps 85, note 1866296).
+# change no key, so the runs made before them stay valid.
 ITERATION_ONE_KEYS = [
     "c47c56a71876d187", "9fcf03ae9c495ab4", "fa129651371f0569", "10d538f2c44d2e00",
     "07a337990d73732f", "b796a2c6bd7615fc", "59fb3ec129a9a3af", "ad4766fa7bfa7175",
@@ -266,8 +266,7 @@ def test_a_configuration_whose_throughput_median_is_0_stops_after_its_minimum_of
     tmp_path, configured, monkeypatch, capsys
 ):
     """No transport ends in a run of configuration 2: with its minimum of 2 valid runs its
-    throughput median is 0, so it stops there, and round 3 plans no run for it (jms_kapps 113,
-    Sören's decision of 2026-10-13 on jms_kapps 85, note 1866296). `--list` and the table mark
+    throughput median is 0, so it stops there, and round 3 plans no run for it. `--list` and the table mark
     it "stopped: throughput median 0"."""
     made = FabricatedRuns(
         throughput=lambda number, repetition: {1: 30.0, 2: 0.0}.get(
@@ -308,7 +307,7 @@ def test_a_configuration_whose_throughput_median_is_0_stops_after_its_minimum_of
 
 
 def test_the_readme_s_precision_rule_states_the_stop_at_a_throughput_median_of_0():
-    """With a dated note that names Sören's decision (jms_kapps 113)."""
+    """The README states the stop at a throughput median of 0."""
     section = " ".join(
         README.read_text(encoding="utf-8")
         .split("### The precision rule and the rounds")[1]
@@ -317,13 +316,13 @@ def test_the_readme_s_precision_rule_states_the_stop_at_a_throughput_median_of_0
     )
     stop = section.split("**A throughput median of 0**")[1].split("\n- **")[0]
 
-    assert "Sören's decision of 2026-10-13" in stop
-    assert "jms_kapps 85, note 1866296" in stop and "jms_kapps 113" in stop
+    assert "Sören" not in stop and "jms_kapps 113" not in stop
+    assert "such a configuration can never meet the rule" in stop
     assert "after its minimum of valid runs" in stop and "stops there" in stop
     assert "again after each later run" in stop
     assert '"stopped: throughput median 0"' in stop and "without the wrapper" in stop
-    assert "Changed on 2026-10-14, jms_kapps 113: until then" in stop
-    assert '"precision not reached (20 runs)"' in stop
+    assert "Changed on 2026-10-14" not in stop
+    assert 'apart from "precision not reached"' in stop
     assert "runs again only when its records are moved out of the runs' folder" in stop
     # Open, the end of the rule and `--list` name the stop too.
     assert "has no throughput median of 0 at its minimum of valid runs" in section
@@ -456,8 +455,7 @@ def test_an_interrupted_attempt_stops_the_call_and_is_made_again_in_its_round(
 def test_a_failed_run_does_not_stop_the_call_and_counts_toward_the_maximum(
     tmp_path, configured, monkeypatch, capsys
 ):
-    """The call goes on after a failed run (jms_kapps 112; until 2026-10-14 the call stopped at
-    it, and the next call went on after it)."""
+    """The call goes on after a failed run ."""
     made = FabricatedRuns(
         throughput=noisy,
         outcome=lambda number: (
@@ -546,7 +544,7 @@ def test_a_call_whose_records_do_not_show_its_runs_stops_before_it_makes_them_ag
 ):
     """A run that leaves no record would be planned again in the next round, all night long:
     each such run counts as a failed run, its configuration is left out for the rest of the
-    call, and the third in a row stops the call (jms_kapps 112, note 1866704)."""
+    call, and the third in a row stops the call."""
     made: list[tuple[int, int]] = []
 
     def leaves_no_record(
@@ -576,7 +574,7 @@ def assert_removed(tmp_path: Path, out: str) -> None:
 def test_a_stop_file_made_during_a_failed_run_is_removed_when_the_call_stops(
     tmp_path, configured, monkeypatch, capsys
 ):
-    """The third failed run in a row stops the call (jms_kapps 112)."""
+    """The third failed run in a row stops the call."""
     made = FabricatedRuns(
         throughput=noisy,
         outcome=lambda number: (
@@ -744,7 +742,7 @@ def test_a_later_round_with_nothing_to_make_ends_the_call_and_removes_the_stop_f
     assert_removed(tmp_path, out)
 
 
-# --- removed configurations (Sören's decision on jms_kapps 111, note 1866695) ----------------
+# --- removed configurations ----------------
 
 
 def sweeps_of(tmp_path: Path, number: int) -> list[int]:
@@ -960,7 +958,7 @@ def test_the_list_says_why_a_configuration_is_not_open(
 
 def test_a_ramp_s_levels_without_a_record_are_made_in_round_1(tmp_path):
     """A ramp is a heavy part: round 1 makes it, and a later round only while it has not ended
-    or a request asks for it (jms_kapps 114, `test_evaluation_sweep_heavy.py`)."""
+    or a request asks for it (`test_evaluation_sweep_heavy.py`)."""
     text = (
         SPEC
         + """
@@ -1064,12 +1062,10 @@ def test_the_draft_spec_s_header_states_the_rounds_the_open_values_and_the_depen
     header = " ".join(text.split("[defaults]")[0].replace("#", " ").split())
 
     assert "transit time and the retry wait" in header
-    assert "jms_kapps 94" in header and "grid-60.json" in header
-    assert "jms_kapps 98" in header
+    assert "grid-60.json" in header
+    assert "compressed replay" in header
     assert "in rounds" in header and "round k makes repetition k" in header
-    # A dated note keeps the old rule and names Sören's decision.
-    assert "2026-10-13" in header and "jms_kapps 111" in header
-    assert "pass 1 made repetitions 1 to 5" in header
+    assert "The rounds replaced the passes" in header
     assert "pass_sizes" not in text.split("\n[precision]\n")[1]
 
 
@@ -1090,7 +1086,6 @@ def test_the_readme_describes_the_rounds_instead_of_the_passes():
             named in text.split("## One command")[1].split("### The shipped specs")[0]
         )
         assert named in text.split("### Selection, records and stops")[1]
-    # A dated note keeps the old pass rule and names Sören's decision.
-    assert "Until 2026-10-13" in windows and "pass 1 made repetitions 1 to 5" in windows
-    # The approvals issued before the rounds are void: the draft spec changed.
-    assert "approval issued before" in windows
+    assert "Until 2026-10-13" not in windows and "pass_sizes" in windows
+    # An approval covers one spec as written: the draft spec's file changed with the rounds.
+    assert "needs an approval issued for the file as it is" in windows

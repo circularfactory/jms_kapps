@@ -1,6 +1,6 @@
 """The statistics of the table of a spec (`table`), iteration one of the measurement harness: a
 quantile, the median and the interquartile range, and a bootstrap interval that resamples whole
-repetitions (decided by Etienne on 2026-10-11, the numbers decision, jms_kapps 56).
+repetitions.
 
 **A quantile** is read by linear interpolation between the two closest ranks, as numpy and R
 read it by default (R's type 7): of n sorted values x[0] to x[n-1], the quantile p lies at
@@ -19,8 +19,6 @@ the 97.5 % quantile of the statistics of all resamples (the percentile interval)
 from a random generator seeded with the recorded seed and the name of what is drawn for, so the
 same seed gives the same interval, and an interval does not depend on the other intervals a table
 holds. A single repetition gives an interval of one point: there is nothing to resample.
-
-(Added on 2026-10-12, jms_kapps 49.)
 """
 
 from __future__ import annotations
