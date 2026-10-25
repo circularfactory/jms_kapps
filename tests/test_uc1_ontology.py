@@ -12,10 +12,21 @@ import pytest
 from kapps_semantic_middleware.vocabulary import CFC, CORE_NS, SVC
 from rdflib import Graph, URIRef
 from rdflib.collection import Collection
+from rdflib.compare import isomorphic
 from rdflib.namespace import OWL, RDF, RDFS, XSD
 
 from jms_kapps.common.triplestore import read_asset
-from jms_kapps.uc1.vocabulary import JMS, JMS_NS, PLACEMENT, PROV, TYPE_LEVEL
+from jms_kapps.uc1.seed import uc1_ontology
+from jms_kapps.uc1.vocabulary import (
+    JMS,
+    JMS_NS,
+    PLACEMENT,
+    PROV,
+    ROBOT_PARAMETERS,
+    TYPE_LEVEL,
+    UQ,
+    UQ_NS,
+)
 
 FORCE = "Unit: N."
 TORQUE = "Unit: N·m."
@@ -37,6 +48,27 @@ PROPERTIES = {
     "hasMinApproachPosition": (PLACEMENT_HOLDERS, POSITION),
     "hasMinScrewHeadPosition": (PLACEMENT_HOLDERS, POSITION),
     "hasMaxScrewHeadPosition": (PLACEMENT_HOLDERS, POSITION),
+}
+
+def uq(local_name: str) -> URIRef:
+    return URIRef(UQ_NS + local_name)
+
+
+# The four properties of a measured position: its kind, its holder and its range. Each is
+# functional, and each states the position's unit.
+MEASURED = {
+    "hasApproachEndPositionVariable": (
+        OWL.ObjectProperty,
+        "UnscrewingOperation",
+        uq("RandomVariable"),
+    ),
+    "hasMeasuredScrewHeadPosition": (OWL.DatatypeProperty, "Screw", XSD.double),
+    "hasScrewHeadPositionVariable": (
+        OWL.ObjectProperty,
+        "Screw",
+        uq("RandomVariable"),
+    ),
+    "hasPositionStandardDeviation": (OWL.DatatypeProperty, "Robot", XSD.double),
 }
 
 RETIRED = [
@@ -130,19 +162,57 @@ def test_each_property_has_its_holders_its_range_and_its_unit(
     assert comments[0].endswith(unit), comments[0]
 
 
-def test_exactly_the_ten_and_two_prov_terms_are_functional(graph: Graph) -> None:
+def test_exactly_the_ten_the_four_measured_and_two_prov_terms_are_functional(
+    graph: Graph,
+) -> None:
     """The two PROV terms: a snapshot comes from one classification, which ends once."""
     functional = {local(p) for p in graph.subjects(RDF.type, OWL.FunctionalProperty)}
 
-    assert functional == {*PROPERTIES, str(PROV.wasGeneratedBy), str(PROV.endedAtTime)}
+    assert functional == {
+        *PROPERTIES,
+        *MEASURED,
+        str(PROV.wasGeneratedBy),
+        str(PROV.endedAtTime),
+    }
 
 
-def test_the_double_valued_properties_are_the_ten_and_the_failure_position(
+def test_the_double_valued_properties_are_the_ten_the_failure_position_and_two_measured(
     graph: Graph,
 ) -> None:
     doubles = {local(p) for p in graph.subjects(RDFS.range, XSD.double)}
 
-    assert doubles == {*PROPERTIES, "hasMeasuredApproachEndPosition"}
+    assert doubles == {
+        *PROPERTIES,
+        "hasMeasuredApproachEndPosition",
+        "hasMeasuredScrewHeadPosition",
+        "hasPositionStandardDeviation",
+    }
+
+
+@pytest.mark.parametrize("name", MEASURED)
+def test_each_measured_property_has_its_holder_its_range_and_its_unit(
+    graph: Graph, name: str
+) -> None:
+    kind, holder, range_ = MEASURED[name]
+    prop = term(name)
+
+    assert (prop, RDF.type, kind) in graph
+    assert (prop, RDF.type, OWL.FunctionalProperty) in graph
+    assert set(graph.objects(prop, RDFS.domain)) == {term(holder)}
+    assert set(graph.objects(prop, RDFS.range)) == {range_}
+    (comment,) = [str(c) for c in graph.objects(prop, RDFS.comment)]
+    assert comment.endswith(POSITION), comment
+    if range_ == uq("RandomVariable"):
+        assert set(graph.objects(prop, RDFS.subPropertyOf)) == {uq("representedBy")}
+
+
+def test_the_standard_deviation_is_no_mqtt_parameter_of_the_robot(graph: Graph) -> None:
+    """The robot holds it as a description in the graph; only its parameters are reached over
+    MQTT, each a sub-property of the middleware's MQTT parameter."""
+    prop = term("hasPositionStandardDeviation")
+
+    assert set(graph.objects(prop, RDFS.subPropertyOf)) == set()
+    assert JMS.hasPositionStandardDeviation not in ROBOT_PARAMETERS
 
 
 def test_a_failed_operation_records_its_measured_approach_end_position(
@@ -531,3 +601,72 @@ def test_the_file_declares_the_unscrewing_namespace_as_prefix_and_base(name: str
     if name.startswith("ontology"):
         assert f"@base <{UNSCREWING}> ." in text
     assert JMS_NS == UNSCREWING + "#"
+
+
+UNCERTAINTY = URIRef("http://w3id.org/circularfactory/Uncertainty")
+
+
+def uncertainty_module() -> Graph:
+    return Graph().parse(
+        data=read_asset("jms_kapps.uc1", "ontology", "uncertainty.ttl"), format="turtle"
+    )
+
+
+def test_the_uncertainty_module_declares_probsparqls_terms_and_the_domain_class() -> None:
+    module = uncertainty_module()
+
+    assert (UNCERTAINTY, RDF.type, OWL.Ontology) in module
+    assert UQ_NS == str(UNCERTAINTY) + "#"
+    for name in ("RandomVariable", "Domain"):
+        assert (uq(name), RDF.type, OWL.Class) in module
+    assert (uq("gmmLiteral"), RDF.type, RDFS.Datatype) in module
+    for name in ("double", "nonNegativeDouble"):
+        assert set(module.objects(uq(name), RDF.type)) == {RDFS.Datatype, uq("Domain")}
+    distribution, domain = uq("hasDistribution"), uq("hasDomain")
+    assert set(module.objects(distribution, RDF.type)) == {
+        OWL.DatatypeProperty,
+        OWL.FunctionalProperty,
+    }
+    assert module.value(distribution, RDFS.domain) == uq("RandomVariable")
+    assert module.value(distribution, RDFS.range) == uq("gmmLiteral")
+    assert set(module.objects(domain, RDF.type)) == {OWL.ObjectProperty, OWL.FunctionalProperty}
+    assert module.value(domain, RDFS.domain) == uq("RandomVariable")
+    assert module.value(domain, RDFS.range) == uq("Domain")
+    represented_by = uq("representedBy")
+    assert set(module.objects(represented_by, RDF.type)) == {OWL.ObjectProperty}
+    assert module.value(represented_by, RDFS.range) == uq("RandomVariable")
+    assert module.value(represented_by, OWL.inverseOf) is None
+    assert not set(module.subjects(OWL.inverseOf, represented_by))
+
+
+def test_the_uncertainty_module_cites_wu_et_al_and_the_domain_class_does_not() -> None:
+    module = uncertainty_module()
+
+    (cited,) = module.objects(UNCERTAINTY, RDFS.comment)
+    assert "according to Wu et al. (2026)" in str(cited)
+    assert "doi:10.1007/978-3-032-42029-9_19" in str(cited)
+    (domain,) = module.objects(uq("Domain"), RDFS.comment)
+    assert str(domain) == "The range of uq:hasDomain: the value domain of a random variable."
+
+
+def test_the_vocabulary_module_matches_the_uncertainty_module() -> None:
+    declared = set(uncertainty_module().subjects(RDF.type, None))
+    in_module = {URIRef(str(v)) for n, v in vars(UQ).items() if not n.startswith("_")}
+
+    assert in_module == declared - {UNCERTAINTY}
+
+
+def test_the_joined_ontology_puts_every_term_of_the_module_in_its_namespace() -> None:
+    """A reset sends the two files as one document, the module after a file that sets a base
+    and the empty prefix: a term the module wrote with `:` or a relative IRI would land in the
+    Unscrewing namespace."""
+    alone = Graph().parse(
+        data=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        format="turtle",
+    )
+    module = uncertainty_module()
+    joined = Graph().parse(data=uc1_ontology(), format="turtle")
+
+    assert isomorphic(joined, alone + module)
+    for subject in module.subjects():
+        assert str(subject).startswith(str(UNCERTAINTY)), subject

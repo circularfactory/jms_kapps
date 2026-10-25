@@ -276,6 +276,46 @@ each value it changed (Screw type, threshold, old → new, when), and the last t
 (when, at which Operation's attempt, why). It renders the learner's memory only. A failed run or a passed-over attempt shows there,
 and is still logged too.
 
+## Measured positions
+
+The anomaly detector can save each position it measures as a random variable, beside the plain
+best estimate. The mode, "Save measurements as uncertainty quantifications", is off by default.
+Turn it on with `--save-measurements-as-uq` on `jms-uc1` or on the detector's process, or with the
+checkbox on the page, which reads and sets it on the detector's route `/save-measurements-as-uq`
+through the page's port. A change takes effect at the next classification. What the user guide
+shows of it is in [Use case 1](../user-guide.md#the-uncertainty-of-a-measured-position).
+
+**What the detector writes.** In the one commit of a classification:
+
+| Mode | Outcome | Written |
+|---|---|---|
+| off | any | what the commit wrote before: the classification, the parameter copy, the outcome, and for a failure outcome `:hasMeasuredApproachEndPosition` |
+| on | a failure outcome (`MissingScrew` in the example run) | those, and a random variable linked by `:hasApproachEndPositionVariable` from the operation |
+| on | any outcome that reached contact, every one except `MissingScrew` (`ScrewIntact` in the example run) | those, and the Screw's `:hasMeasuredScrewHeadPosition` with a random variable linked by `:hasScrewHeadPositionVariable` |
+
+The literal of a variable holds one measurement: one component in one dimension, the measured
+value in mm as the mean, and the square of the robot's `:hasPositionStandardDeviation` (0.1 mm in
+the seed) as the variance. A robot without its standard deviation ends the
+operation `failed` with the reason.
+
+**The vocabulary.** The uncertainty module `uq`
+(`http://w3id.org/circularfactory/Uncertainty#`), loaded beside the ontology at every launch:
+`uq:RandomVariable`, `uq:Domain`, `uq:gmmLiteral`, `uq:double`, `uq:nonNegativeDouble`,
+`uq:hasDistribution`, `uq:hasDomain` and `uq:representedBy`. The use case's own:
+`:hasApproachEndPositionVariable`, `:hasMeasuredScrewHeadPosition`,
+`:hasScrewHeadPositionVariable`, `:hasPositionStandardDeviation`, and the existing
+`:hasMeasuredApproachEndPosition`, which is the best estimate of the approach end position.
+`jms_kapps.uc1.uncertainty` writes a literal, reads it back as mean and variance, and checks that a
+lexical form is well formed.
+
+**The shapes.** Deployed beside the existing ones: `:RandomVariableShape` with
+`:RandomVariableDistributionShape` (exactly one `uq:hasDistribution`, a `uq:gmmLiteral` whose
+lexical form names the six fields in their order) and `:RandomVariableDomainShape` (exactly one
+`uq:hasDomain`); `:ScrewMeasuredPositionShape` with `:ScrewMeasuredHeadPositionShape` and
+`:ScrewHeadPositionVariableShape` (at most one of each on a Screw);
+`:UnscrewingOperationVariableShape` with `:ApproachEndPositionVariableShape` (at most one on an
+operation). They check the form of a literal.
+
 ## The screwing resource's and the detector's dashboards
 
 Each service serves its middleware instance's state dashboard at `/dashboard`, whose address
@@ -297,8 +337,9 @@ shows them. It keeps the newest 50.
   Screw type, the Detection result, the exit rule of the decision tree that decided it, how it
   ended the operation (`done`, or `failed` with its `ANOMALY` reason), and the ten effective values,
   each with whether the decision tree asked it on its way to the exit. An attempt it could not
-  classify shows why. A classification shows once its commit has reached the triple store. It keeps
-  the newest 20.
+  classify shows why. Each also shows whether it saved measurements as uncertainty quantifications,
+  and each measured position it saved so, with its standard deviation. A classification shows once
+  its commit has reached the triple store. It keeps the newest 20.
 - "Screw type values": what each Screw type held at the detector's last read of it, the values it
   read for its last classification of a Screw of that type. A value that the learner commits shows
   there at the detector's next read, and that classification uses it: the seven type values come

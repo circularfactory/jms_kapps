@@ -3,12 +3,13 @@
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix uq: <http://w3id.org/circularfactory/Uncertainty#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 #################################################################
 # SHACL shapes of use case 1
 #
-# Three shapes. The first is the PROV witness on the decision. A parameter
+# Four rules. The first is the PROV witness on the decision. A parameter
 # copy must name the classification that generated it, so the store refuses a parameter copy
 # without its provenance. OWL cannot require this, because it says what can be, not what must be;
 # the closed-world rule is SHACL's, at the store.
@@ -28,6 +29,16 @@
 # property shape with a path of one property, because the store's SHACL engine fails with an
 # internal error on writes that meet a sequence path inside `sh:node`, or a minimum count on a
 # sequence path.
+#
+# The fourth: a measured position as an uncertainty quantification. A random variable has exactly
+# one distribution, a `uq:gmmLiteral` whose lexical form names the six fields n_components,
+# dimensions, covariance_type, weights, means and covariances in this order, and exactly one value
+# domain. A Screw has at most one best estimate of its head position and at most one variable of
+# it; an unscrewing operation has at most one variable of its approach end position. Admission
+# checks only this: not that the lexical form is valid JSON or holds no other field, not the
+# shapes of its arrays, not that the weights sum to 1, not that a variance is positive, and not
+# that the best estimate equals the mean. The pattern uses only what XPath, Java and Python
+# regular expressions share, and is anchored, because `sh:pattern` matches anywhere in the value.
 #
 # Each property shape that a report names has an IRI. The inner property shapes of the third rule
 # are blank nodes: the store reports their violation at the outer one,
@@ -88,3 +99,52 @@
     sh:property [ sh:path :hasMaxLooseTorque ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ] ;
     sh:property [ sh:path :hasMinLooseningAxialForce ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ] ;
     sh:property [ sh:path :hasMaxDynamicTorque ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:double ] .
+
+:RandomVariableShape a sh:NodeShape ;
+    rdfs:label "Random variable shape"@en ;
+    sh:targetClass uq:RandomVariable ;
+    sh:property :RandomVariableDistributionShape , :RandomVariableDomainShape .
+
+:RandomVariableDistributionShape a sh:PropertyShape ;
+    rdfs:label "Random variable distribution shape"@en ;
+    sh:path uq:hasDistribution ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype uq:gmmLiteral ;
+    sh:pattern '^\\s*\\{\\s*"n_components"\\s*:[\\s\\S]*,\\s*"dimensions"\\s*:[\\s\\S]*,\\s*"covariance_type"\\s*:[\\s\\S]*,\\s*"weights"\\s*:[\\s\\S]*,\\s*"means"\\s*:[\\s\\S]*,\\s*"covariances"\\s*:[\\s\\S]*\\}\\s*$' ;
+    sh:message "A random variable has exactly one distribution (uq:hasDistribution), a uq:gmmLiteral whose JSON object names the six fields n_components, dimensions, covariance_type, weights, means and covariances, in this order."@en .
+
+:RandomVariableDomainShape a sh:PropertyShape ;
+    rdfs:label "Random variable domain shape"@en ;
+    sh:path uq:hasDomain ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:message "A random variable has exactly one value domain (uq:hasDomain)."@en .
+
+:ScrewMeasuredPositionShape a sh:NodeShape ;
+    rdfs:label "Screw measured position shape"@en ;
+    sh:targetClass :Screw ;
+    sh:property :ScrewMeasuredHeadPositionShape , :ScrewHeadPositionVariableShape .
+
+:ScrewMeasuredHeadPositionShape a sh:PropertyShape ;
+    rdfs:label "Screw measured head position shape"@en ;
+    sh:path :hasMeasuredScrewHeadPosition ;
+    sh:maxCount 1 ;
+    sh:message "A Screw has at most one measured screw-head position (hasMeasuredScrewHeadPosition)."@en .
+
+:ScrewHeadPositionVariableShape a sh:PropertyShape ;
+    rdfs:label "Screw head position variable shape"@en ;
+    sh:path :hasScrewHeadPositionVariable ;
+    sh:maxCount 1 ;
+    sh:message "A Screw has at most one variable of its screw-head position (hasScrewHeadPositionVariable)."@en .
+
+:UnscrewingOperationVariableShape a sh:NodeShape ;
+    rdfs:label "Unscrewing operation variable shape"@en ;
+    sh:targetClass :UnscrewingOperation ;
+    sh:property :ApproachEndPositionVariableShape .
+
+:ApproachEndPositionVariableShape a sh:PropertyShape ;
+    rdfs:label "Approach end position variable shape"@en ;
+    sh:path :hasApproachEndPositionVariable ;
+    sh:maxCount 1 ;
+    sh:message "An unscrewing operation has at most one variable of its approach end position (hasApproachEndPositionVariable)."@en .

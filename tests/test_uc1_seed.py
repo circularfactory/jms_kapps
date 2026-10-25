@@ -27,6 +27,7 @@ from jms_kapps.uc1.seed import (
     GRINDERS,
     M4_VALUES,
     PLACEMENT_VALUES,
+    POSITION_STANDARD_DEVIATION,
     PRODUCT_TYPE,
     RECORDING_OF,
     ROBOT,
@@ -273,3 +274,24 @@ def test_the_robot_and_its_link_from_the_screwing_resource_are_one_commit() -> N
     assert updates[0].data == {str(JMS.hasRobot): [{"id": str(ROBOT)}]}
     assert [(c.class_iri, c.instance_iri) for c in creates] == [(JMS.Robot, ROBOT)]
     assert creates[0].data[str(JMS.isRobotOf)] == [{"id": str(SCREWING_RESOURCE)}]
+
+
+def test_the_robot_holds_the_standard_deviation_of_its_position_readings() -> None:
+    """An example value, as every value of the seed: 0.1 mm puts the screw-head band of the demo
+    Screws five standard deviations from 0.0 on each side. It is a plain value of the robot, not
+    the node of an MQTT parameter."""
+    mapper = _RecordingMapper()
+
+    seed_robot(mapper)  # type: ignore[arg-type]
+
+    ((_, kwargs),) = mapper.writes
+    (create,) = [c for c in kwargs["changes"] if isinstance(c, Create)]
+    assert create.data[str(JMS.hasPositionStandardDeviation)] == [
+        POSITION_STANDARD_DEVIATION
+    ]
+    assert POSITION_STANDARD_DEVIATION == 0.1
+    band = (
+        PLACEMENT_VALUES[JMS.hasMaxScrewHeadPosition]
+        - PLACEMENT_VALUES[JMS.hasMinScrewHeadPosition]
+    )
+    assert band / 2 == pytest.approx(5 * POSITION_STANDARD_DEVIATION)

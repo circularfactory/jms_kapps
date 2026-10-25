@@ -1,5 +1,6 @@
-"""The two lists of UC1's page, Operations and Learned values, each from one SPARQL query whose
-text the page shows, so that a person can run it on the same dataset and get the same rows.
+"""The three lists of UC1's page, Operations, Learned values and Measured positions, each from one
+SPARQL query whose text the page shows, so that a person can run it on the same dataset and get the
+same rows.
 
 **Operations** lists each unscrewing operation with its Screw, the resource that issued it, its
 status, its outcome, the reason of a failed one, and the resource that decided the outcome. The
@@ -13,12 +14,17 @@ refines: the value now, from the latest read, and the value at the run's start, 
 read that found a Screw type. So the reads start after the seed, before which the dataset still holds the
 previous run's values; the learner commits nothing before the first press.
 
+**Measured positions** (interim title) lists each measured position that the anomaly detector saved
+as an uncertainty quantification: a Screw's head position, and the approach end position of an
+unscrewing operation, each with its best estimate, the Gaussian-mixture literal of its random
+variable, and the standard deviation, the square root of the variance that the literal holds.
+
 Each query is standard SPARQL 1.1: it declares its own prefixes, and names no graph and calls no
 function that only one store knows, so it runs unchanged in the store's workbench and in any other
 SPARQL endpoint on the dataset. It asks for no inferred statement: each pattern is one that a
 participant writes itself.
 
-**The queries run in a background read, never on a page poll.** `PageLists` sends both once at
+**The queries run in a background read, never on a page poll.** `PageLists` sends each once at
 its start and then every second, whether a page is open or not, and keeps what they answered;
 the page renders that, so a page that polls adds no store request. It keeps the text of each
 query exactly as it handed it to the store, and the page shows that text. A read that fails keeps
@@ -27,6 +33,7 @@ the rows the last one read, and says why.
 
 from __future__ import annotations
 
+import math
 import re
 import threading
 from collections.abc import Callable
@@ -38,11 +45,12 @@ from pydantic import BaseModel
 
 from jms_kapps.common.supervision import WATCH_INTERVAL_SECONDS
 from jms_kapps.common.triplestore import Queryable, bindings
-from jms_kapps.uc1.vocabulary import JMS, JMS_NS, PROV, PROV_NS
+from jms_kapps.uc1.uncertainty import MalformedMixture, read_measurement
+from jms_kapps.uc1.vocabulary import JMS, JMS_NS, PROV, PROV_NS, UQ, UQ_NS
 
 # The prefixes the queries declare for themselves, so that they need none of the dataset's: the
 # names the seed registers in the dataset, and PROV-O's usual one.
-_PREFIXES = {"uns": JMS_NS, "svc": SVC_NS, "prov": PROV_NS}
+_PREFIXES = {"uns": JMS_NS, "svc": SVC_NS, "prov": PROV_NS, "uq": UQ_NS}
 
 
 def _term(iri: IRI) -> str:
@@ -94,6 +102,33 @@ ORDER BY ?screwType
 """
 )
 
+# What a row of Measured positions calls the position it shows.
+SCREW_HEAD_POSITION = "screw-head position"
+APPROACH_END_POSITION = "approach end position"
+
+# The query of Measured positions, exactly as the page's background read sends it.
+MEASURED_POSITIONS = (
+    _declared("uns", "uq")
+    + f"""
+# Each measured position saved as an uncertainty quantification: the head position of a Screw
+# and the approach end position of an unscrewing operation, each with its best estimate and the
+# literal of its random variable.
+SELECT ?subject ?position ?estimate ?literal WHERE {{
+  {{
+    ?subject {_term(JMS.hasMeasuredScrewHeadPosition)} ?estimate ;
+             {_term(JMS.hasScrewHeadPositionVariable)} ?variable .
+    BIND("{SCREW_HEAD_POSITION}" AS ?position)
+  }} UNION {{
+    ?subject {_term(JMS.hasMeasuredApproachEndPosition)} ?estimate ;
+             {_term(JMS.hasApproachEndPositionVariable)} ?variable .
+    BIND("{APPROACH_END_POSITION}" AS ?position)
+  }}
+  ?variable {_term(UQ.hasDistribution)} ?literal .
+}}
+ORDER BY ?subject ?position
+"""
+)
+
 
 def local_name(iri: str) -> str:
     """The part of `iri` after its last `#` or `/`, or `iri` itself if that is empty: for a
@@ -125,6 +160,18 @@ class LearnedValue(BaseModel):
     at_start: str | None
 
 
+class MeasuredPositionRow(BaseModel):
+    """One row of Measured positions: the Screw or the operation by its local name, which position
+    it is, its best estimate as the store writes it, the standard deviation that the literal holds
+    (None where the literal does not parse as one measurement), and the literal's lexical form."""
+
+    subject: str
+    position: str
+    estimate: str
+    standard_deviation: str | None
+    literal: str
+
+
 class ShownList[Row: BaseModel](BaseModel):
     """What the page shows of one list.
 
@@ -141,10 +188,11 @@ class ShownList[Row: BaseModel](BaseModel):
 
 
 class Lists(BaseModel):
-    """Both lists, as the latest reads left them."""
+    """The three lists, as the latest reads left them."""
 
     operations: ShownList[OperationRow] = ShownList[OperationRow]()
     learned_values: ShownList[LearnedValue] = ShownList[LearnedValue]()
+    measured_positions: ShownList[MeasuredPositionRow] = ShownList[MeasuredPositionRow]()
 
 
 def _value(row: dict, name: str) -> str | None:
@@ -169,8 +217,29 @@ def _operation(row: dict) -> OperationRow:
     )
 
 
+def _standard_deviation(literal: str) -> str | None:
+    """The standard deviation of the one measurement that `literal` holds, or None where it holds
+    none that parses."""
+    try:
+        _, variance = read_measurement(literal)
+    except MalformedMixture:
+        return None
+    return f"{math.sqrt(variance):g}" if variance >= 0 else None
+
+
+def _measured_position(row: dict) -> MeasuredPositionRow:
+    literal = str(row["literal"]["value"])
+    return MeasuredPositionRow(
+        subject=local_name(str(row["subject"]["value"])),
+        position=str(row["position"]["value"]),
+        estimate=str(row["estimate"]["value"]),
+        standard_deviation=_standard_deviation(literal),
+        literal=literal,
+    )
+
+
 class PageLists:
-    """Operations and Learned values, read from `store` in the background.
+    """Operations, Learned values and Measured positions, read from `store` in the background.
 
     Args:
         store: The store of the run's dataset: anything that answers a SPARQL query as a store
@@ -197,15 +266,19 @@ class PageLists:
             return self._last
 
     def read(self) -> None:
-        """Send both queries once, and keep what each answered, or why it failed: a read that
+        """Send the three queries once, and keep what each answered, or why it failed: a read that
         fails keeps the rows the last one read. It raises nothing, so that the background read
         goes on whatever the store does."""
         operations = self._read(OPERATIONS, lambda rows: [_operation(r) for r in rows])
         learned = self._read(LEARNED_VALUES, self._learned)
+        measured = self._read(
+            MEASURED_POSITIONS, lambda rows: [_measured_position(r) for r in rows]
+        )
         with self._lock:
             self._last = Lists(
                 operations=operations(self._last.operations),
                 learned_values=learned(self._last.learned_values),
+                measured_positions=measured(self._last.measured_positions),
             )
 
     def _read[Row: BaseModel](

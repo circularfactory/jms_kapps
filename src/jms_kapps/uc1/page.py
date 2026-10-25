@@ -1,6 +1,6 @@
 """The page of a run of use case 1, which `jms-uc1` serves.
 
-The page says what to do, in two steps, and lists the five processes as use case 2's Launcher
+The page says what to do, in three steps, and lists the five processes as use case 2's Launcher
 lists its own: a row for each, with its state, its PID, its recent output on a click, and links
 to its API docs, its activity feed, its dashboard and its dashboard's Logs tab.
 
@@ -14,9 +14,16 @@ the page whole once, so that it shows the state at load without JavaScript. The 
 never reloads itself. `/api/state` gives the same as JSON, for a test or a script.
 
 Below the processes, the page lists the run's unscrewing operations, each with the service that
-decided its outcome, and the learned values, each from one SPARQL query that it shows exactly as
-it was sent, with a copy button, as use case 2's Launcher shows its query of the boxes. The queries
-run in a background read of their own (`page_lists.PageLists`), every second.
+decided its outcome, the learned values, and the measured positions saved as uncertainty
+quantifications, each from one SPARQL query that it shows exactly as it was sent, with a copy
+button, as use case 2's Launcher shows its query of the boxes. The queries run in a background
+read of their own (`page_lists.PageLists`), every second.
+
+**The switch** "Save measurements as uncertainty quantifications" (interim name), at the head of
+the measured positions, shows and sets the anomaly detector's mode. The page's server holds no
+connection to the detector: it draws the switch off and disabled, and `page.js` reads and sets the
+mode on the detector's own route (`anomaly_detector.MODE_ROUTE`) through the passthrough, like
+every other page of a process.
 
 Everything the page shows comes from memory, the supervisor's (`Supervisor.snapshot`) and the
 background read's (`PageLists.last`), so a poll sends no request to the triple store.
@@ -24,8 +31,9 @@ background read's (`PageLists.last`), so a poll sends no request to the triple s
 The page links to "The UC1 sequence", the paper's scenario told step by step with the seeded names,
 which it serves itself at `/sequence` (`sequence`).
 
-The page is read-only. It launches nothing and stops nothing: Ctrl+C at the terminal stops the
-run. What passes through to a process, a press of Unscrew included, is the process's own page.
+The page launches nothing and stops nothing: Ctrl+C at the terminal stops the run. What passes
+through to a process, a press of Unscrew and a change of the switch included, goes to the
+process's own route.
 It binds a fixed port, `PAGE_PORT`, so a second `jms-uc1` on the same machine is refused at its
 start, before it clears anything. Use case 2's Launcher has port 8090, so both pages can be
 open on one machine.
@@ -54,9 +62,11 @@ from kapps_triplestore_interface import IRI
 
 from jms_kapps.common.passthrough import Passthrough, process_of, process_path
 from jms_kapps.common.supervision import ChildSnapshot
+from jms_kapps.uc1.anomaly_detector import MODE_ROUTE
 from jms_kapps.uc1.page_lists import (
     LearnedValue,
     Lists,
+    MeasuredPositionRow,
     OperationRow,
     ShownList,
     local_name,
@@ -92,6 +102,22 @@ DEVICE_ADDRESS = "no address: a device, it speaks only MQTT"
 # What the copy button of a query says, until it says what became of a copy.
 COPY_QUERY = "Copy the query"
 
+# The label of the switch of the anomaly detector's mode (interim name).
+SAVE_UQ_LABEL = "Save measurements as uncertainty quantifications"
+
+# The process whose mode the switch shows and sets, by its name in the run.
+DETECTOR_NAME = "Anomaly detector"
+
+# The credit beside the switch: the representation of a measured position as an uncertainty
+# quantification, and the two publications it follows, each linked at its DOI.
+CREDIT = (
+    "Representation after Wu et al., ProbSPARQL (ISWC 2026, {wu}) and Hoffmann et al., "
+    "Representing Measurement Uncertainty by Gaussian Mixtures (Sensoren und Messsysteme 2026, "
+    "{hoffmann})."
+)
+WU_DOI = "10.1007/978-3-032-42029-9_19"
+HOFFMANN_DOI = "10.5162/sensoren2026/D3-2.1"
+
 
 def dashboard_of(child: ChildSnapshot | None) -> str | None:
     """The dashboard page of `child` through the page's port, relative to the page; None without
@@ -99,6 +125,15 @@ def dashboard_of(child: ChildSnapshot | None) -> str | None:
     if child is None or child.address is None:
         return None
     return process_path(child.resource) + "dashboard"
+
+
+def mode_route_of(children: Sequence[ChildSnapshot]) -> str | None:
+    """The anomaly detector's mode route through the page's port, relative to the page; None
+    without the detector, or while it has no address."""
+    detector = next((c for c in children if c.name == DETECTOR_NAME), None)
+    if detector is None or detector.address is None:
+        return None
+    return process_path(detector.resource) + MODE_ROUTE.lstrip("/")
 
 
 def links_of(child: ChildSnapshot) -> list[dict[str, str]]:
@@ -231,7 +266,7 @@ def _list_json(shown: ShownList, rows: list[dict]) -> dict:
 
 
 def lists_json(lists: Lists, children: Sequence[ChildSnapshot]) -> dict:
-    """Operations and Learned values as `/api/state` gives them."""
+    """Operations, Learned values and Measured positions as `/api/state` gives them."""
     return {
         "operations": _list_json(
             lists.operations,
@@ -239,6 +274,10 @@ def lists_json(lists: Lists, children: Sequence[ChildSnapshot]) -> dict:
         ),
         "learned_values": _list_json(
             lists.learned_values, [row.model_dump() for row in lists.learned_values.rows]
+        ),
+        "measured_positions": _list_json(
+            lists.measured_positions,
+            [row.model_dump() for row in lists.measured_positions.rows],
         ),
     }
 
@@ -266,6 +305,33 @@ def _operation_row(row: dict) -> str:
 
 def _learned_row(row: LearnedValue) -> str:
     return f"<tr>{_cell(row.screw_type)}{_cell(row.at_start)}{_cell(row.now)}</tr>"
+
+
+def _measured_row(row: MeasuredPositionRow) -> str:
+    """One row of Measured positions, the literal in a cell of its own that may break anywhere."""
+    cells = "".join(
+        _cell(value)
+        for value in (row.subject, row.position, row.estimate, row.standard_deviation)
+    )
+    return f"<tr>{cells}{_cell(row.literal, 'mono literal')}</tr>"
+
+
+def _doi_link(doi: str) -> str:
+    """A link to `doi` at doi.org, written as `doi:<doi>`."""
+    return _link(f"https://doi.org/{doi}", f"doi:{doi}")
+
+
+def _switch(children: Sequence[ChildSnapshot]) -> str:
+    """The switch of the detector's mode, off and disabled, with the detector's mode route
+    through the passthrough once the detector has an address; and the credit beside it."""
+    route = mode_route_of(children)
+    data = f' data-mode-route="{html.escape(route, quote=True)}"' if route else ""
+    credit = CREDIT.format(wu=_doi_link(WU_DOI), hoffmann=_doi_link(HOFFMANN_DOI))
+    return (
+        f'<p class="switch"><input type="checkbox" id="save-uq"{data} disabled> '
+        f'<label for="save-uq">{html.escape(SAVE_UQ_LABEL)}</label> '
+        f'<span class="muted credit">{credit}</span></p>'
+    )
 
 
 def _read_line(shown: ShownList, one: str, many: str) -> tuple[str, str]:
@@ -297,9 +363,10 @@ def _query_block(name: str, shown: ShownList, one: str, many: str) -> str:
 
 
 def render(children: Sequence[ChildSnapshot], lists: Lists | None = None) -> str:
-    """One complete HTML5 page: the header, the section "What to do" with its two steps, the
+    """One complete HTML5 page: the header, the section "What to do" with its three steps, the
     section "Processes" with the rows of `children` in the given order, and the sections
-    "Operations" and "Learned values" with the rows and the queries of `lists`, empty without.
+    "Operations", "Learned values" and "Measured positions" with the rows and the queries of
+    `lists`, empty without, the last with the switch of the detector's mode and its credit.
     The stylesheet and the script are `static/style.css` and `static/page.js`, by relative paths,
     so that the page works under any path it is served at. Every value goes through
     `html.escape`."""
@@ -315,8 +382,13 @@ def render(children: Sequence[ChildSnapshot], lists: Lists | None = None) -> str
     learned_query = _query_block(
         "learned-values", shown.learned_values, "Screw type", "Screw types"
     )
+    measured_rows = "\n".join(_measured_row(row) for row in shown.measured_positions.rows)
+    measured_query = _query_block(
+        "measured-positions", shown.measured_positions, "position", "positions"
+    )
+    switch = _switch(children)
     planner = _dashboard_link(children, "Planner", "the planner's dashboard")
-    detector = _dashboard_link(children, "Anomaly detector", "the anomaly detector's dashboard")
+    detector = _dashboard_link(children, DETECTOR_NAME, "the anomaly detector's dashboard")
     learner = _dashboard_link(children, "Learner", "the learner's dashboard")
     # Hidden while the planner has no address: nothing to open yet.
     planner_button = _dashboard_link(
@@ -351,6 +423,8 @@ def render(children: Sequence[ChildSnapshot], lists: Lists | None = None) -> str
 <span class="result">The result shows on {planner} (done), on {detector} (ScrewIntact) and on {learner} (the new value).</span></li>
 <li>Press Unscrew on Screw2. The anomaly detector decides MissingScrew with the learned value, and the operation ends <code>failed</code>. The learner learns only from ScrewIntact attempts, so Screw2 changes no value.
 <span class="result">The result shows on {planner} (failed) and on {detector} (MissingScrew).</span></li>
+<li>Optional, before step 1: turn on <b>{SAVE_UQ_LABEL}</b> under <a href="#measured-positions-section">Measured positions</a>. Steps 1 and 2 then also save Screw1's head position and the failed operation's approach end position, each as a random variable with its literal.
+<span class="result">The result shows under <a href="#measured-positions-section">Measured positions</a>.</span></li>
 </ol>
 <details>
 <summary>Where the attempts come from</summary>
@@ -410,6 +484,26 @@ def render(children: Sequence[ChildSnapshot], lists: Lists | None = None) -> str
 <p>The value at the start is the one that the first read after the seed found. The latest value is the one that the query answers at the latest read; the learner raises it after an intact screw.</p>
 </details>
 </section>
+
+<section id="measured-positions-section" aria-labelledby="measured-positions-title">
+<h2 id="measured-positions-title">Measured positions</h2>
+<p class="muted intro">Each measured position that the anomaly detector saved as an uncertainty quantification, with its best estimate, its standard deviation and its literal. The query below finds them, and runs unchanged in the triple store's workbench.</p>
+{switch}
+<p class="muted">The switch takes effect from the next classification.</p>
+<table id="measured-positions">
+<thead>
+<tr><th>Screw or operation</th><th>Position</th><th>Best estimate (mm)</th><th>Standard deviation (mm)</th><th>Literal</th></tr>
+</thead>
+<tbody>
+{measured_rows}
+</tbody>
+</table>
+{measured_query}
+<details>
+<summary>What the columns show</summary>
+<p>The best estimate is the measured value. The literal is the Gaussian mixture of the position's random variable, as the store returns it: one component, with the measured value as its mean and the square of the robot's standard deviation as its variance. The standard deviation is the square root of that variance.</p>
+</details>
+</section>
 </main>
 <script src="static/page.js"></script>
 </body>
@@ -448,8 +542,10 @@ def build_app(
     long as the app's lifespan, which `PageServer` runs.
 
     With `lists`, the latest answers of the background read (`PageLists.last`), `/api/state` also
-    gives Operations and Learned values (`lists_json`) and `/` renders them; without, both are
-    empty, as before the first read. Neither route sends a query: each calls `lists` alone."""
+    gives Operations, Learned values and Measured positions (`lists_json`) and `/` renders them;
+    without, all three are empty, as before the first read. Neither route sends a query: each
+    calls `lists` alone. `/api/state` also gives `mode_route`, the detector's mode route through
+    the passthrough (`mode_route_of`), which `page.js` reads and sets."""
     known = services or {}
     last = lists or Lists
 
@@ -470,6 +566,7 @@ def build_app(
         children = snapshot()
         return {
             "processes": [_process_json(child, known) for child in children],
+            "mode_route": mode_route_of(children),
             **lists_json(last(), children),
         }
 

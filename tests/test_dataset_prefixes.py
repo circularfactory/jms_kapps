@@ -23,7 +23,8 @@ from kapps_triplestore_interface import TripleStoreNotSupportedError
 
 import jms_kapps
 from jms_kapps.common.prefixes import PREFIXES
-from jms_kapps.common.triplestore import connect, read_asset, reset
+from jms_kapps.common.triplestore import connect, reset
+from jms_kapps.uc1.seed import uc1_ontology
 from jms_kapps.uc2.seed import seed_topology
 from jms_kapps.uc2.topology import load_topology
 
@@ -35,6 +36,7 @@ EXPECTED = {
     "svc": "http://w3id.org/circularfactory/Service#",
     "mes": "http://w3id.org/circularfactory/MES#",
     "uns": "http://w3id.org/circularfactory/Unscrewing#",
+    "uq": "http://w3id.org/circularfactory/Uncertainty#",
     "sh": "http://www.w3.org/ns/shacl#",
 }
 
@@ -104,7 +106,7 @@ def seed_uc1(db, individuals: str = "") -> None:
     """What use case 1 seeds: its ontology, no shapes yet, and `individuals`."""
     reset(
         db,
-        ontology=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        ontology=uc1_ontology(),
         shapes="",
         individuals=individuals,
     )

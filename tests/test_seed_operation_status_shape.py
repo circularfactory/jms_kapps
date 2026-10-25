@@ -42,6 +42,30 @@ def test_the_use_case_1_seed_deploys_the_operation_status_shape() -> None:
     assert len(deployed) == len(uc1) + len(parsed(read_service_shapes()))
 
 
+def test_the_use_case_1_seed_loads_the_uncertainty_module_and_its_shapes() -> None:
+    """Every launch of use case 1 resets through `reset_uc1`: it imports the ontology with the
+    uncertainty module, and deploys the shapes of a measured position."""
+    store = StandIn()
+
+    reset_uc1(store)
+
+    uq = Namespace("http://w3id.org/circularfactory/Uncertainty#")
+    uns = Namespace("http://w3id.org/circularfactory/Unscrewing#")
+    imported = Graph()
+    for kind, content in store.sent:
+        if kind == "import":
+            imported.parse(data=str(content), format="turtle")
+    assert (uq.RandomVariable, None, None) in imported
+    assert (uns.hasScrewHeadPositionVariable, None, None) in imported
+    deployed = parsed(sent_shapes(store))
+    for name in (
+        "RandomVariableShape",
+        "ScrewMeasuredPositionShape",
+        "UnscrewingOperationVariableShape",
+    ):
+        assert (uns[name], None, None) in deployed
+
+
 def test_the_use_case_2_seed_deploys_it_with_either_shapes_file_set() -> None:
     for sparql in (False, True):
         store = StandIn()

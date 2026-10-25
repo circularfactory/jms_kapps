@@ -50,6 +50,7 @@ from jms_kapps.common.supervision import (
 )
 from jms_kapps.common.triplestore import DEFAULT_DATASET, connect
 from jms_kapps.uc1 import infeasible_operation
+from jms_kapps.uc1.anomaly_detector import SAVE_UQ_ARGUMENT, SAVE_UQ_OPTION
 from jms_kapps.uc1.infeasible_operation import DEFAULT_WAIT_SECONDS
 from jms_kapps.uc1.learner_process import DEFAULT_LEARN_SECONDS
 from jms_kapps.uc1.page import (
@@ -100,6 +101,7 @@ def _parser() -> argparse.ArgumentParser:
         default=PAGE_PORT,
         help="The port of the page of the run",
     )
+    parser.add_argument(SAVE_UQ_OPTION, **SAVE_UQ_ARGUMENT)
     commands = parser.add_subparsers(dest="command")
     seed_parser = commands.add_parser(
         "seed", help="Seed the dataset once and print each participant's command line"
@@ -202,6 +204,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.dataset,
             learn_seconds=args.learn_seconds,
             operation_timeout=args.operation_timeout,
+            saves_uq=args.save_measurements_as_uq,
         )
         # The page names each participant's middleware by the class of its service.
         services = {

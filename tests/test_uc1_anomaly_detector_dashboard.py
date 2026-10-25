@@ -25,7 +25,13 @@ from jms_kapps.uc1.anomaly_detector_dashboard import (
     TYPE_VALUES_BOX,
     register_boxes,
 )
-from jms_kapps.uc1.anomaly_detector_memory import KEPT_CLASSIFICATIONS, DetectorMemory
+from jms_kapps.uc1.anomaly_detector_memory import (
+    APPROACH_END,
+    KEPT_CLASSIFICATIONS,
+    SCREW_HEAD,
+    DetectorMemory,
+    MeasuredPosition,
+)
 from jms_kapps.uc1.decision_tree import EXIT_RULE
 from jms_kapps.uc1.effective_values import (
     EffectiveValuesWithOrigin,
@@ -248,3 +254,32 @@ def test_the_boxes_carry_no_script_and_no_styling_of_their_own(memory, boxes) ->
         assert "<script" not in shown
         assert "style=" not in shown
         assert "<style" not in shown
+
+
+def test_a_classification_shows_its_mode_and_the_positions_it_saved(
+    memory, boxes
+) -> None:
+    found = with_origin()
+    memory.classified(operation(1), found, "ScrewIntact", None)
+    memory.classified(
+        operation(2),
+        found,
+        "HeadOccluded",
+        "ANOMALY: HeadOccluded",
+        saves_uq=True,
+        positions=(
+            MeasuredPosition(APPROACH_END, -0.25, 0.1),
+            MeasuredPosition(SCREW_HEAD, 0.5, 0.1),
+        ),
+    )
+
+    fragment = boxes(CLASSIFICATIONS_BOX)
+    table = rows(fragment)
+
+    assert fragment.count("<th>Measurements as uncertainty quantifications</th>") == 2
+    assert ["saved"] in table
+    assert ["not saved"] in table
+    assert "<th>Measured approach end position</th>" in fragment
+    assert ["-0.25 mm, standard deviation 0.1 mm"] in table
+    assert "<th>Measured screw head position</th>" in fragment
+    assert ["0.5 mm, standard deviation 0.1 mm"] in table

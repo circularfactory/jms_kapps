@@ -72,6 +72,7 @@ uc1/screwing_resource_memory
 uc1/seed
 uc1/sequence
 uc1/timeseries
+uc1/uncertainty
 uc1/vocabulary
 ```
 

@@ -45,7 +45,7 @@ from kapps_semantic_middleware.vocabulary import SVC, OperationStatus
 from kapps_triplestore_interface import IRI
 
 from jms_kapps.common.triplestore import connect as connect_store
-from jms_kapps.common.triplestore import read_asset, reset
+from jms_kapps.common.triplestore import reset
 from jms_kapps.uc1 import classify_call
 from jms_kapps.uc1.replay import example_frame
 from jms_kapps.uc1.screwing_resource import (
@@ -55,6 +55,7 @@ from jms_kapps.uc1.screwing_resource import (
     ended_meanwhile_record,
     left_alone_record,
 )
+from jms_kapps.uc1.seed import uc1_ontology
 from jms_kapps.uc1.timeseries import FrameReader, FrameWriter
 from jms_kapps.uc1.timeseries import connect as connect_influxdb
 from jms_kapps.uc1.vocabulary import JMS, JMS_NS
@@ -96,7 +97,7 @@ def dataset_with_screw(dataset: str) -> str:
     db = connect_store(dataset)
     reset(
         db,
-        ontology=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        ontology=uc1_ontology(),
         shapes="",
     )
     db.graph_add(seed_parties([SCREW]), content_type="application/x-turtle")

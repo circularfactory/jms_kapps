@@ -44,13 +44,14 @@ from kapps_semantic_middleware.credentials import triplestore_env_present
 from kapps_semantic_middleware.vocabulary import SVC, OperationStatus
 from kapps_triplestore_interface import IRI
 
-from jms_kapps.common.triplestore import bindings, read_asset, reset
+from jms_kapps.common.triplestore import bindings, reset
 from jms_kapps.common.triplestore import connect as connect_store
 from jms_kapps.uc1 import anomaly_detector, classify_call, screwing_resource
 from jms_kapps.uc1.anomaly_detector import NOT_CLASSIFIED, left_as_it_is_record
 from jms_kapps.uc1.classify_call import call_detector
 from jms_kapps.uc1.frame import Frame
 from jms_kapps.uc1.screwing_resource import NOT_REACHED
+from jms_kapps.uc1.seed import uc1_ontology
 from jms_kapps.uc1.timeseries import (
     TABLE,
     FrameReader,
@@ -115,7 +116,7 @@ def dataset_seeded(dataset: str) -> str:
     db = connect_store(dataset)
     reset(
         db,
-        ontology=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        ontology=uc1_ontology(),
         shapes="",
     )
     db.graph_add(

@@ -1,7 +1,8 @@
 """The terms of use case 1 that its Python reads and writes.
 
-Each term is declared in `ontology/integration_usecase.ttl`. The ontology smoke test checks that
-the file declares every term here, so the two cannot drift apart.
+Each term is declared in `ontology/integration_usecase.ttl`, and each term of `UQ` in
+`ontology/uncertainty.ttl`. The ontology smoke test checks that the files declare every term here,
+so they cannot drift apart.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from kapps_triplestore_interface import IRI
 
 JMS_NS = "http://w3id.org/circularfactory/Unscrewing#"
 PROV_NS = "http://www.w3.org/ns/prov#"
+UQ_NS = "http://w3id.org/circularfactory/Uncertainty#"
 
 
 class JMS:
@@ -78,6 +80,14 @@ class JMS:
     DetectionResult = IRI("DetectionResult", base=JMS_NS)
     hasMeasuredApproachEndPosition = IRI("hasMeasuredApproachEndPosition", base=JMS_NS)
 
+    # A measured position as a random variable of `UQ`, beside its best estimate: the approach
+    # end position of an operation, and the position of a Screw's head at contact. The robot
+    # holds the standard deviation of its position readings.
+    hasApproachEndPositionVariable = IRI("hasApproachEndPositionVariable", base=JMS_NS)
+    hasMeasuredScrewHeadPosition = IRI("hasMeasuredScrewHeadPosition", base=JMS_NS)
+    hasScrewHeadPositionVariable = IRI("hasScrewHeadPositionVariable", base=JMS_NS)
+    hasPositionStandardDeviation = IRI("hasPositionStandardDeviation", base=JMS_NS)
+
     # An unscrewing operation's outcome, and the outcome of an attempt that passed
     hasDetectionResult = IRI("hasDetectionResult", base=JMS_NS)
     ScrewIntact = IRI("ScrewIntact", base=JMS_NS)
@@ -141,6 +151,19 @@ class PROV:
     wasAssociatedWith = IRI("wasAssociatedWith", base=PROV_NS)
     wasAssociateFor = IRI("wasAssociateFor", base=PROV_NS)
     endedAtTime = IRI("endedAtTime", base=PROV_NS)
+
+
+class UQ:
+    """Terms from `ontology/uncertainty.ttl`, the uncertainty module of use case 1."""
+
+    RandomVariable = IRI("RandomVariable", base=UQ_NS)
+    Domain = IRI("Domain", base=UQ_NS)
+    gmmLiteral = IRI("gmmLiteral", base=UQ_NS)
+    double = IRI("double", base=UQ_NS)
+    nonNegativeDouble = IRI("nonNegativeDouble", base=UQ_NS)
+    hasDistribution = IRI("hasDistribution", base=UQ_NS)
+    hasDomain = IRI("hasDomain", base=UQ_NS)
+    representedBy = IRI("representedBy", base=UQ_NS)
 
 
 # Only a Screw type holds these (and a parameter copy records them); a Screw holds none.

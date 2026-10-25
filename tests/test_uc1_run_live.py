@@ -37,6 +37,7 @@ from _uc1_run import (
     operations,
     press,
     provenance,
+    random_variables,
     started_uc1,
     state,
 )
@@ -148,15 +149,17 @@ def influxdb():
 
 
 @pytest.fixture
-def jms_uc1(dataset, tmp_path) -> Iterator[tuple[subprocess.Popen, Path, str]]:
-    """`jms-uc1` on a free page port, learning every second, in a session of its own; stopped
-    again at the end, whatever happens."""
-    with started_uc1(dataset, tmp_path) as run:
+def jms_uc1(
+    dataset, tmp_path, uc1_saves_uq
+) -> Iterator[tuple[subprocess.Popen, Path, str]]:
+    """`jms-uc1` on a free page port, learning every second, in a session of its own, in the mode
+    that `--uc1-save-measurements-as-uq` selects; stopped again at the end, whatever happens."""
+    with started_uc1(dataset, tmp_path, saves_uq=uc1_saves_uq) as run:
         yield run
 
 
 def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
-    db, dataset, jms_uc1, influxdb
+    db, dataset, jms_uc1, influxdb, uc1_saves_uq
 ):
     run, log, page_url = jms_uc1
     await_all_live(run, log, page_url)
@@ -333,6 +336,10 @@ def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
     assert _learned_rows(db, shown["learned_values"]["query"]) == [
         (row["screw_type"], row["now"]) for row in shown["learned_values"]["rows"]
     ]
+
+    # With the default, off, the run saves no measurement as an uncertainty quantification. On,
+    # it saves two: Screw1's head position at contact, and Screw2's end of its approach.
+    assert random_variables(db) == (2 if uc1_saves_uq else 0)
 
     # Ctrl+C stops everything, and every service deregisters.
     os.killpg(run.pid, signal.SIGINT)

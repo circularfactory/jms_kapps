@@ -1,4 +1,5 @@
-"""The two lists of UC1's page, Operations and Learned values, as their background read finds them.
+"""The three lists of UC1's page, Operations, Learned values and Measured positions, as their
+background read finds them.
 
 Each list comes from one SPARQL query, which `PageLists` sends in its background read and keeps
 exactly as it handed it to the store. Most tests run the queries on rdflib's SPARQL engine, which
@@ -23,12 +24,15 @@ from rdflib.namespace import RDF, XSD
 
 from jms_kapps.uc1.page_lists import (
     LEARNED_VALUES,
+    MEASURED_POSITIONS,
     OPERATIONS,
     LearnedValue,
+    MeasuredPositionRow,
     OperationRow,
     PageLists,
 )
-from jms_kapps.uc1.vocabulary import JMS, JMS_NS, PROV
+from jms_kapps.uc1.uncertainty import measurement_literal
+from jms_kapps.uc1.vocabulary import JMS, JMS_NS, PROV, UQ
 
 PLANNER = IRI("Planner1", base=JMS_NS)
 DETECTOR = IRI("AnomalyDetector1", base=JMS_NS)
@@ -111,6 +115,101 @@ def after_both_presses() -> Graph:
     graph.remove((URIRef(JMS.M4), URIRef(JMS.hasMaxDynamicTorque), None))
     _add(graph, JMS.M4, JMS.hasMaxDynamicTorque, Literal(1.8, datatype=XSD.double))
     return graph
+
+
+def saved(graph: Graph, subject: IRI, estimate_of: str, variable_of: str, literal: Literal) -> None:
+    """A measured position of `subject` saved as an uncertainty quantification: its best estimate
+    and a random variable whose distribution is `literal`."""
+    variable = f"{subject}_variable"
+    _add(graph, subject, estimate_of, Literal(12.25, datatype=XSD.double))
+    _add(graph, subject, variable_of, variable)
+    _add(graph, variable, str(RDF.type), UQ.RandomVariable)
+    _add(graph, variable, UQ.hasDistribution, literal)
+
+
+def with_saved_positions() -> Graph:
+    """After both presses with the mode on: Screw1's head position and the failed operation's
+    approach end position, each saved with its literal; and an operation that failed with the
+    mode off, with its end position and no random variable."""
+    graph = after_both_presses()
+    literal = measurement_literal(12.25, 0.1)
+    saved(
+        graph,
+        SCREW_1,
+        JMS.hasMeasuredScrewHeadPosition,
+        JMS.hasScrewHeadPositionVariable,
+        literal,
+    )
+    saved(
+        graph,
+        IRI("UnscrewingOperation_a2", base=JMS_NS),
+        JMS.hasMeasuredApproachEndPosition,
+        JMS.hasApproachEndPositionVariable,
+        literal,
+    )
+    off = issued(graph, "UnscrewingOperation_d4", SCREW_2, "failed")
+    _add(graph, off, JMS.hasMeasuredApproachEndPosition, Literal(3.5, datatype=XSD.double))
+    return graph
+
+
+def test_measured_positions_lists_each_saved_position_with_its_standard_deviation_and_literal():
+    """One row for Screw1's head position and one for the failed operation's end position, with
+    the standard deviation as the square root of the literal's variance. An end position without
+    a random variable, written with the mode off, has no row."""
+    lists = PageLists(InMemoryStore(with_saved_positions()))
+
+    lists.read()
+
+    shown = lists.last().measured_positions
+    assert shown.error is None
+    literal = str(measurement_literal(12.25, 0.1))
+    assert shown.rows == [
+        MeasuredPositionRow(
+            subject="Screw1",
+            position="screw-head position",
+            estimate="12.25",
+            standard_deviation="0.1",
+            literal=literal,
+        ),
+        MeasuredPositionRow(
+            subject="UnscrewingOperation_a2",
+            position="approach end position",
+            estimate="12.25",
+            standard_deviation="0.1",
+            literal=literal,
+        ),
+    ]
+
+
+def test_a_literal_that_does_not_parse_shows_with_no_standard_deviation():
+    graph = after_both_presses()
+    malformed = Literal('{"n_components":1}', datatype=URIRef(UQ.gmmLiteral))
+    saved(
+        graph,
+        SCREW_1,
+        JMS.hasMeasuredScrewHeadPosition,
+        JMS.hasScrewHeadPositionVariable,
+        malformed,
+    )
+    lists = PageLists(InMemoryStore(graph))
+
+    lists.read()
+
+    shown = lists.last().measured_positions
+    assert shown.error is None
+    [row] = shown.rows
+    assert row.standard_deviation is None
+    assert row.literal == '{"n_components":1}'
+
+
+def test_a_run_with_the_mode_off_lists_no_measured_position():
+    lists = PageLists(InMemoryStore(after_both_presses()))
+
+    lists.read()
+
+    shown = lists.last().measured_positions
+    assert (shown.error, shown.rows) == (None, [])
+    assert shown.read_at is not None
 
 
 def test_operations_lists_each_operation_with_its_screw_issuer_status_outcome_reason_and_decider():
@@ -205,12 +304,13 @@ def test_each_list_keeps_its_query_exactly_as_the_store_received_it():
     found = lists.last()
     assert found.operations.query == OPERATIONS
     assert found.learned_values.query == LEARNED_VALUES
-    assert store.received == [OPERATIONS, LEARNED_VALUES]
+    assert found.measured_positions.query == MEASURED_POSITIONS
+    assert store.received == [OPERATIONS, LEARNED_VALUES, MEASURED_POSITIONS]
 
 
 def test_each_query_declares_its_own_prefixes():
     """Each query runs unchanged in the store's workbench: every prefix it uses, it declares."""
-    for query in (OPERATIONS, LEARNED_VALUES):
+    for query in (OPERATIONS, LEARNED_VALUES, MEASURED_POSITIONS):
         declared = {
             line.split()[1].rstrip(":")
             for line in query.splitlines()
@@ -252,6 +352,7 @@ def test_a_read_that_fails_keeps_the_last_answer_and_says_why():
     for shown, kept in [
         (after.operations, before.operations),
         (after.learned_values, before.learned_values),
+        (after.measured_positions, before.measured_positions),
     ]:
         assert shown.error == "the store is away"
         assert shown.rows == kept.rows
@@ -262,7 +363,7 @@ def test_a_read_that_fails_keeps_the_last_answer_and_says_why():
 def test_before_the_first_read_each_list_is_empty_and_has_no_query():
     found = PageLists(InMemoryStore(seeded())).last()
 
-    for shown in (found.operations, found.learned_values):
+    for shown in (found.operations, found.learned_values, found.measured_positions):
         assert shown.query is None
         assert shown.rows == []
         assert shown.read_at is None
@@ -275,7 +376,7 @@ def test_the_background_read_goes_on_until_its_stop():
 
     lists.start()
     try:
-        eventually(lambda: len(store.received) >= 6)
+        eventually(lambda: len(store.received) >= 9)
     finally:
         lists.stop()
     # A read under way at the stop may still arrive.
@@ -284,4 +385,4 @@ def test_the_background_read_goes_on_until_its_stop():
     time.sleep(0.3)
 
     assert len(store.received) == sent
-    assert set(store.received) == {OPERATIONS, LEARNED_VALUES}
+    assert set(store.received) == {OPERATIONS, LEARNED_VALUES, MEASURED_POSITIONS}

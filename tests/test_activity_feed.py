@@ -26,7 +26,8 @@ from kapps_semantic_middleware.credentials import triplestore_env_present
 
 from jms_kapps.common.services import live_resources
 from jms_kapps.common.supervision import STOP_TIMEOUT_SECONDS
-from jms_kapps.common.triplestore import connect, read_asset, reset
+from jms_kapps.common.triplestore import connect, reset
+from jms_kapps.uc1.seed import uc1_ontology
 
 # A process started as every process of use case 2 is, by `run_process`, with the middleware's
 # activity feed on its app. `POST /log` logs one record of a module's logger at each level, and
@@ -132,7 +133,7 @@ def test_uc1_s_learner_starts_and_serves_its_dashboard_and_its_activity_page(
     db = connect(dataset)
     reset(
         db,
-        ontology=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        ontology=uc1_ontology(),
         shapes="",
     )
     learner = Script(LEARNER, "--dataset", dataset, "--learn-seconds", "3600")

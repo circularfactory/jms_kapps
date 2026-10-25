@@ -4,6 +4,7 @@
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix uq: <http://w3id.org/circularfactory/Uncertainty#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 @base <http://w3id.org/circularfactory/Unscrewing> .
@@ -276,6 +277,31 @@
     rdfs:range xsd:double ;
     rdfs:label "has measured approach end position"@en ;
     rdfs:comment "The position at which the approach of this unscrewing operation ended, as measured. The detector writes it only when the outcome is a failure, that is, any outcome other than ScrewIntact, as failure information. An operation with the outcome ScrewIntact does not hold it. Unit: mm along the y axis of the robot frame."@en .
+
+# A measured position as an uncertainty quantification: a random variable of the uncertainty
+# module (`uncertainty.ttl`), whose distribution holds the measurement, beside the plain best
+# estimate. The uncertainty of a measurement comes from the robot that takes it
+# (`:hasPositionStandardDeviation`).
+
+:hasApproachEndPositionVariable a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:subPropertyOf uq:representedBy ;
+    rdfs:domain :UnscrewingOperation ;
+    rdfs:range uq:RandomVariable ;
+    rdfs:label "has approach end position variable"@en ;
+    rdfs:comment "The random variable of the measured end position of the approach of this unscrewing operation. hasMeasuredApproachEndPosition is its best estimate. Unit: mm along the y axis of the robot frame."@en .
+
+:hasMeasuredScrewHeadPosition a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Screw ;
+    rdfs:range xsd:double ;
+    rdfs:label "has measured screw-head position"@en ;
+    rdfs:comment "The best estimate of the position of the head of this Screw, as measured at contact. Unit: mm along the y axis of the robot frame."@en .
+
+:hasScrewHeadPositionVariable a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:subPropertyOf uq:representedBy ;
+    rdfs:domain :Screw ;
+    rdfs:range uq:RandomVariable ;
+    rdfs:label "has screw-head position variable"@en ;
+    rdfs:comment "The random variable of the measured position of the head of this Screw. hasMeasuredScrewHeadPosition is its best estimate. Unit: mm along the y axis of the robot frame."@en .
 
 :indicates a owl:ObjectProperty ;
     rdfs:domain :DetectionResult ;
@@ -647,6 +673,12 @@ inf:hasMQTTValuePath rdf:type owl:DatatypeProperty ;
     rdfs:range :ScrewingResource ;
     rdfs:label "is robot of"@en ;
     rdfs:comment "The screwing resource that a robot belongs to. The inverse of hasRobot; the seed writes both."@en .
+
+:hasPositionStandardDeviation a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain :Robot ;
+    rdfs:range xsd:double ;
+    rdfs:label "has position standard deviation"@en ;
+    rdfs:comment "The standard deviation with which the robot takes its position readings. It is a description of the robot in the graph, not one of its MQTT parameters. Unit: mm along the y axis of the robot frame."@en .
 
 # The readings: one value per sample of an attempt's curve.
 

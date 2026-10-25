@@ -33,7 +33,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from jms_kapps.common.api_docs import relative_api_docs
 from jms_kapps.common.process import bind_socket
 from jms_kapps.common.supervision import ChildSnapshot
+from jms_kapps.uc1.anomaly_detector import MODE_ROUTE
 from jms_kapps.uc1.anomaly_detector import RESOURCE as DETECTOR
+from jms_kapps.uc1.anomaly_detector import build as build_detector
 from jms_kapps.uc1.learner_process import build as build_learner
 from jms_kapps.uc1.page import PageServer, address_block, build_app
 from jms_kapps.uc1.vocabulary import JMS
@@ -223,6 +225,31 @@ def test_a_process_without_an_address_says_so_and_has_no_links(page):
 
 def test_a_name_no_process_has_is_not_found(page):
     assert httpx.get(urljoin(page, "p/Learner9/dashboard"), timeout=10).status_code == 404
+
+
+def test_the_detector_s_mode_route_reads_and_sets_its_mode_through_the_page_s_port():
+    """The detector's own middleware instance, as its process builds it, never started: the
+    switch's read and write pass through to its mode route, at the address the state gives."""
+    detector = build_detector(
+        str(DETECTOR),
+        _NoStore(),  # type: ignore[arg-type]
+        "127.0.0.1",
+        8000,
+        reader=SimpleNamespace(read=lambda reference: None),  # type: ignore[arg-type]
+    )
+    with serving(_never_started(detector.app)) as address:
+        children = [_child("Anomaly detector", DETECTOR, address + "/")]
+        with serving(build_app(lambda: children)) as page_address:
+            page = page_address + "/"
+            route = httpx.get(urljoin(page, "api/state"), timeout=10).json()["mode_route"]
+            assert route == f"p/{DETECTOR.fragment}{MODE_ROUTE}"
+
+            assert httpx.get(urljoin(page, route), timeout=10).json() == {"on": False}
+            put = httpx.put(urljoin(page, route), json={"on": True}, timeout=10)
+            assert put.json() == {"on": True}
+            assert httpx.get(urljoin(page, route), timeout=10).json() == {"on": True}
+            direct = httpx.get(urljoin(address + "/", MODE_ROUTE.lstrip("/")), timeout=10)
+            assert direct.json() == {"on": True}
 
 
 def test_the_page_s_own_routes_stay_where_they_are(page):

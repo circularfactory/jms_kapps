@@ -25,7 +25,7 @@ from playwright.sync_api import Browser
 from jms_kapps.common.platforms import PLATFORM, windows
 
 # `pytester` runs the small pytest sessions of `test_dataset_option.py` and `test_live_marker.py`.
-pytest_plugins = ["_dataset_option", "_live_marker", "pytester"]
+pytest_plugins = ["_dataset_option", "_live_marker", "_uc1_mode_option", "pytester"]
 
 
 def pytest_runtest_setup(item: pytest.Item) -> None:

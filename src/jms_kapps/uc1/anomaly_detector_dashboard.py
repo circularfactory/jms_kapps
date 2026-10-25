@@ -9,8 +9,9 @@ their own.
 
 "Classifications" shows each attempt the detector classified, newest first: the outcome, the rule
 of the tree's exit, how it ended the operation (`done` for ScrewIntact, `failed` with its `ANOMALY`
-reason for every other outcome), and the ten values it was decided with, each with whether the
-tree asked it. "Screw type values" shows what each Screw type held at the
+reason for every other outcome), whether it saved measurements as uncertainty quantifications and
+each measured position it saved so, with its standard deviation, and the ten values it was
+decided with, each with whether the tree asked it. "Screw type values" shows what each Screw type held at the
 detector's last read of it, so a value that the learner commits shows there at the detector's next
 read.
 """
@@ -87,7 +88,8 @@ def _values(classification: Classification) -> str:
 
 def _classification(classification: Classification) -> str:
     """One classification: when, which operation and Screw, the outcome, the rule of its exit and
-    how it ended the operation, or why it could not be classified, then its values."""
+    how it ended the operation, or why it could not be classified; whether it saved measurements
+    as uncertainty quantifications, and each measured position it saved so; then its values."""
     rows = [
         ("Operation", _short(classification.operation)),
         ("Screw", _short(classification.screw)),
@@ -107,6 +109,22 @@ def _classification(classification: Classification) -> str:
             ("Outcome", "not classified: the operation failed"),
             ("Why", escape(classification.why)),
         ]
+    rows.append(
+        (
+            "Measurements as uncertainty quantifications",
+            "saved" if classification.saves_uq else "not saved",
+        )
+    )
+    rows += [
+        (
+            f"Measured {measured.position} position",
+            escape(
+                f"{measured.value:g} mm, standard deviation "
+                f"{measured.standard_deviation:g} mm"
+            ),
+        )
+        for measured in classification.positions
+    ]
     values = _values(classification) if classification.values else ""
     return (
         f"<h3>{escape(_time(classification.at))}, "

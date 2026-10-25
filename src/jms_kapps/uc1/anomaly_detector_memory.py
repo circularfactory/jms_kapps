@@ -4,6 +4,10 @@ Its dashboard boxes render this memory and nothing else, so an open dashboard ca
 read of the graph and no read of the time-series store. The detector writes it as it classifies,
 from what each classification reads anyway: a classification once its commit has reached the
 store, and the values of a Screw type at each read of a Screw's effective values.
+
+It also holds the detector's mode, "Save measurements as uncertainty quantifications", on or off
+(interim name), which the detector reads at each classification and which can be set while it
+runs.
 """
 
 from __future__ import annotations
@@ -43,6 +47,21 @@ class UsedValue:
 
 
 @dataclass(frozen=True)
+class MeasuredPosition:
+    """A measured position that a classification wrote with its random variable: which position
+    (`APPROACH_END` or `SCREW_HEAD`), the measured value, and the standard deviation of its
+    literal."""
+
+    position: str
+    value: float
+    standard_deviation: float
+
+
+APPROACH_END = "approach end"
+SCREW_HEAD = "screw head"
+
+
+@dataclass(frozen=True)
 class Classification:
     """One attempt that the detector classified, or could not classify, and when it ended.
 
@@ -50,6 +69,9 @@ class Classification:
     ended `done` for the outcome ScrewIntact; any other outcome is a failure outcome, which ended
     it `failed`, and `why` names it. An attempt that could not be classified has no outcome,
     and `why`; it has its values when they were read before the classification failed.
+
+    `saves_uq` is the mode it was made in, and `positions` the measured positions it wrote with
+    their random variables: none with the mode off.
     """
 
     at: datetime
@@ -59,6 +81,8 @@ class Classification:
     outcome: DetectionResult | None
     why: str | None
     values: tuple[UsedValue, ...]
+    saves_uq: bool = False
+    positions: tuple[MeasuredPosition, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -106,10 +130,15 @@ class DetectorMemory:
 
     Args:
         clock: The time of day, by which it stamps what it is told.
+        saves_uq: The detector's mode at its start, "Save measurements as uncertainty
+            quantifications": off unless given.
     """
 
-    def __init__(self, clock: Callable[[], datetime] = _now) -> None:
+    def __init__(
+        self, clock: Callable[[], datetime] = _now, *, saves_uq: bool = False
+    ) -> None:
         self._clock = clock
+        self._saves_uq = saves_uq
         # A classification writes on the thread of its call, and a render reads on one of its own.
         self._lock = threading.Lock()
         self._classifications: deque[Classification] = deque(
@@ -117,6 +146,17 @@ class DetectorMemory:
         )
         self._count = 0
         self._type_values: dict[IRI, TypeValues] = {}
+
+    @property
+    def saves_uq(self) -> bool:
+        """Whether the detector saves measurements as uncertainty quantifications, now."""
+        with self._lock:
+            return self._saves_uq
+
+    def set_saves_uq(self, on: bool) -> None:
+        """Turn the mode on or off, from the next classification on."""
+        with self._lock:
+            self._saves_uq = on
 
     def read(self, with_origin: EffectiveValuesWithOrigin) -> None:
         """The detector read `with_origin` now, and with it what the Screw's type holds."""
@@ -134,9 +174,13 @@ class DetectorMemory:
         with_origin: EffectiveValuesWithOrigin,
         outcome: DetectionResult,
         anomaly: str | None,
+        *,
+        saves_uq: bool = False,
+        positions: tuple[MeasuredPosition, ...] = (),
     ) -> None:
         """The detector ended `operation` now, with `outcome`, decided with `with_origin`: `done`,
-        or `failed` with `anomaly`, the reason that names an outcome other than ScrewIntact."""
+        or `failed` with `anomaly`, the reason that names an outcome other than ScrewIntact. It
+        was made with the mode `saves_uq`, and wrote `positions` with their random variables."""
         self._add(
             Classification(
                 at=self._clock(),
@@ -146,6 +190,8 @@ class DetectorMemory:
                 outcome=outcome,
                 why=anomaly,
                 values=used_values(with_origin, outcome),
+                saves_uq=saves_uq,
+                positions=positions,
             )
         )
 
@@ -155,9 +201,12 @@ class DetectorMemory:
         screw: IRI | None,
         with_origin: EffectiveValuesWithOrigin | None,
         why: str,
+        *,
+        saves_uq: bool = False,
     ) -> None:
-        """The detector ended `operation` `failed` now, for `why`. `with_origin` is what it read of
-        `screw` before the classification failed, or None when it read nothing."""
+        """The detector ended `operation` `failed` now, for `why`, in the mode `saves_uq`.
+        `with_origin` is what it read of `screw` before the classification failed, or None when
+        it read nothing."""
         self._add(
             Classification(
                 at=self._clock(),
@@ -167,6 +216,7 @@ class DetectorMemory:
                 outcome=None,
                 why=why,
                 values=() if with_origin is None else used_values(with_origin, None),
+                saves_uq=saves_uq,
             )
         )
 

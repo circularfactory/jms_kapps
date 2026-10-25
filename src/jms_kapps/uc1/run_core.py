@@ -41,6 +41,7 @@ from kapps_triplestore_interface import IRI, TripleStore
 
 from jms_kapps.common.supervision import LaunchFailed, Supervisor
 from jms_kapps.uc1.anomaly_detector import RESOURCE as ANOMALY_DETECTOR_RESOURCE
+from jms_kapps.uc1.anomaly_detector import SAVE_UQ_OPTION
 from jms_kapps.uc1.learner_process import DEFAULT_LEARN_SECONDS
 from jms_kapps.uc1.planner import DEFAULT_TIMEOUT_SECONDS
 from jms_kapps.uc1.screwing_resource import RESOURCE as SCREWING_RESOURCE_RESOURCE
@@ -95,6 +96,7 @@ def participants(
     *,
     learn_seconds: float = DEFAULT_LEARN_SECONDS,
     operation_timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    saves_uq: bool = False,
 ) -> list[Participant]:
     """The five participants of every run of use case 1, in the order they start.
 
@@ -110,6 +112,8 @@ def participants(
         learn_seconds: The time from one run of the learner to the next, a positive number of seconds.
         operation_timeout: How long a press of the planner waits for its operation to end, a positive number of
             seconds.
+        saves_uq: Whether the anomaly detector saves measurements as uncertainty quantifications
+            from its start: its command line then ends with `SAVE_UQ_OPTION`.
     """
     return [
         Participant(
@@ -121,6 +125,7 @@ def participants(
                 "jms_kapps.uc1.anomaly_detector",
                 "--dataset",
                 dataset,
+                *([SAVE_UQ_OPTION] if saves_uq else []),
             ],
             (JMS.ClassifyWorkflow,),
             JMS.AnomalyDetectorService,

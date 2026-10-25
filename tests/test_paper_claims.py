@@ -10,7 +10,9 @@ shape that holds it. Claim 19, that admission refuses a planned operation that t
 information state cannot carry out, was added with R7, use case 1's unscrewing operation shape and
 `jms-uc1 infeasible-operation`. Claim 20, that a run of use case 2 with four modules in a line reads every
 change of possession of a box back from the triple store's history, was added with the paper's
-R14 and its command `jms-uc2 trace-box`. Every test in jms_kapps that proves one carries the marker `paper_claim`, and
+R14 and its command `jms-uc2 trace-box`. Claim 21, that a run of use case 1 commits each measured
+position as a random variable with a Gaussian-mixture literal and fetches it back cleanly, was
+added with R3. Every test in jms_kapps that proves one carries the marker `paper_claim`, and
 its docstring names the claim's number ("Paper claim 4", "Paper claims 5 and 8"), so that one run
 by the marker, `uv run pytest -m paper_claim --dataset <name>`, runs them all. The numbering is
 internal: the user guide names no claim, and tells its reader to run the marker.
@@ -43,13 +45,13 @@ pytestmark = pytest.mark.skipif(
 
 # The claims a jms_kapps test proves: use case 2's and use case 1's, claim 16, use case 1's PROV
 # witness, claim 17, the SHACL-SPARQL rule, claim 18, a capability's one resource, claim 19,
-# the refused infeasible operation, and claim 20, a box's possessions read back from the store's
-# history. Claim 15 is kapps_ogm's.
-CLAIMS_OF_JMS_KAPPS = set(range(1, 15)) | {16, 17, 18, 19, 20}
+# the refused infeasible operation, claim 20, a box's possessions read back from the store's
+# history, and claim 21, a measured position's Gaussian-mixture literal. Claim 15 is kapps_ogm's.
+CLAIMS_OF_JMS_KAPPS = set(range(1, 15)) | {16, 17, 18, 19, 20, 21}
 
 # The claims that each have a marked test: use case 2's and use case 1's (1 to 14), and claims 16 to
-# 20.
-CLAIMS_WITH_A_TEST = set(range(1, 15)) | {16, 17, 18, 19, 20}
+# 21.
+CLAIMS_WITH_A_TEST = set(range(1, 15)) | {16, 17, 18, 19, 20, 21}
 
 # How a claim test's docstring names its claims: "Paper claim 4", "Paper claims 5 and 8".
 NAMED = re.compile(r"Paper claims? (\d+(?:(?:, | and )\d+)*)")

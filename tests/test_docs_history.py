@@ -63,7 +63,8 @@ HISTORY = {
         r"\b(?:jms_kapps|KSM|kapps_[a-z_]+)\s+[#!]?\d+\b|(?<![\w/&-])[#!]\d+\b"
     ),
     "the middleware's short name": re.compile(r"\bKSM\b"),
-    "a person": re.compile(r"\b(?:Etienne|Hoffmann|Sören|Soeren|Weindel)\b"),
+    # "Hoffmann et al." is a cited publication, not a person of the history.
+    "a person": re.compile(r"\b(?:Etienne|Hoffmann(?! et al\.)|Sören|Soeren|Weindel)\b"),
 }
 
 # The manifest names its authors and maintainers by design.

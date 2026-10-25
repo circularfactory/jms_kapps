@@ -20,6 +20,10 @@ declared shapes, whether a write is admitted. A write that breaks a shape is ref
 before anything of it is stored, and the triple store returns a validation report that names the
 shape: the refusal.
 
+**Best estimate.** The plain number that a measured position holds beside its random variable: the
+Screw's `:hasMeasuredScrewHeadPosition`, or the operation's `:hasMeasuredApproachEndPosition`. It is
+the mean of the variable's literal, in mm.
+
 **Box.** The workpiece of use case 2. It travels from the WMS through the station and back.
 
 **Capability.** What a resource can do, linked to exactly one resource (`cfc:hasCapability`). A
@@ -43,6 +47,10 @@ that the triple store refuses the write: see [The faults](journey-and-faults.md#
 and whose topology format the use cases keep: see [The assets](assets.md).
 
 **Frame.** The raw curves of one unscrewing attempt of use case 1, kept in InfluxDB.
+
+**Gaussian-mixture literal.** The typed literal (`uq:gmmLiteral`) that holds a random variable's
+distribution: a JSON object with the six fields `n_components`, `dimensions`, `covariance_type`,
+`weights`, `means` and `covariances`. The anomaly detector writes one component in one dimension.
 
 **Handover.** One box passing from one party to the next: the receiving module consents, the giving
 module commits the change of possession, then the box moves, then it arrives.
@@ -107,6 +115,10 @@ the end of its journey. A module possesses at most one box.
 **Projection scope.** The properties of an individual that a service reads or writes through the
 OGM, and no others. The code calls it a *class scope* (`ClassScope`).
 
+**Random variable.** A `uq:RandomVariable`: the way the knowledge graph holds an uncertain value,
+with one distribution (a Gaussian-mixture literal) and one value domain. In use case 1 it holds a
+measured position.
+
 **Service.** An addressable unit on the network that wraps one resource, decides from the factory
 information state and commits its decisions. Its entry in the knowledge graph holds its address,
 its workflows and its heartbeat.
@@ -124,6 +136,10 @@ case 2 serves its handover events as one.
 
 **Stale.** A heartbeat 90 s old or older. A service whose heartbeat is stale is offline.
 
+**Standard deviation of a measured position.** The standard deviation with which the robot takes its
+position readings, `:hasPositionStandardDeviation` on the robot: 0.1 mm in the seed, an example
+value. The variance of a measured position's literal is its square.
+
 **Strategy.** Who chooses where a box goes: the module strategy picks a box's next module, the WMS
 strategy picks a spawn's ends. `real` is the default of both: see
 [The strategies](journey-and-faults.md#the-strategies).
@@ -136,6 +152,11 @@ the journey is, and it is assigned to one module at a time.
 
 **Triple store access module.** The library through which the semantic middleware and the OGM
 reach the triple store, `kapps_triplestore_interface`; short, the access module.
+
+**Uncertainty quantification.** A value held with its uncertainty, here as a random variable with a
+Gaussian-mixture literal. The anomaly detector of use case 1 saves its measured positions this way
+when its mode "Save measurements as uncertainty quantifications" is on. See [Measured
+positions](use-case-1.md#measured-positions).
 
 **Unified Knowledge Base.** The triple store together with the non-RDF databases: in use case 1,
 the triple store and InfluxDB.

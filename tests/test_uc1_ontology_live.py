@@ -40,12 +40,13 @@ from kapps_semantic_middleware.operation import operation as operation_scope
 from kapps_semantic_middleware.vocabulary import CFC, CORE_NS, SVC, OperationStatus
 from kapps_triplestore_interface import IRI
 
-from jms_kapps.common.triplestore import bindings, connect, read_asset, reset
+from jms_kapps.common.triplestore import bindings, connect, reset
 from jms_kapps.uc1.effective_values import (
     UnresolvedValues,
     as_properties,
     read_effective_values,
 )
+from jms_kapps.uc1.seed import uc1_ontology
 from jms_kapps.uc1.vocabulary import JMS, JMS_NS, PLACEMENT, TYPE_LEVEL
 
 pytestmark = [
@@ -116,7 +117,7 @@ def db(dataset):
     db = connect(dataset)
     reset(
         db,
-        ontology=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        ontology=uc1_ontology(),
         shapes="",
     )
     db.graph_add(

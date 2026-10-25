@@ -10,7 +10,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jms-kapps"
-version = "0.0.2"
+version = "0.0.3"
 description = "The two KAPPS use cases of the JMS paper, built on kapps-semantic-middleware"
 readme = "README.md"
 license = "MIT"

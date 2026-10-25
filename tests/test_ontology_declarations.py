@@ -4,7 +4,9 @@
 not report a class that is named only as the `rdfs:range` of a property as an `owl:Class` or an
 `rdfs:Class`, and the object-graph mapper refuses an IRI as a class without that report. So every
 class a range names must be declared: in a use case's own ontology, or in one of the middleware's
-three shared ontologies that a seed loads beside it.
+three shared ontologies that a seed loads beside it. A range that a loaded ontology declares as an
+`rdfs:Datatype`, such as the Gaussian-mixture literal of use case 1's uncertainty module, names a
+literal type, not a class.
 
 Offline: the files are read from the installed packages, and no store is involved.
 """
@@ -56,12 +58,14 @@ def test_every_class_a_range_names_is_declared(loaded: Graph) -> None:
     declared = set(loaded.subjects(RDF.type, OWL.Class)) | set(
         loaded.subjects(RDF.type, RDFS.Class)
     )
+    datatypes = set(loaded.subjects(RDF.type, RDFS.Datatype))
     undeclared = sorted(
         f"{prop} rdfs:range {range_}"
         for prop, range_ in loaded.subject_objects(RDFS.range)
         if isinstance(range_, URIRef)
         and not str(range_).startswith(str(XSD))
         and range_ not in NOT_CLASSES
+        and range_ not in datatypes
         and range_ not in declared
     )
     assert not undeclared, (

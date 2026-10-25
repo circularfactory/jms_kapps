@@ -12,8 +12,9 @@ of the triple-store interface's contract. A store without one gets no prefixes, 
 on: the prefixes serve only the workbench's display. The seed goes through the interface's prefix
 calls, never past the interface.
 
-The vocabularies use case 2 names by prefix are its `PREFIXES`. The dataset carries two more:
-the FlexConveyor's individuals, which a page names by local name, and use case 1's vocabulary.
+The vocabularies use case 2 names by prefix are its `PREFIXES`. The dataset carries three more:
+the FlexConveyor's individuals, which a page names by local name, and use case 1's vocabulary
+with its uncertainty module.
 
 The monitor's refusal cards use the middleware's reader of a validation report, which names every
 term by its local name; so a page names no vocabulary by prefix, and the prefixes serve the
@@ -27,13 +28,13 @@ import re
 
 from kapps_triplestore_interface import TripleStore, TripleStoreNotSupportedError
 
-from jms_kapps.uc1.vocabulary import JMS_NS
+from jms_kapps.uc1.vocabulary import JMS_NS, UQ_NS
 from jms_kapps.uc2.vocabulary import FCI_NS
 from jms_kapps.uc2.vocabulary import PREFIXES as UC2_PREFIXES
 
 logger = logging.getLogger(__name__)
 
-PREFIXES: dict[str, str] = {**UC2_PREFIXES, "fci": FCI_NS, "uns": JMS_NS}
+PREFIXES: dict[str, str] = {**UC2_PREFIXES, "fci": FCI_NS, "uns": JMS_NS, "uq": UQ_NS}
 
 # A name nobody chose for a namespace: the empty prefix, or `ns` followed by digits.
 _MADE_UP_PREFIX = re.compile(r"(ns[0-9]+)?")

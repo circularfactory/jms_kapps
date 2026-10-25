@@ -44,6 +44,7 @@ OWN_IMPORTS = [
 
 ASSET_PATHS = [
     "uc1/ontology/integration_usecase.ttl",
+    "uc1/ontology/uncertainty.ttl",
     "uc1/data/unscrewing_timeseries/success.csv",
     "uc1/data/unscrewing_timeseries/missing_screw.csv",
     "uc1/static/page.js",

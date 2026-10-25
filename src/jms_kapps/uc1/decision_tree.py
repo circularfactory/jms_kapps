@@ -156,20 +156,9 @@ def classify(signals: AttemptSignals, values: EffectiveValues) -> DetectionResul
     Raises:
         ValueError: The recorded approach ends before contact and above the depth limit.
     """
-    approach = signals.approach
-    contact = _first_crossing(
-        approach.axial_force, lambda f: f >= values.min_approach_axial_force
-    )
-    too_deep = _first_crossing(
-        approach.position, lambda p: p < values.min_approach_position
-    )
-    if too_deep is not None and (contact is None or too_deep < contact):
+    at_contact = contact_position(signals, values)
+    if at_contact is None:
         return "MissingScrew"
-    if contact is None:
-        raise ValueError(
-            "the recorded approach ends before contact and above the depth limit"
-        )
-    at_contact = approach.position[contact]
     if at_contact < values.min_screw_head_position:
         return "MissingHead"
     if at_contact > values.max_screw_head_position:
@@ -205,6 +194,31 @@ def classify(signals: AttemptSignals, values: EffectiveValues) -> DetectionResul
     if seized is not None:
         return "ThreadFault"
     return "ScrewIntact"
+
+
+def contact_position(signals: AttemptSignals, values: EffectiveValues) -> float | None:
+    """The position at contact of one unscrewing attempt: that of the first approach sample whose
+    axial force reaches the minimum approach axial force, as `classify` finds it. None when the
+    approach passed its depth limit first, the outcome MissingScrew.
+
+    Raises:
+        ValueError: The recorded approach ends before contact and above the depth limit, as
+            `classify` refuses it.
+    """
+    approach = signals.approach
+    contact = _first_crossing(
+        approach.axial_force, lambda f: f >= values.min_approach_axial_force
+    )
+    too_deep = _first_crossing(
+        approach.position, lambda p: p < values.min_approach_position
+    )
+    if too_deep is not None and (contact is None or too_deep < contact):
+        return None
+    if contact is None:
+        raise ValueError(
+            "the recorded approach ends before contact and above the depth limit"
+        )
+    return approach.position[contact]
 
 
 def _first_crossing(

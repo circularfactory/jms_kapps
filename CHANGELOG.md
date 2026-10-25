@@ -9,6 +9,49 @@ for the version being released, and stops the release if there is no such headin
 as the work lands, not at release time. Name that heading nowhere else in this file: the release
 mechanism insists on finding exactly one.
 
+## 0.0.3 — 2026-10-25
+
+### Added
+
+- Use case 1's knowledge graph can hold a measured position as a random variable with a Gaussian
+  mixture in one typed literal, beside its best estimate. Every launch loads the uncertainty
+  module (`uq`, `http://w3id.org/circularfactory/Uncertainty#`, according to Wu et al. 2026) with
+  `uq:RandomVariable`, `uq:Domain`, `uq:gmmLiteral`, `uq:double`, `uq:nonNegativeDouble`,
+  `uq:hasDistribution`, `uq:hasDomain` and `uq:representedBy`, and registers its prefix. Use case
+  1's ontology gains `:hasApproachEndPositionVariable`, `:hasMeasuredScrewHeadPosition`,
+  `:hasScrewHeadPositionVariable` and `:hasPositionStandardDeviation`; the seed gives `:Robot1` the
+  standard deviation 0.1 mm, an example value. `jms_kapps.uc1.uncertainty` writes the literal of
+  one measurement, reads it back as mean and variance, and checks that a lexical form is well
+  formed. Admission refuses a random variable without exactly one distribution, whose lexical form
+  names the six fields in their order, or without exactly one value domain; a second best estimate
+  or a second variable on a Screw; and a second variable on an unscrewing operation.
+
+- The anomaly detector can save measurements as uncertainty quantifications: a mode, off by
+  default, that `--save-measurements-as-uq` turns on from the start, on the detector's process and
+  on `jms-uc1`. With it on, the commit of a classification also writes a random variable whose
+  literal holds the one measurement (mean the measured value, variance the square of the robot's
+  `:hasPositionStandardDeviation`): after a failure outcome for the end of the approach, linked from
+  the operation; after every outcome that reached contact for the position at contact, the Screw's
+  `:hasMeasuredScrewHeadPosition`, linked from the Screw. A new measurement of a head position
+  replaces the literal and the best estimate; nothing is fused. A robot without its standard
+  deviation ends the operation `failed`, as an attempt that cannot be classified. With it off, the
+  detector writes what 0.0.2 writes. The dashboard's "Classifications" box shows each
+  classification's mode and the positions it saved, with their standard deviations.
+
+- Use case 1's page has the switch "Save measurements as uncertainty quantifications", with the
+  credit beside it to the two publications that the representation follows (ISWC 2026 and
+  Sensoren und Messsysteme 2026) at their DOIs, and the list "Measured positions": each position the detector saved, with its
+  best estimate, its standard deviation and its literal, from one plain SPARQL query with its copy
+  button. The switch reads and sets the detector's mode on the detector's route
+  `/save-measurements-as-uq` through the page's port, from the next classification; "What to do"
+  gains an optional third step that turns it on.
+
+- The user guide has the section "The uncertainty of a measured position": the switch, two short
+  queries for the triple store's workbench (the best estimate and the literal with its datatype),
+  the assumed standard deviation of 0.1 mm, and one sentence that querying the literals is
+  ProbSPARQL's in the store and fusion is a fusion service's job, with both DOIs. The glossary,
+  the use case 1 reference page and the UC1 sequence page say the same in their own places.
+
 ## 0.0.2 — 2026-10-24
 
 ### Added

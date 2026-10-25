@@ -679,6 +679,47 @@ The screwing resource's `ScrewingResource1: the anomaly detector took Unscrewing
 comes when its call of the detector returns. It stands before or after the planner's read, since
 the two services are separate processes.
 
+### The uncertainty of a measured position
+
+The anomaly detector can save each position it measures as a random variable, beside the plain
+best estimate. The mode is off by default, and a plain run of `jms-uc1` writes no variable. Turn
+it on with the checkbox *Save measurements as uncertainty quantifications* on the page, which
+takes effect from the next classification, or from the start with `uv run jms-uc1
+--save-measurements-as-uq`. With the mode on, the commit of each classification also writes the
+position it measured: the position at contact, as the Screw's head position, and after a failure
+outcome the end of the approach, on the operation. Each is a `uq:RandomVariable` whose literal, of
+the datatype `uq:gmmLiteral`, holds that one measurement: the measured value in mm as the mean,
+and the square of the robot's standard deviation as the variance.
+
+Two queries for the triple store's workbench, on the dataset of the run. **Q5** reads the best
+estimate of a Screw's head position, in mm:
+
+```sparql
+PREFIX uns: <http://w3id.org/circularfactory/Unscrewing#>
+SELECT ?screw ?estimate WHERE { ?screw uns:hasMeasuredScrewHeadPosition ?estimate }
+```
+
+**Q6** reads the literal of that position with its datatype, which is `uq:gmmLiteral`:
+
+```sparql
+PREFIX uns: <http://w3id.org/circularfactory/Unscrewing#>
+PREFIX uq: <http://w3id.org/circularfactory/Uncertainty#>
+SELECT ?screw ?literal (DATATYPE(?literal) AS ?datatype) WHERE {
+  ?screw uns:hasScrewHeadPositionVariable ?variable .
+  ?variable uq:hasDistribution ?literal
+}
+```
+
+The standard deviation of a measured position is an assumption: 0.1 mm, the example value that the
+seed gives the robot (`uns:hasPositionStandardDeviation`), in mm along the y axis of the robot
+frame, as the positions are. A robot without it ends the operation *failed* with the reason, since
+the detector cannot write the variable.
+
+Querying the literals by probability is ProbSPARQL's, in the triple store (Wu et al. 2026,
+[doi:10.1007/978-3-032-42029-9_19](https://doi.org/10.1007/978-3-032-42029-9_19)), and fusing
+measurements is the job of a fusion service (Hoffmann et al. 2026,
+[doi:10.5162/sensoren2026/D3-2.1](https://doi.org/10.5162/sensoren2026/D3-2.1)).
+
 ### What each part of use case 1 shows, and the test that proves it
 
 Each part below is proved by a test that carries the marker `paper_claim`. Run the tests of this
@@ -718,6 +759,14 @@ the InfluxDB database `jms-kapps`, which the run creates if it is missing.
    Unscrew. *See it:* the operation's `hasTimeSeriesReference` in query Q3, and the screwing
    resource's dashboard, which names the frame. *Test:*
    `tests/test_uc1_claims_live.py::test_the_sensor_channels_are_a_replay_of_recorded_series`.
+6. **A measured position travels through the knowledge graph as a random variable.** With the
+   mode of the section above on, each position the detector measures is committed as a random
+   variable with a Gaussian-mixture literal beside its best estimate, and read back cleanly: each
+   literal has the datatype `uq:gmmLiteral`, parses, and holds the best estimate as its mean.
+   *Run:* `uv run jms-uc1 --save-measurements-as-uq` and press Unscrew for both screws. *See it:*
+   the page's *Measured positions*, and queries Q5 and Q6 above. This test starts `jms-uc1` itself
+   with the mode on, as the file above does with the default. *Test:*
+   `tests/test_uc1_measured_positions_claim_live.py::test_each_measured_position_reads_back_as_a_gaussian_mixture_literal`.
 
 Two queries for the triple store's workbench, on the dataset of the run. **Q3** lists each
 operation with its screw, the service that issued it, its status, its outcome and the reference to

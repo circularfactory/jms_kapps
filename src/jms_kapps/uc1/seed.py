@@ -110,6 +110,13 @@ PLACEMENT_VALUES: dict[IRI, float] = {
 SCREWING_RESOURCE = IRI("ScrewingResource1", base=JMS_NS)
 ROBOT = IRI("Robot1", base=JMS_NS)
 
+# The standard deviation with which the robot takes its position readings, in mm along the y axis
+# of the robot frame. An example value and an assumption, as every value here: chosen against the
+# screw-head band of `PLACEMENT_VALUES` (-0.5 to 0.5 mm), which it puts five standard deviations
+# from 0.0 on each side. It is a description of the robot in the graph, not one of its MQTT
+# parameters.
+POSITION_STANDARD_DEVIATION = 0.1
+
 # The broker that carries every parameter of the robot. The screwing resource's middleware
 # instance brings it up at this address when it builds its connectors (`mqtt_broker`), and the
 # stand-in is started with it. The port is the use case's own: not 1883, and not a port of the
@@ -162,20 +169,37 @@ def unmeasured_screw_type_turtle() -> str:
     )
 
 
+def uc1_ontology() -> str:
+    """Use case 1's ontology and its uncertainty module, as the one Turtle document a reset loads.
+
+    The module follows the ontology, which sets a base and the empty prefix; the module names its
+    terms by its own prefix and by absolute IRIs only, so the two join as text.
+    """
+    return (
+        read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl")
+        + "\n"
+        + read_asset("jms_kapps.uc1", "ontology", "uncertainty.ttl")
+    )
+
+
 def reset_uc1(db: TripleStore, *, individuals: str = "") -> None:
-    """Empty the dataset and load use case 1's ontology and shapes, then `individuals`.
+    """Empty the dataset and load use case 1's ontology with its uncertainty module
+    (`uc1_ontology`) and its shapes, then `individuals`.
 
     The shapes are `shapes/integration_usecase_shapes.ttl`: the parameter-copy shape, the PROV
     witness on the decision, which makes the store refuse a parameter copy that does not name
     the classification that generated it; the capability shape, which makes the store refuse
     a capability that does not belong to exactly one resource; and the unscrewing operation
     shape, which makes the store refuse an unscrewing operation whose Screw's Screw type does
-    not hold each of the seven values an attempt needs. `reset` adds the middleware's
-    operation-status shape to them.
+    not hold each of the seven values an attempt needs. Then the shapes of a measured position:
+    a random variable has exactly one distribution, a Gaussian-mixture literal whose six fields
+    come in their order, and exactly one value domain; a Screw has at most one measured head
+    position and at most one variable of it; an unscrewing operation has at most one variable of
+    its approach end position. `reset` adds the middleware's operation-status shape to them.
     """
     reset(
         db,
-        ontology=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        ontology=uc1_ontology(),
         shapes=read_asset("jms_kapps.uc1", "shapes", "integration_usecase_shapes.ttl"),
         individuals=individuals,
     )
@@ -302,8 +326,8 @@ def _seed_unmeasured_screw_type(ogm: OGM) -> None:
 
 
 def seed_robot(ogm: OGM) -> None:
-    """Write the robot of the screwing resource, with a node for each of its parameters, and link
-    the two in both directions.
+    """Write the robot of the screwing resource, with a node for each of its parameters and the
+    standard deviation of its position readings, and link the two in both directions.
 
     The screwing resource must be in the graph already: `run_core` writes it, of the class
     `:ScrewingResource`. Both links are written, and not left to the store's inference of the
@@ -317,7 +341,10 @@ def seed_robot(ogm: OGM) -> None:
     inference, and the middleware finds no robot below the resource. In one commit, the read
     comes before the robot exists, so the update writes the link.
     """
-    data: dict = {str(JMS.isRobotOf): [{"id": str(SCREWING_RESOURCE)}]}
+    data: dict = {
+        str(JMS.isRobotOf): [{"id": str(SCREWING_RESOURCE)}],
+        str(JMS.hasPositionStandardDeviation): [POSITION_STANDARD_DEVIATION],
+    }
     for parameter in ROBOT_PARAMETERS:
         data[str(parameter)] = [robot_parameter_node(parameter)]
     scope = ClassScope.from_property_chains([[IRI(prop)] for prop in data])

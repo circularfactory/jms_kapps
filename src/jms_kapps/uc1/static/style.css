@@ -128,9 +128,12 @@ tr.output pre {
 .query-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 10px; }
 .query-head .copy { margin-left: auto; }
 pre.query-text { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; max-height: 24em; overflow: auto; background: var(--tint); padding: 6px 8px; border-radius: 4px; }
-body.unanswered #operations, body.unanswered #learned-values { opacity: .55; }
+td.literal { word-break: break-all; }
+p.switch { margin: 8px 0 2px; }
+span.credit { margin-left: 8px; font-size: 13px; }
+body.unanswered #operations, body.unanswered #learned-values, body.unanswered #measured-positions { opacity: .55; }
 
-/* What to do: two steps, always open. */
+/* What to do: three steps, always open. */
 #what-to-do ol { margin: 8px 0 0; padding-left: 22px; }
 #what-to-do li { margin-bottom: 8px; }
 #what-to-do .result { display: block; color: var(--muted); font-size: 13px; }

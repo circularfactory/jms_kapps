@@ -24,7 +24,8 @@ from kapps_semantic_middleware.seeding import (
 from kapps_semantic_middleware.vocabulary import SVC
 from rdflib.namespace import OWL
 
-from jms_kapps.common.triplestore import connect, read_asset, reset
+from jms_kapps.common.triplestore import connect, reset
+from jms_kapps.uc1.seed import uc1_ontology
 
 pytestmark = [
     pytest.mark.graphdb,
@@ -64,7 +65,7 @@ def test_a_seed_replaces_the_service_ontology_that_an_earlier_release_left(db):
 
     reset(
         db,
-        ontology=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        ontology=uc1_ontology(),
         shapes="",
     )
 

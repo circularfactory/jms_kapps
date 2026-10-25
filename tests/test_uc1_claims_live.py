@@ -115,11 +115,14 @@ def influxdb():
 
 
 @pytest.fixture(scope="module")
-def loop(dataset, influxdb, tmp_path_factory) -> Iterator[Loop]:
-    """One run of `jms-uc1` through the loop: Screw1, the learner, Screw2. It stays up until the
-    module's tests are done, then Ctrl+C stops it."""
+def loop(dataset, influxdb, tmp_path_factory, uc1_saves_uq) -> Iterator[Loop]:
+    """One run of `jms-uc1` through the loop: Screw1, the learner, Screw2, in the mode that
+    `--uc1-save-measurements-as-uq` selects. It stays up until the module's tests are done, then
+    Ctrl+C stops it."""
     db = connect(dataset)
-    with started_uc1(dataset, tmp_path_factory.mktemp("uc1")) as (run, log, page_url):
+    with started_uc1(
+        dataset, tmp_path_factory.mktemp("uc1"), saves_uq=uc1_saves_uq
+    ) as (run, log, page_url):
         await_all_live(run, log, page_url)
         children = children_of(run.pid, shown_processes())
         live = services(db, workflows=list(WORKFLOW_OF.values()))

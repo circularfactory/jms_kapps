@@ -1,8 +1,9 @@
 """The decision tree of use case 1: the signals of one unscrewing attempt and the effective values
 in, one Detection result out, where the first failing node decides.
 
-Every signal here is synthetic. One intact attempt is the base, and each test changes the one
-phase that sends it to another exit.
+Every signal here is synthetic, but for the position at contact of the two recordings, with the
+seed's values. One intact attempt is the base, and each test changes the one phase that sends it
+to another exit.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from jms_kapps.uc1 import decision_tree
+from jms_kapps.uc1.anomaly_detector import attempt_signals
 from jms_kapps.uc1.decision_tree import (
     DETECTION_RESULTS,
     AttemptSignals,
@@ -25,7 +27,13 @@ from jms_kapps.uc1.decision_tree import (
     EffectiveValues,
     PhaseSignals,
     classify,
+    contact_position,
 )
+from jms_kapps.uc1.effective_values import resolve
+from jms_kapps.uc1.replay import example_frame
+from jms_kapps.uc1.seed import M4_VALUES, PLACEMENT_VALUES
+from jms_kapps.uc1.seed import SCREW as SEEDED_SCREW
+from jms_kapps.uc1.vocabulary import JMS
 
 VALUES = EffectiveValues(
     min_approach_axial_force=5.0,
@@ -487,3 +495,78 @@ def test_every_exit_names_its_rule_and_the_values_it_asked():
         assert decision_tree.EXIT_RULE[outcome]
         assert set(decision_tree.ASKED[outcome]) <= names
         assert "preparation_turning_angle" not in decision_tree.ASKED[outcome]
+
+
+# --- The position at contact ------------------------------------------------------------------
+
+
+def _seeded_values() -> EffectiveValues:
+    return resolve(
+        SEEDED_SCREW,
+        {prop: [value] for prop, value in PLACEMENT_VALUES.items()},
+        JMS.M4,
+        {prop: [value] for prop, value in M4_VALUES.items()},
+    )
+
+
+def _recorded(name: str) -> AttemptSignals:
+    return attempt_signals(example_frame(name))
+
+
+def test_the_contact_position_of_the_intact_recording_is_that_of_its_first_sample_at_the_force():
+    """Computed here from the recording and the seed's minimum approach axial force, so a new
+    recording needs no change of this test."""
+    signals = _recorded("success")
+    values = _seeded_values()
+    approach = signals.approach
+    expected = next(
+        position
+        for force, position in zip(approach.axial_force, approach.position, strict=True)
+        if force >= values.min_approach_axial_force
+    )
+
+    assert contact_position(signals, values) == expected
+
+
+def test_the_missing_screw_recording_has_no_contact_position():
+    signals = _recorded("missing_screw")
+    values = _seeded_values()
+
+    assert classify(signals, values) == "MissingScrew"
+    assert contact_position(signals, values) is None
+
+
+@pytest.mark.parametrize(
+    ("attempt", "outcome", "at_contact"),
+    [
+        (INTACT, "ScrewIntact", -5.0),
+        (with_contact_at(-6.5), "MissingHead", -6.5),
+        (replace(INTACT, approach=OCCLUDED), "HeadOccluded", -3.0),
+        (replace(INTACT, form_fit=NO_COUNTER_TORQUE), "RoundedHeadOrWrongType", -5.0),
+        (replace(INTACT, disassembly=THREAD_FAULT), "ThreadFault", -5.0),
+        (with_contact_force(8.0), "ScrewIntact", -5.0),
+    ],
+)
+def test_an_attempt_that_reached_contact_has_the_position_of_its_contact_sample(
+    attempt: AttemptSignals, outcome: DetectionResult, at_contact: float
+):
+    assert classify(attempt, VALUES) == outcome
+    assert contact_position(attempt, VALUES) == at_contact
+
+
+def test_contact_after_the_depth_limit_has_no_contact_position():
+    attempt = with_depth(below(VALUES.min_approach_position))
+
+    assert classify(attempt, VALUES) == "MissingScrew"
+    assert contact_position(attempt, VALUES) is None
+
+
+def test_the_contact_position_refuses_the_approach_that_the_tree_refuses():
+    signals = replace(
+        INTACT, approach=PhaseSignals([0.0, 0.0], [0.0, -1.0], [0.0, 0.0])
+    )
+
+    with pytest.raises(ValueError, match="before contact"):
+        classify(signals, VALUES)
+    with pytest.raises(ValueError, match="before contact"):
+        contact_position(signals, VALUES)

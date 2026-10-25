@@ -20,6 +20,7 @@ from rdflib import RDF, RDFS, Graph, Literal, URIRef
 from jms_kapps.common.supervision import LaunchFailed, LiveInstanceError
 from jms_kapps.uc1 import run_core
 from jms_kapps.uc1.anomaly_detector import RESOURCE as ANOMALY_DETECTOR_RESOURCE
+from jms_kapps.uc1.anomaly_detector import SAVE_UQ_OPTION
 from jms_kapps.uc1.run_core import participants, start_run
 from jms_kapps.uc1.screwing_resource import (
     RESOURCE as SCREWING_RESOURCE_RESOURCE,
@@ -163,6 +164,56 @@ def test_options_reach_the_command_lines() -> None:
     assert learner.command[learner.command.index("--learn-seconds") + 1] == "3.0"
     planner = next(p for p in result if p.resource == JMS.Planner1)
     assert planner.command[planner.command.index("--operation-timeout") + 1] == "7.0"
+
+
+def test_the_detector_saves_measurements_as_uq_only_when_the_option_is_given() -> None:
+    from jms_kapps.uc1 import __main__ as main_module
+
+    def detector(**options) -> list[str]:
+        (found,) = [
+            p
+            for p in participants("ds", **options)
+            if p.resource == ANOMALY_DETECTOR_RESOURCE
+        ]
+        return found.command
+
+    assert SAVE_UQ_OPTION not in detector()
+    assert detector(saves_uq=True)[-1] == SAVE_UQ_OPTION
+    assert main_module._parser().parse_args([]).save_measurements_as_uq is False
+    assert main_module._parser().parse_args([SAVE_UQ_OPTION]).save_measurements_as_uq
+
+
+def test_main_passes_the_mode_option_to_the_participants(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from jms_kapps.uc1 import __main__ as main_module
+
+    asked: list[dict] = []
+
+    class Stop(Exception):
+        pass
+
+    def stop_at_participants(dataset, **options):
+        asked.append(options)
+        raise Stop
+
+    class Closable:
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(main_module, "connect", lambda *args, **kwargs: Closable())
+    monkeypatch.setattr(main_module, "reader", lambda *args, **kwargs: object())
+    monkeypatch.setattr(main_module, "reader_of_one", lambda *args, **kwargs: object())
+    monkeypatch.setattr(main_module, "refuse_if_live", lambda *args, **kwargs: None)
+    monkeypatch.setattr(main_module, "Supervisor", lambda *args, **kwargs: object())
+    monkeypatch.setattr(main_module, "bind_socket", lambda *args, **kwargs: Closable())
+    monkeypatch.setattr(main_module, "participants", stop_at_participants)
+
+    for argv in ([], [SAVE_UQ_OPTION]):
+        with pytest.raises(Stop):
+            main_module.main(argv)
+
+    assert [options["saves_uq"] for options in asked] == [False, True]
 
 
 def test_start_run_seeds_then_spawns_in_order_then_watches() -> None:

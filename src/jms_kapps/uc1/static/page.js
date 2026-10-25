@@ -124,7 +124,7 @@ function drawDashboards(processes) {
   }
 }
 
-// -- Operations and Learned values ------------------------------------------------------------ //
+// -- Operations, Learned values and Measured positions ---------------------------------------- //
 
 // Each list shows the rows that the background read of its one SPARQL query last found, and that
 // query's text, exactly as the page's server sent it. The page sends no query of its own: it
@@ -217,6 +217,72 @@ for (const button of document.querySelectorAll("button[data-copies]")) {
   button.addEventListener("click", () => copyQuery(button));
 }
 
+function measuredCells(position) {
+  return [
+    [position.subject],
+    [position.position],
+    [position.estimate],
+    [position.standard_deviation],
+    [position.literal, "mono literal"],
+  ];
+}
+
+// -- The switch "Save measurements as uncertainty quantifications" ------------------------------ //
+
+// The switch shows and sets the anomaly detector's mode on the detector's own route, through the
+// page's passthrough: the page's server holds no connection to the detector. It stays disabled
+// while the detector has no address, and while a change is on its way.
+
+const saveUq = document.getElementById("save-uq");
+
+// Counts the changes of the switch, so that a read sent before a change does not undo it.
+let changes = 0;
+let changing = false;
+
+async function readMode(route) {
+  if (!route) {
+    saveUq.removeAttribute("data-mode-route");
+    saveUq.disabled = true;
+    return;
+  }
+  saveUq.dataset.modeRoute = route;
+  if (changing) return;
+  const before = changes;
+  try {
+    const response = await fetch(route, { cache: "no-store" });
+    if (!response.ok) throw new Error(String(response.status));
+    const mode = await response.json();
+    if (changing || changes !== before) return;
+    saveUq.checked = mode.on;
+    saveUq.disabled = false;
+  } catch {
+    if (!changing) saveUq.disabled = true;
+  }
+}
+
+saveUq.addEventListener("change", async () => {
+  const route = saveUq.dataset.modeRoute;
+  const wanted = saveUq.checked;
+  changes += 1;
+  changing = true;
+  saveUq.disabled = true;
+  try {
+    const response = await fetch(route, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ on: wanted }),
+    });
+    if (!response.ok) throw new Error(String(response.status));
+    saveUq.checked = (await response.json()).on;
+  } catch {
+    saveUq.checked = !wanted;
+  } finally {
+    changing = false;
+    // The detector may have lost its address meanwhile.
+    saveUq.disabled = !saveUq.dataset.modeRoute;
+  }
+});
+
 function drawAll(state) {
   const known = new Set(state.processes.map((p) => p.resource));
   for (const row of document.querySelectorAll("#processes tbody tr[data-resource]")) {
@@ -226,6 +292,8 @@ function drawAll(state) {
   drawDashboards(state.processes);
   drawList("operations", state.operations, "operation", "operations", operationCells);
   drawList("learned-values", state.learned_values, "Screw type", "Screw types", learnedCells);
+  drawList("measured-positions", state.measured_positions, "position", "positions", measuredCells);
+  readMode(state.mode_route);
 }
 
 function answered(ok) {

@@ -166,6 +166,23 @@ axial force reaches its minimum.
 - The operation also holds `:hasMeasuredApproachEndPosition 0.0`, the position of the last sample of
   its approach. Only an operation with a failure outcome holds it.
 
+**With the mode "Save measurements as uncertainty quantifications" on** (off by default; the
+checkbox on the page, or `--save-measurements-as-uq` at the start), the detector also reads the
+standard deviation of the robot that measured the attempt, and the same commit writes, beside each
+measured position, a random variable (`uq:RandomVariable`) whose literal holds that one
+measurement: the measured value as the mean and the square of the standard deviation as the
+variance, with the datatype `uq:gmmLiteral`.
+
+- `Screw1` (ending A): the position at contact is `:Screw1 :hasMeasuredScrewHeadPosition`, the
+  best estimate, and `:Screw1 :hasScrewHeadPositionVariable` is its variable.
+- `Screw2` (ending B): the approach ended before contact, so there is no head position. The
+  operation's `:hasMeasuredApproachEndPosition` is the best estimate, and its
+  `:hasApproachEndPositionVariable` is the variable.
+- A robot without its standard deviation ends the operation `failed` with the reason, and nothing
+  of the classification is written.
+
+The page's *Measured positions* list shows these rows. With the mode off, none is written.
+
 The planner reads the status, and the outcome and the reason of a failure, and records them for its
 dashboard. If the detector cannot classify the attempt, nothing of the classification is written,
 and the operation is committed `failed` with a reason that begins `the anomaly detector could not

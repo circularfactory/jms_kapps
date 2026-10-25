@@ -32,11 +32,12 @@ from kapps_semantic_middleware.operation import operation as operation_scope
 from kapps_semantic_middleware.vocabulary import SVC, OperationStatus
 from kapps_triplestore_interface import IRI
 
-from jms_kapps.common.triplestore import bindings, connect, read_asset, reset
+from jms_kapps.common.triplestore import bindings, connect, reset
 from jms_kapps.uc1.effective_values import read_effective_values
 from jms_kapps.uc1.frame import AXIAL_FORCE, ROBOT_POSITION, UNSCREWING_TORQUE, Frame
 from jms_kapps.uc1.learner import Learner
 from jms_kapps.uc1.replay import example_frame
+from jms_kapps.uc1.seed import uc1_ontology
 from jms_kapps.uc1.timeseries import FrameReader, FrameWriter
 from jms_kapps.uc1.timeseries import connect as connect_influxdb
 from jms_kapps.uc1.vocabulary import JMS, JMS_NS
@@ -102,7 +103,7 @@ def db(dataset):
     db = connect(dataset)
     reset(
         db,
-        ontology=read_asset("jms_kapps.uc1", "ontology", "integration_usecase.ttl"),
+        ontology=uc1_ontology(),
         shapes="",
     )
     db.graph_add(

@@ -1,0 +1,38 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix uq: <http://w3id.org/circularfactory/Uncertainty#> .
+
+# The uncertainty module that use case 1 loads beside its ontology, into the default graph. A
+# reset sends the two files as one Turtle document, this one after `integration_usecase.ttl`,
+# which sets a base and the empty prefix; so this file names every term by `uq:` or by an
+# absolute IRI, never by `:` or a relative IRI.
+#
+# The local names are ProbSPARQL's, so that a ProbSPARQL query needs only its namespace changed.
+# `uq:Domain` is not ProbSPARQL's: the object-graph mapper refuses a property without an
+# `rdfs:range`, and refuses `rdfs:Datatype` as a range on the store's ruleset, so the domain
+# markers get a class.
+
+<http://w3id.org/circularfactory/Uncertainty> a owl:Ontology ;
+    rdfs:comment "The representation of an uncertain value as a random variable with a Gaussian mixture, according to Wu et al. (2026), ProbSPARQL, ISWC 2026, doi:10.1007/978-3-032-42029-9_19."@en .
+
+uq:RandomVariable a owl:Class .
+
+uq:Domain a owl:Class ;
+    rdfs:comment "The range of uq:hasDomain: the value domain of a random variable."@en .
+
+uq:gmmLiteral a rdfs:Datatype ;
+    rdfs:comment "A Gaussian mixture. Lexical form: a JSON object with exactly the six fields n_components, dimensions, covariance_type, weights, means, covariances, in this order."@en .
+
+uq:double a rdfs:Datatype, uq:Domain .             # unconstrained real values
+uq:nonNegativeDouble a rdfs:Datatype, uq:Domain .  # values >= 0
+
+uq:hasDistribution a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain uq:RandomVariable ;
+    rdfs:range uq:gmmLiteral .
+
+uq:hasDomain a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain uq:RandomVariable ;
+    rdfs:range uq:Domain .
+
+uq:representedBy a owl:ObjectProperty ;
+    rdfs:range uq:RandomVariable .

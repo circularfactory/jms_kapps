@@ -23,7 +23,8 @@ from kapps_semantic_middleware.vocabulary import SVC
 from kapps_triplestore_interface import IRI, TripleStore
 
 from jms_kapps.common.triplestore import bindings
-from jms_kapps.uc1.vocabulary import JMS, PROV
+from jms_kapps.uc1.anomaly_detector import SAVE_UQ_OPTION
+from jms_kapps.uc1.vocabulary import JMS, PROV, UQ
 
 # How long a run's five processes may take to turn live. Each check reads the page, so the test
 # asks only every half second.
@@ -36,10 +37,12 @@ OPERATION_WITHIN_SECONDS = 60.0
 
 @contextmanager
 def started_uc1(
-    dataset: str, directory: Path
+    dataset: str, directory: Path, *, saves_uq: bool = False
 ) -> Iterator[tuple[subprocess.Popen, Path, str]]:
     """`jms-uc1` on a free page port, learning every second, in a session of its own, with its
-    output in `directory`; stopped again at the end, whatever happens."""
+    output in `directory`; stopped again at the end, whatever happens. With `saves_uq`, it saves
+    measurements as uncertainty quantifications from its start (`SAVE_UQ_OPTION`); off by
+    default, as `jms-uc1` is."""
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
@@ -53,6 +56,7 @@ def started_uc1(
                 *("--dataset", dataset),
                 *("--learn-seconds", "1"),
                 *("--page-port", str(port)),
+                *([SAVE_UQ_OPTION] if saves_uq else []),
             ],
             stdout=output,
             stderr=subprocess.STDOUT,
@@ -178,3 +182,12 @@ def provenance(db: TripleStore) -> list[dict]:
         """,
     )
     return [{name: str(value) for name, value in row.items()} for row in rows]
+
+
+def random_variables(db: TripleStore) -> int:
+    """How many random variables (`uq:RandomVariable`) the graph holds: none after a run with
+    the mode "Save measurements as uncertainty quantifications" off."""
+    (row,) = bindings(
+        db, f"SELECT (COUNT(?v) AS ?n) WHERE {{ ?v a <{UQ.RandomVariable}> }}"
+    )
+    return int(row["n"])

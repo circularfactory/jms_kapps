@@ -18,7 +18,7 @@ from urllib.parse import quote
 
 import httpx
 import pytest
-from _uc1_lists import ListStore
+from _uc1_lists import HEAD_LITERAL, ListStore
 from fastapi.testclient import TestClient
 from kapps_triplestore_interface import IRI
 
@@ -26,8 +26,19 @@ import jms_kapps.uc1.page
 import jms_kapps.uc2.launcher
 from jms_kapps.common.process import bind_socket
 from jms_kapps.common.supervision import ChildSnapshot, Supervisor
-from jms_kapps.uc1.page import PageServer, address_block, build_app, render
-from jms_kapps.uc1.page_lists import LEARNED_VALUES, OPERATIONS, PageLists
+from jms_kapps.uc1.page import (
+    SAVE_UQ_LABEL,
+    PageServer,
+    address_block,
+    build_app,
+    render,
+)
+from jms_kapps.uc1.page_lists import (
+    LEARNED_VALUES,
+    MEASURED_POSITIONS,
+    OPERATIONS,
+    PageLists,
+)
 
 NAMES = ["Anomaly detector", "Screwing resource", "Learner", "Planner"]
 
@@ -167,18 +178,20 @@ def test_the_page_has_no_refresh_of_its_own_and_loads_its_script_from_its_static
     assert "<script>" not in page
 
 
-def test_what_to_do_is_visible_with_its_two_steps_and_names_a_dashboard_in_each() -> None:
-    """The section has no `details` around its steps, and each step links the dashboards where
-    its result shows."""
+def test_what_to_do_is_visible_with_its_three_steps_and_names_a_dashboard_in_the_presses() -> None:
+    """The section has no `details` around its steps, and each press links the dashboards where
+    its result shows. The third step names the switch and the list where its result shows."""
     page = render(_four())
     section = page.split('<section id="what-to-do">')[1].split("</section>")[0]
     steps = re.findall(r"<li>(.*?)</li>", section, re.DOTALL)
 
-    assert len(steps) == 2
+    assert len(steps) == 3
     before_details = section.split("<details>")[0]
-    assert before_details.count("<li>") == 2
+    assert before_details.count("<li>") == 3
     assert "Screw1" in steps[0] and "Screw2" in steps[1]
-    for step in steps:
+    assert f"<b>{SAVE_UQ_LABEL}</b>" in steps[2]
+    assert 'href="#measured-positions-section"' in steps[2]
+    for step in steps[:2]:
         assert 'data-dashboard-of="Planner"' in step
         assert 'data-dashboard-of="Anomaly detector"' in step
     assert 'data-dashboard-of="Learner"' in steps[0]
@@ -221,7 +234,7 @@ def test_no_section_has_an_intro_of_more_than_two_sentences() -> None:
     parser = _Text()
     parser.feed(render(_four()))
 
-    assert len(parser.intros) == 4
+    assert len(parser.intros) == 5
     for intro in parser.intros:
         assert 1 <= len(_sentences(intro)) <= 2, intro
 
@@ -755,3 +768,112 @@ def test_the_run_reads_the_lists_from_the_seed_on_and_stops_them(
 
     assert main_module.main(["--page-port", "8999"]) == 0
     assert events == ["seed", "lists start", "lists stop"]
+
+
+# -- Measured positions and the switch ---------------------------------------------------------- #
+
+MODE = "p/Anomalydetector/save-measurements-as-uq"
+
+
+def _section(page: str, name: str) -> str:
+    return page.split(f'<section id="{name}"')[1].split("</section>")[0]
+
+
+def test_the_state_gives_the_measured_positions_with_their_query() -> None:
+    children = _four()
+    _, lists = _read_lists(children)
+    client = TestClient(build_app(lambda: children, None, lists.last))
+
+    measured = client.get("/api/state").json()["measured_positions"]
+
+    assert measured["query"] == MEASURED_POSITIONS
+    assert measured["error"] is None
+    assert measured["rows"] == [
+        {
+            "subject": "Screw1",
+            "position": "screw-head position",
+            "estimate": "12.25",
+            "standard_deviation": "0.1",
+            "literal": str(HEAD_LITERAL),
+        }
+    ]
+
+
+def test_the_page_renders_measured_positions_as_its_third_list_after_the_learned_values() -> None:
+    children = _four()
+    store, lists = _read_lists(children)
+
+    page = render(children, lists.last())
+
+    assert page.index('id="learned-values-section"') < page.index(
+        'id="measured-positions-section"'
+    )
+    section = _section(page, "measured-positions-section")
+    assert '<h2 id="measured-positions-title">Measured positions</h2>' in section
+    shown = re.search(r'<pre id="measured-positions-query"[^>]*>(.*?)</pre>', section, re.DOTALL)
+    assert shown is not None
+    assert html.unescape(shown.group(1)) == MEASURED_POSITIONS
+    assert MEASURED_POSITIONS in store.received
+    assert re.search(
+        r'<button[^>]*data-copies="measured-positions-query"[^>]*>Copy the query', section
+    )
+    literal = html.escape(str(HEAD_LITERAL))
+    assert (
+        "<td>Screw1</td><td>screw-head position</td><td>12.25</td><td>0.1</td>"
+        f'<td class="mono literal">{literal}</td>'
+    ) in section
+
+
+def test_the_switch_carries_its_exact_label_and_starts_off_and_disabled() -> None:
+    """The page's server holds no connection to the detector, so it draws the switch off and
+    disabled; `page.js` reads the mode through the passthrough and turns it on."""
+    section = _section(render(_four()), "measured-positions-section")
+
+    assert re.search(
+        r'<input type="checkbox" id="save-uq" data-mode-route="'
+        + re.escape(MODE)
+        + r'" disabled>',
+        section,
+    )
+    label = re.search(r'<label for="save-uq">(.*?)</label>', section)
+    assert label is not None
+    assert label.group(1) == SAVE_UQ_LABEL == "Save measurements as uncertainty quantifications"
+    assert "checked" not in section.split('id="save-uq"')[1].split(">")[0]
+
+
+def test_the_switch_has_no_route_while_the_detector_has_no_address() -> None:
+    children = [_child(name) for name in NAMES]
+
+    section = _section(render(children), "measured-positions-section")
+
+    assert '<input type="checkbox" id="save-uq" disabled>' in section
+
+
+def test_the_credit_stands_beside_the_switch_with_both_dois_as_links() -> None:
+    section = _section(render(_four()), "measured-positions-section")
+    credit = re.search(r'<p class="switch">.*?<span class="muted credit">(.*?)</span></p>', section, re.DOTALL)
+
+    assert credit is not None
+    assert section.index('id="save-uq"') < section.index('class="muted credit"')
+    assert re.sub(r"<[^>]+>", "", credit.group(1)) == (
+        "Representation after Wu et al., ProbSPARQL (ISWC 2026, "
+        "doi:10.1007/978-3-032-42029-9_19) and Hoffmann et al., Representing Measurement "
+        "Uncertainty by Gaussian Mixtures (Sensoren und Messsysteme 2026, "
+        "doi:10.5162/sensoren2026/D3-2.1)."
+    )
+    links = re.findall(r'<a href="([^"]+)"[^>]*>([^<]+)</a>', credit.group(1))
+    assert links == [
+        ("https://doi.org/10.1007/978-3-032-42029-9_19", "doi:10.1007/978-3-032-42029-9_19"),
+        ("https://doi.org/10.5162/sensoren2026/D3-2.1", "doi:10.5162/sensoren2026/D3-2.1"),
+    ]
+    assert "The switch takes effect from the next classification." in section
+
+
+def test_the_state_gives_the_route_of_the_detectors_mode_through_the_passthrough() -> None:
+    children = _four()
+    client = TestClient(build_app(lambda: children))
+
+    assert client.get("/api/state").json()["mode_route"] == MODE
+
+    alone = [c for c in children if c.name != "Anomaly detector"]
+    assert TestClient(build_app(lambda: alone)).get("/api/state").json()["mode_route"] is None
