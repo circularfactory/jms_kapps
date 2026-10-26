@@ -197,6 +197,7 @@ jms_kapps/
 ├── compose.yaml    the local fallback: a triple store, with the dataset created, and an InfluxDB
 ├── run-uc2         the one command of use case 2
 ├── docs/           the user guide, its screenshots, and the reference pages
+├── evaluation/     the scripts of the paper's evaluation: section_7, its figures
 ├── graphdb/        the dataset's configuration
 ├── scripts/        the release's checks of this tree, which its continuous integration runs
 ├── tests/

@@ -14,3 +14,8 @@ test-results/
 # handoff and briefs under .claude/log/<ticket>/ stay trackable; only runs/ is machine output.
 .claude/log/*/runs/
 .scratch/
+
+# The §7 experiment's results and prefills: a run on the shared store names its host, which a
+# shipped file may not; the final run is archived through the reproduction archive.
+evaluation/section_7/results/
+evaluation/section_7/prefills/

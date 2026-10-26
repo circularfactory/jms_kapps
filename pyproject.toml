@@ -10,7 +10,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jms-kapps"
-version = "0.0.3"
+version = "0.0.4"
 description = "The two KAPPS use cases of the JMS paper, built on kapps-semantic-middleware"
 readme = "README.md"
 license = "MIT"
@@ -42,8 +42,8 @@ classifiers = [
 # the lock already resolved through the siblings.
 dependencies = [
     "kapps-semantic-middleware~=0.2.6",
-    "kapps-triplestore-interface~=2.2.2",
-    "kapps-ogm~=0.3.2",
+    "kapps-triplestore-interface~=2.2.3",
+    "kapps-ogm~=0.3.3",
     "fastapi>=0.111",
     "httpx>=0.27",
     "pydantic>=2.13",
@@ -184,10 +184,10 @@ markers = [
 [tool.mypy]
 # The same two lines the sibling repositories carry, over the one source root this repository
 # has, and the scripts beside it, which do not ship in the wheel: the screenshot script of the
-# user guide. Neither sibling configures ruff at all, so
-# neither does this one.
+# user guide, and the §7 scripts of the paper's evaluation (`evaluation/`). Neither sibling
+# configures ruff at all, so neither does this one.
 python_version = "3.12"
-files = ["src", "scripts"]
+files = ["src", "scripts", "evaluation"]
 
 [[tool.mypy.overrides]]
 # pandas ships no py.typed marker, and its stubs (`pandas-stubs`) are a package of their own that

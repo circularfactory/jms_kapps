@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '4' and sys_platform == 'win32'",
@@ -1374,7 +1374,7 @@ wheels = [
 
 [[package]]
 name = "jms-kapps"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "." }
 dependencies = [
     { name = "aiomqtt" },
@@ -1419,10 +1419,10 @@ requires-dist = [
     { name = "amqtt", specifier = ">=0.12.1" },
     { name = "fastapi", specifier = ">=0.111" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "kapps-ogm", specifier = "~=0.3.2" },
+    { name = "kapps-ogm", specifier = "~=0.3.3" },
     { name = "kapps-semantic-middleware", specifier = "~=0.2.6" },
     { name = "kapps-semantic-middleware", extras = ["examples"], marker = "extra == 'transferunits-demo'", specifier = "~=0.2.6" },
-    { name = "kapps-triplestore-interface", specifier = "~=2.2.2" },
+    { name = "kapps-triplestore-interface", specifier = "~=2.2.3" },
     { name = "matplotlib", marker = "extra == 'evaluation'", specifier = ">=3.11.2" },
     { name = "opentelemetry-api", marker = "extra == 'evaluation'", specifier = ">=1.45.1" },
     { name = "opentelemetry-instrumentation-fastapi", marker = "extra == 'evaluation'", specifier = ">=0.66b1" },
@@ -1448,16 +1448,16 @@ dev = [
 
 [[package]]
 name = "kapps-ogm"
-version = "0.3.2"
+version = "0.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "kapps-triplestore-interface" },
     { name = "pydantic" },
     { name = "rdflib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3b/0b/80dc6b2330bd8069ace9cddfe183ddfbe9e42fc4e44c6a61b8ddf06d89ba/kapps_ogm-0.3.2.tar.gz", hash = "sha256:4c77eabf0de284ec81d70bdb6f7b0110254fae6389ca1868148a6784fd70e92f", size = 214263, upload-time = "2026-10-21T11:01:19.148Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/f3/aef6707be26febaffcc608dd542a02e610e2036a3c99167e675e5864d2e0/kapps_ogm-0.3.3.tar.gz", hash = "sha256:ae6c076f521da5a93dcac146dbb8953b2181622974a70ddbd6704d2bb6ba8e64", size = 233889, upload-time = "2026-10-26T18:03:15.394Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/aa/0f62f98863b63a34816a0338ab6287d25d7be88c0a910aaaa8e45365d0b0/kapps_ogm-0.3.2-py3-none-any.whl", hash = "sha256:1796041a68019c4e773251c893ae50abc476c724774900d3f09a8eb2ed00f950", size = 66304, upload-time = "2026-10-21T11:01:17.525Z" },
+    { url = "https://files.pythonhosted.org/packages/be/44/8832b63d305fdeedbffaae382da334397f6eb5226ba992a34e4d3ea020ee/kapps_ogm-0.3.3-py3-none-any.whl", hash = "sha256:9f78a10d5193cac204051602b5205a035946712a407efbd3405aa195c777dcb6", size = 75907, upload-time = "2026-10-26T18:03:14.012Z" },
 ]
 
 [[package]]
@@ -1486,7 +1486,7 @@ examples = [
 
 [[package]]
 name = "kapps-triplestore-interface"
-version = "2.2.2"
+version = "2.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
@@ -1496,9 +1496,9 @@ dependencies = [
     { name = "requests" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cf/2c/b943f1470fb16e819545f288ded15f09b2006068108523ec39671b8fb838/kapps_triplestore_interface-2.2.2.tar.gz", hash = "sha256:38d43125a6cab34f3a3d25555c7155bde1f82fb9314ee57ae3d14d5de47dbd80", size = 178452, upload-time = "2026-10-21T10:09:49.602Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bc/13/81ff01fe37a429b9a3b4d0cd7c572c5addea73050fa3121b3e023cf4ce77/kapps_triplestore_interface-2.2.3.tar.gz", hash = "sha256:510a13823a78b6140e0c9eae813576704ffc0e4b9baa6df641f893a024ef0d5b", size = 187970, upload-time = "2026-10-26T17:40:53.918Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/d2/b78b6b990376782118553fe279e55efc57954da9223877402afdb663c402/kapps_triplestore_interface-2.2.2-py3-none-any.whl", hash = "sha256:38909a9225127ebf6f0eab15d7ff70d4f49042098d336962d2ad3eb7ed1601e1", size = 64661, upload-time = "2026-10-21T10:09:48.073Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/f8/5a3d068e96990435c9dc4d0d982d88c002568dc406c6aa4cf62d61c6351a/kapps_triplestore_interface-2.2.3-py3-none-any.whl", hash = "sha256:50fc15447575d2ed13230a29f172573300f64ac44f1c8b78f7d0f9ee7a0e4741", size = 66705, upload-time = "2026-10-26T17:40:51.625Z" },
 ]
 
 [[package]]

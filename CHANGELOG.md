@@ -9,6 +9,25 @@ for the version being released, and stops the release if there is no such headin
 as the work lands, not at release time. Name that heading nowhere else in this file: the release
 mechanism insists on finding exactly one.
 
+## 0.0.4 — 2026-10-26
+
+### Added
+
+- The per-commit table and the §7 figures (interim names). `jms_kapps.evaluation.commit_table`
+  reads recorded run folders into one row per commit of the object-graph mapper (store, heartbeat
+  level, arm, latency, admitted, window, kind, checked write, the ten phases from the spans, and the
+  latency of its replayed update in a writes-only replay, paired by the commit's span id) and one
+  row per replayed write. The new folder `evaluation/section_7` holds `figure.py`, which writes the
+  two tables, the CDF and the box plot of the commit latency per heartbeat level (writes only, KAPPS
+  with SHACL off, KAPPS with SHACL on; a panel per store), the percentile CSV with bootstrap
+  intervals over repetitions, the phase table and a manifest, and prints why each plot its data
+  lacks was skipped. `stats.difference_of_means` gives the SHACL difference's interval.
+
+### Changed
+
+- jms_kapps requires kapps-ogm 0.3.3 and kapps-triplestore-interface 2.2.3 or later within their
+  minor versions; the lock moves to them.
+
 ## 0.0.3 — 2026-10-25
 
 ### Added

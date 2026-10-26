@@ -143,6 +143,7 @@ evaluation/approval
 evaluation/baseline
 evaluation/bench
 evaluation/client_load
+evaluation/commit_table
 evaluation/configuration
 evaluation/grid
 evaluation/harness

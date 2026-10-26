@@ -109,6 +109,12 @@ a transport's origin, and a module notifies the WMS when the transport ends: the
 the box is back, or the module where it failed. A hop between two modules notifies nobody. In use case 1 the planner notifies the screwing resource, and the commit that
 ends the operation notifies the planner, its issuer.
 
+**Per-commit table.** The tidy table of the §7 figures, one row per commit of the OGM of a recorded
+run: its latency, whether it was admitted, its kind (`heartbeat`, `status: <statuses>`, `other
+update`, `no write`), the ten phases its latency splits into by the spans, and the writes-only
+latency of the same commit, paired by the commit's span id. Interim names, as the code has them:
+`jms_kapps.evaluation.commit_table`, `commits.csv`, `replayed_writes.csv`.
+
 **Possessor.** The one party that possesses a box: a module while the box travels, and the WMS at
 the end of its journey. A module possesses at most one box.
 

@@ -1662,3 +1662,32 @@ The sweep calls the report once after each run, right after the run returns and 
 how the run ended, whatever the end: completed, invalid, failed or interrupted. It gives the
 report its own `--set` overrides. An error of the report (a missing library, a full disk) is
 told on the sweep's output and never stops or fails the sweep.
+
+## The per-commit table (interim)
+
+`jms_kapps.evaluation.commit_table` reads recorded run folders, their records and their spans, into
+two tidy tables, which the §7 figure script (`evaluation/section_7/figure.py`, its README beside
+it) writes as `commits.csv` and `replayed_writes.csv` and plots. It changes no record and nothing
+of the table or the report of a spec.
+
+- **One row per commit** of the object-graph mapper of a run that counts: its store, heartbeat
+  level and arm (KAPPS with SHACL on or off), run, repetition and pick seed, participant and role,
+  span id, send time and seconds since the window's start, latency, outcome, whether it was
+  admitted and is in the window, its kind (`heartbeat` in either spelling of the predicate,
+  `status: ` and the statuses it sets, `other update`, `no write`), its checked write, its reads,
+  and the time of each of its ten phases, which sum to its latency to the microsecond: the
+  checked write, the receipt query, the receipt removal, the class queries, the fetch reads, the
+  other requests, and the client's own time in the class-spec derivation, the fetch, the diff and
+  the rest of the commit.
+- **Given the run's writes-only replay** (a store-only baseline in the mode "writes only"), each
+  commit's row holds its replayed checked write's latency, lateness, outcome and match, paired by
+  the commit's span id, or, in a replay record without it, by the participant and the recorded
+  send time; and the difference commit minus replayed update.
+- **One row per replayed write** of a writes-only replay: its recorded and sent offset, lateness,
+  latency, status code, outcome and recorded outcome, match, and whether it overtook its
+  participant's previous write.
+
+The commit link comes from the spans, by the same walk the record's link is made with, so a
+record made before the link gives the same table. A run without spans gives no table.
+`stats.difference_of_means` gives the interval of the difference of two pooled means, each side's
+repetitions resampled independently.

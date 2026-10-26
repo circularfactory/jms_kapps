@@ -9,6 +9,7 @@ import pytest
 
 from jms_kapps.evaluation.stats import (
     bootstrap_intervals,
+    difference_of_means,
     mean,
     median_and_iqr,
     pooled_quantiles,
@@ -141,4 +142,46 @@ def test_an_interval_does_not_depend_on_the_other_intervals_drawn():
     assert (
         bootstrap_intervals(repetitions, [0.95], seed=3, drawn_for="b", resamples=300)
         == alone
+    )
+
+
+def test_the_difference_of_means_is_of_the_pooled_values():
+    """(1 + 2 + 3) / 3 minus (1 + 1) / 2 is 1."""
+    found = difference_of_means(
+        [[1.0, 2.0], [3.0]], [[1.0], [1.0]], seed=0, drawn_for="d", resamples=100
+    )
+
+    assert found is not None
+    assert found["value"] == pytest.approx(1.0)
+
+
+def test_one_repetition_each_gives_an_interval_of_one_point():
+    found = difference_of_means(
+        [[2.0, 4.0]], [[1.0]], seed=0, drawn_for="d", resamples=50
+    )
+
+    assert found == {"value": 2.0, "interval": [2.0, 2.0]}
+
+
+def test_the_difference_resamples_each_side_independently():
+    """With one repetition on the second side, only the first side's draws move the
+    difference: the interval runs from the first side's lowest mean to its highest, less 0."""
+    found = difference_of_means(
+        [[1.0], [5.0]], [[0.0]], seed=0, drawn_for="d", resamples=2000
+    )
+
+    assert found is not None
+    assert found["interval"] == pytest.approx([1.0, 5.0])
+
+
+def test_the_difference_is_none_where_a_side_has_no_value_and_is_seeded():
+    assert (
+        difference_of_means([[1.0]], [[]], seed=0, drawn_for="d", resamples=10) is None
+    )
+    first = [[0.1, 0.5], [0.2, 0.3], [1.5, 0.4]]
+    second = [[0.1], [0.05, 0.2]]
+    once = difference_of_means(first, second, seed=3, drawn_for="d", resamples=300)
+
+    assert (
+        difference_of_means(first, second, seed=3, drawn_for="d", resamples=300) == once
     )

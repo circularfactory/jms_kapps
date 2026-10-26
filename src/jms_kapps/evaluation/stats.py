@@ -19,6 +19,11 @@ the 97.5 % quantile of the statistics of all resamples (the percentile interval)
 from a random generator seeded with the recorded seed and the name of what is drawn for, so the
 same seed gives the same interval, and an interval does not depend on the other intervals a table
 holds. A single repetition gives an interval of one point: there is nothing to resample.
+
+**The difference of two means** (`difference_of_means`, interim name), as the §7 figures report
+SHACL on minus SHACL off: the mean of the pooled values of one set of repetitions minus that of
+another, with a bootstrap interval in which each set's repetitions are resampled independently,
+because the two are not paired.
 """
 
 from __future__ import annotations
@@ -128,6 +133,54 @@ def bootstrap_intervals(
         high = quantile(drawn_statistics, 1 - tail)
         intervals.append(None if low is None or high is None else [low, high])
     return intervals
+
+
+def difference_of_means(
+    first: Sequence[Sequence[float]],
+    second: Sequence[Sequence[float]],
+    *,
+    seed: int,
+    drawn_for: str,
+    resamples: int,
+) -> dict[str, Any] | None:
+    """The mean of the pooled values of the repetitions `first` minus that of `second`, with its
+    bootstrap interval, as `{"value": ..., "interval": [low, high]}`; None where either has no
+    value. The two are not paired, so a resample draws the repetitions of each with replacement,
+    independently, and the statistic is the difference of the two pooled means (interim name).
+
+    Args:
+        first: The values of each repetition of the first.
+        second: The values of each repetition of the second.
+        seed: The recorded seed.
+        drawn_for: The name of what is drawn for, with the seed the generator's seed.
+        resamples: How many resamples the interval draws.
+    """
+    if resamples < 1:
+        raise ValueError(f"a bootstrap draws at least one resample, not {resamples}")
+    first_mean = mean([value for repetition in first for value in repetition])
+    second_mean = mean([value for repetition in second for value in repetition])
+    if first_mean is None or second_mean is None:
+        return None
+    generator = random.Random(f"{seed}/{drawn_for}")
+    differences = []
+    for _ in range(resamples):
+        drawn_first = [first[generator.randrange(len(first))] for _ in first]
+        drawn_second = [second[generator.randrange(len(second))] for _ in second]
+        first_drawn = mean(
+            [value for repetition in drawn_first for value in repetition]
+        )
+        second_drawn = mean(
+            [value for repetition in drawn_second for value in repetition]
+        )
+        if first_drawn is not None and second_drawn is not None:
+            differences.append(first_drawn - second_drawn)
+    tail = (1 - INTERVAL) / 2
+    low = quantile(differences, tail)
+    high = quantile(differences, 1 - tail)
+    return {
+        "value": first_mean - second_mean,
+        "interval": None if low is None or high is None else [low, high],
+    }
 
 
 def _quantile_of_sorted(ordered: Sequence[float], p: float) -> float | None:
