@@ -1,8 +1,8 @@
 """What counts as a direct write in the package's source: a write of the store's client, a SPARQL
 update sent as it is, or a write of the object-graph mapper called on its own.
 
-The scans of the writes read it: claim 7's for every party (`test_uc2_writes.py`), and claim 13's
-for the services of use case 1 (`test_uc1_writes.py`).
+The scans of the writes read it: the scan of every party (`test_uc2_writes.py`), and the scan of
+the services of use case 1 (`test_uc1_writes.py`).
 """
 
 from __future__ import annotations

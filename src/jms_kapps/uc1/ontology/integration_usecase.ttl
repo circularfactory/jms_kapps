@@ -9,12 +9,10 @@
 
 @base <http://w3id.org/circularfactory/Unscrewing> .
 
-# Changed from the artifact (`turtle/integration_usecase_JMS.ttl` on `paper`, d3201180):
+# The design of this ontology:
 #
-# - The values of the decision tree follow Figure 2 of the UC1 anomaly-detection paper: ten
-#   properties replace the five that the artifact declared. The five old names are gone:
-#   `hasLowerTighteningTorque`, `hasUpperDynamicLoseningTorque`, `hasLowerAxialForce`,
-#   `hasAxialForceApproach` and `hasPositionOnApproach`.
+# - The values of the decision tree follow Figure 2 of Goebels et al. (reference [68] of the paper):
+#   ten properties.
 # - A Screw type holds the seven type values, and a Screw holds none. There are two classes:
 #   `:ScrewType`, a kind of screw such as `:M4`, and `:Screw`, one physical screw in one product.
 #   `:hasScrewType` links them, and `:concernsScrew` names one physical Screw.
@@ -22,27 +20,23 @@
 #   only, because they depend on where the screw is, not on its type.
 # - Each of the ten is an `owl:FunctionalProperty`: a Screw type, a Screw or a parameter copy
 #   holds at most one value of it.
-# - `:screw` is renamed `:Screw`, and `:unscrewingOperation` is renamed `:UnscrewingOperation`, so
-#   that each class name starts with a capital letter.
-# - `:M4_Screw` is now `:M4`, a Screw type with no values. The four placeholder values of the
-#   artifact (0.5, 1.5, 2.0 and 0.5) are gone, because their units were unknown.
+# - Each class name starts with a capital letter, as `:Screw` and `:UnscrewingOperation` do.
+# - `:M4` is a Screw type with no values here.
 # - Each unscrewing operation links to a `:ParameterCopy`: a copy of the ten values that the
 #   detector used. A later change to the Screw or to its Screw type does not change it.
-# - The operation records the exit of the decision tree as a named `:DetectionResult`. It
-#   replaces the free-text `hasSuccessStatus`. Each outcome indicates one or more Screw
-#   conditions, and each condition requires exactly one disassembly category.
-# - One reference, `:hasTimeSeriesReference`, replaces `:TimeSeriesData`,
-#   `:hasJSONEncodedTimeSeriesData` and the three `:has…TimeSeriesData` links. The curves are in
-#   InfluxDB; the operation holds where.
+# - The operation records the exit of the decision tree as a named `:DetectionResult`. Each
+#   outcome indicates one or more Screw conditions, and each condition requires exactly one
+#   disassembly category.
+# - One reference, `:hasTimeSeriesReference`, holds where the curves of an operation are. The
+#   curves are in InfluxDB.
 # - An operation whose outcome is a failure also records the measured end position of its
 #   approach, `:hasMeasuredApproachEndPosition`, as failure information. Such an operation ends
 #   `failed`, with its outcome and its parameter copy; only ScrewIntact ends it `done`.
-# - `:UnscrewingOperation` is a Core `cfc:Operation`, directly, in place of the artifact's
-#   `:Process`, which nothing declared. Core's `cfc:implementsCapability` has the domain
+# - `:UnscrewingOperation` is a Core `cfc:Operation`, directly. Core's `cfc:implementsCapability` has the domain
 #   `cfc:Operation`, and the object-graph mapper finds a property of a class only through its
 #   domain, so only this triple lets an unscrewing operation name the Capability it implements.
 #   The middleware loads Core, which declares `cfc:Operation`.
-# - Six terms are named to read as what they are, with no alias for an earlier name:
+# - Six terms are named to read as what they are:
 #   `:ParameterCopy` (a copy of the parameter values on which the classification rests),
 #   `:classifiedWith`, `:concernsScrew` and `:concernsWorkpiece` (the operation is the order to
 #   remove the screw; it does not have it), `:hasDetectionResult` and `:DetectionResult` (the
@@ -64,7 +58,7 @@
 # - Under `cfc:Assembly` the grinder does meet the kapps_ogm question above: Core gives
 #   `cfc:hasOrigin` the domain `cfc:Assembly, cfc:Component`, so a FULL specification of
 #   `:AngleGrinder` fails on its two ranges, as one of `cfc:Assembly` itself does. Nothing here
-#   reads at that level, so it costs nothing today.
+#   reads at that level, so it costs nothing.
 # - The design says which Screw type a model is built with, and the record says which Screw type
 #   one physical Screw is. They are two properties, not one. `:hasExpectedScrewType` carries the
 #   design, on the `cfc:AssemblyType`; `:hasScrewType` carries the record, on the `:Screw`. The
@@ -145,7 +139,7 @@
     rdfs:domain :UnscrewingOperation ;
     rdfs:range cfc:Workpiece ;
     rdfs:label "concerns workpiece"@en ;
-    rdfs:comment "Links the unscrewing operation to the workpiece it works on: the product the Screw sits in. Figure 7 of the paper draws it. It is the step from the operation to the product, from which cfc:hasAssemblyType reaches the assembly type and :hasExpectedScrewType the Screw type the design calls for."@en .
+    rdfs:comment "Links the unscrewing operation to the workpiece it works on: the product the Screw sits in. It is the step from the operation to the product, from which cfc:hasAssemblyType reaches the assembly type and :hasExpectedScrewType the Screw type the design calls for."@en .
 
 :hasOperation a owl:ObjectProperty ;
     owl:inverseOf :concernsScrew ;
@@ -164,8 +158,8 @@
 # Detection thresholds and the preparation turning angle
 #
 # A Screw type holds them, and a parameter copy records them. A Screw holds none. Each
-# holder has at most one value of each. The node numbers are those of Figure 2 of the UC1
-# anomaly-detection paper.
+# holder has at most one value of each. The node numbers are those of Figure 2 of
+# Goebels et al.
 #################################################################
 
 :hasMinApproachAxialForce a owl:DatatypeProperty, owl:FunctionalProperty ;
@@ -413,7 +407,7 @@
 #################################################################
 # The screwing resource, and the capability of the anomaly detector that it calls
 #
-# Added after the artifact, for the screwing resource. Each class is a direct subclass of its Core
+# For the screwing resource. Each class is a direct subclass of its Core
 # or service class, because the middleware's check reads one rdfs:subClassOf triple and does not
 # follow a chain. The planner finds the screwing resource by its UnscrewingCapability, and the
 # screwing resource finds the anomaly detector by its ClassifyCapability.
@@ -444,7 +438,7 @@
 #################################################################
 # The anomaly detector
 #
-# Added after the artifact, for the anomaly detector. As for the screwing resource, each class is
+# For the anomaly detector. As for the screwing resource, each class is
 # a direct subclass of its service class. The detector's workflow realizes the ClassifyCapability
 # above, by which the screwing resource finds it.
 #################################################################
@@ -595,8 +589,7 @@ prov:endedAtTime a owl:DatatypeProperty, owl:FunctionalProperty ;
 # as their domain: the type-level properties have the Screw type as their domain, and a robot is
 # not a Screw type.
 #
-# The inf: block is the one of the TransferUnit demo of kapps_semantic_middleware, with the same
-# IRIs. The middleware reads the connection metadata of a parameter node only where a range
+# The middleware reads the connection metadata of a parameter node only where a range
 # declares it, and it hides from the served data model what these ranges declare.
 #################################################################
 

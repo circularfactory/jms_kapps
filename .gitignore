@@ -15,7 +15,11 @@ test-results/
 .claude/log/*/runs/
 .scratch/
 
-# The §7 experiment's results and prefills: a run on the shared store names its host, which a
-# shipped file may not; the final run is archived through the reproduction archive.
-evaluation/section_7/results/
-evaluation/section_7/prefills/
+# The commit time experiment's results and prefills: a run on the shared store names its host,
+# which a shipped file may not. The paper's run is tracked packed, in raw_data/ and reports/,
+# with the banned strings replaced; the store folders unpacked from its archives are not.
+commit_time/results/*
+!commit_time/results/raw_data/
+!commit_time/results/reports/
+commit_time/results/raw_data/*/
+commit_time/prefills/

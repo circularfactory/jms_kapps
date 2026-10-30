@@ -8,8 +8,8 @@ mapper cannot enumerate a class: `OGM.fetch` takes one `instance_iri`. Everythin
 stays an object-graph projection: reads go through one projection, not hand-written SPARQL.
 Neither writes anything.
 
-**The planner reads each grinder's Screws with the OGM projections**, and no longer needs to be
-told which grinders it works on. It finds them itself. Every Screw the grinder contains is
+**The planner reads each grinder's Screws with the OGM projections**, and is not told which
+grinders it works on: it finds them itself. Every Screw the grinder contains is
 offered — until it has an operation. The projection types each one by the range of
 `cfc:containsWorkpiece`, which is `cfc:Workpiece`, and not by its own class, so a Screw and any
 other contained workpiece cannot be told apart here. UC1's grinders hold one Screw and nothing

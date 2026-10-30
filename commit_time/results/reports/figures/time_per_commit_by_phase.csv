@@ -1,0 +1,51 @@
+store,heartbeats,kind,arm,part,n,mean_seconds,median_seconds,share_of_commit_mean
+local,on,all,kapps-shacl-on,class reads,19035.0,0.030581085263987392,0.03536,0.4748084301505453
+local,on,all,kapps-shacl-on,fetch and other requests,19035.0,0.00324782280010507,0.003332,0.050426387154448776
+local,on,all,kapps-shacl-on,update,19035.0,0.026715131179406357,0.024954,0.41478480528280337
+local,on,all,kapps-shacl-on,client remainder,19035.0,0.003863168636721828,0.004198,0.059980377412202676
+local,on,all,kapps-shacl-off,class reads,19029.0,0.031351553681223394,0.035366,0.5194654205794674
+local,on,all,kapps-shacl-off,fetch and other requests,19029.0,0.0032207900047296232,0.003288,0.053365426524524695
+local,on,all,kapps-shacl-off,update,19029.0,0.02198940343685953,0.019944,0.36434349700062735
+local,on,all,kapps-shacl-off,client remainder,19029.0,0.003791747911083084,0.00404,0.06282565589538051
+local,on,all,writes-only,update,19033.0,0.027497862869752532,0.026028,0.42693766388524174
+local,on,all,kapps-shacl-on - kapps-shacl-off,admission,,0.004725727742546829,,0.0733726534355496
+local,on,heartbeat,kapps-shacl-on,update,4333.0,0.023210983152550196,0.020594,0.5949525758212896
+local,on,heartbeat,kapps-shacl-off,update,4329.0,0.021646219681219683,0.019463,0.5777981664138159
+local,on,heartbeat,kapps-shacl-on - kapps-shacl-off,admission,,0.001564763471330513,,0.040108600816284964
+local,on,other update,kapps-shacl-on,update,8400.0,0.026607920238095238,0.0248545,0.36302276485629814
+local,on,other update,kapps-shacl-off,update,8400.0,0.021651981071428572,0.019885,0.31696300260143284
+local,on,other update,kapps-shacl-on - kapps-shacl-off,admission,,0.004955939166666666,,0.06761590994876432
+local,on,status: done,kapps-shacl-on,update,2100.0,0.027852700476190477,0.025819,0.46687277531568433
+local,on,status: done,kapps-shacl-off,update,2100.0,0.022134766666666666,0.02009,0.4097392340847683
+local,on,status: done,kapps-shacl-on - kapps-shacl-off,admission,,0.0057179338095238105,,0.09584519924758439
+local,on,status: queued,kapps-shacl-on,update,2102.0,0.034383398192197906,0.0323495,0.3118648685475776
+local,on,status: queued,kapps-shacl-off,update,2100.0,0.02537783,0.023646,0.2362956899510982
+local,on,status: queued,kapps-shacl-on - kapps-shacl-off,admission,,0.009005568192197905,,0.08168245397842439
+local,on,status: running,kapps-shacl-on,update,2100.0,0.025561060952380952,0.023671,0.6372363297195254
+local,on,status: running,kapps-shacl-off,update,2100.0,0.020512751904761907,0.0186075,0.5861159379112039
+local,on,status: running,kapps-shacl-on - kapps-shacl-off,admission,,0.005048309047619045,,0.12585416289205242
+kit,on,all,kapps-shacl-on,class reads,19022.0,0.10504430464725055,0.11677199999999999,0.640205375037131
+kit,on,all,kapps-shacl-on,fetch and other requests,19022.0,0.010298678845547261,0.010395999999999999,0.06276655907087415
+kit,on,all,kapps-shacl-on,update,19022.0,0.04442733114288718,0.043597,0.27076780879976403
+kit,on,all,kapps-shacl-on,client remainder,19022.0,0.004308758647881401,0.0044069999999999995,0.026260257092230607
+kit,on,all,kapps-shacl-off,class reads,19021.0,0.10551103180695022,0.118316,0.7104478208770583
+kit,on,all,kapps-shacl-off,fetch and other requests,19021.0,0.010408186793543977,0.010531,0.07008246910412268
+kit,on,all,kapps-shacl-off,update,19021.0,0.028239898007465434,0.027021,0.1901504862344888
+kit,on,all,kapps-shacl-off,client remainder,19021.0,0.004354298039009516,0.004517,0.02931922378433023
+kit,on,all,writes-only,update,19006.0,0.04263838514153425,0.042676,0.25986485837743184
+kit,on,all,kapps-shacl-on - kapps-shacl-off,admission,,0.016187433135421748,,0.0986562930389431
+kit,on,heartbeat,kapps-shacl-on,update,4323.0,0.03374877654406662,0.030423,0.35849341641909127
+kit,on,heartbeat,kapps-shacl-off,update,4319.0,0.027989289881917113,0.026643,0.31458209843454205
+kit,on,heartbeat,kapps-shacl-on - kapps-shacl-off,admission,,0.0057594866621495065,,0.06117964150902434
+kit,on,other update,kapps-shacl-on,update,8399.0,0.04586058554589832,0.044451,0.23784030560212555
+kit,on,other update,kapps-shacl-off,update,8402.0,0.02785024696500833,0.026595,0.1580819120146367
+kit,on,other update,kapps-shacl-on - kapps-shacl-off,admission,,0.018010338580889993,,0.09340448625082466
+kit,on,status: done,kapps-shacl-on,update,2100.0,0.04698242047619047,0.04642,0.32233106448997173
+kit,on,status: done,kapps-shacl-off,update,2100.0,0.027136842857142858,0.0260825,0.2132369126231549
+kit,on,status: done,kapps-shacl-on - kapps-shacl-off,admission,,0.019845577619047615,,0.13615403579744767
+kit,on,status: queued,kapps-shacl-on,update,2100.0,0.06016222571428572,0.058159,0.20845289295812963
+kit,on,status: queued,kapps-shacl-off,update,2100.0,0.0325047419047619,0.0313945,0.12612157387766873
+kit,on,status: queued,kapps-shacl-on - kapps-shacl-off,admission,,0.02765748380952382,,0.09582894322124266
+kit,on,status: running,kapps-shacl-on,update,2100.0,0.042387579523809525,0.0420725,0.48785505643625177
+kit,on,status: running,kapps-shacl-off,update,2100.0,0.027152501904761907,0.0262605,0.3753904937448616
+kit,on,status: running,kapps-shacl-on - kapps-shacl-off,admission,,0.015235077619047618,,0.17534640418607148

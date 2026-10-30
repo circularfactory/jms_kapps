@@ -16,8 +16,8 @@ change applies at once.
   transport and possessor, and the WarehouseManagementSystem by its class. A read that fails keeps
   what the last one read, and says why.
 - **At each read of the graph**, the handovers: each box whose possessor changed since the last
-  read that did not fail, and each new box on its origin (`handovers.py`). The first read has
-  nothing to compare with, so it lists none. It keeps the 50 newest, newest first.
+  read that did not fail, and each new box from the WMS onto its origin (`handovers.py`). The
+  first read has nothing to compare with, so it lists none. It keeps the 50 newest, newest first.
 - **Every 5 s in "graph + streams"**, the streams: where each participant serves its handover
   event stream, through `fc:hasHandoverEventStream`. The monitor follows the stream of every live
   participant, each on a thread of its own, and lets go of a participant that is no longer live. A

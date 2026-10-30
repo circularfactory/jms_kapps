@@ -8,7 +8,8 @@ topology, so the run core names the participants itself.
 The order matters. A participant starts after the participants it calls: the screwing resource
 calls the anomaly detector, and the planner dispatches to the screwing resource. The robot
 controller stand-in connects to the broker that the screwing resource's middleware hosts, so it
-comes right after it; it is a device with no service in the graph, live while its process runs.
+comes right after it; it is a device with no service in the graph, live once it has connected to
+that broker and while its process runs.
 The learner calls nobody. The planner starts last also because it reads the seeded grinders at its
 start.
 
@@ -44,6 +45,7 @@ from jms_kapps.uc1.anomaly_detector import RESOURCE as ANOMALY_DETECTOR_RESOURCE
 from jms_kapps.uc1.anomaly_detector import SAVE_UQ_OPTION
 from jms_kapps.uc1.learner_process import DEFAULT_LEARN_SECONDS
 from jms_kapps.uc1.planner import DEFAULT_TIMEOUT_SECONDS
+from jms_kapps.uc1.robot_controller import CONNECTED as ROBOT_CONNECTED
 from jms_kapps.uc1.screwing_resource import RESOURCE as SCREWING_RESOURCE_RESOURCE
 from jms_kapps.uc1.seed import (
     MQTT_BROKER_IP,
@@ -79,9 +81,10 @@ _RDFS_LABEL = "http://www.w3.org/2000/01/rdf-schema#label"
 class Participant(NamedTuple):
     """One process of a run: the resource it serves, what a person calls it, its command line,
     the classes of the workflows it registers, without which it is not ready, its service
-    class (None when the middleware does not register one), and whether it is a device, a
-    process with no service in the graph at all (the robot controller stand-in), which is live
-    while it runs."""
+    class (None when the middleware does not register one), whether it is a device, a process
+    with no service in the graph at all (the robot controller stand-in), which is live while it
+    runs, and the text that a line of a device's output holds once the device is ready (None for
+    one that is ready at its start)."""
 
     resource: IRI
     name: str
@@ -89,6 +92,7 @@ class Participant(NamedTuple):
     workflows: tuple[IRI, ...] = ()
     service: IRI | None = None
     device: bool = False
+    ready_line: str | None = None
 
 
 def participants(
@@ -104,7 +108,8 @@ def participants(
     reads the seeded grinders at its start. The robot controller stand-in comes right after the
     screwing resource, whose middleware hosts the broker it connects to; it is a device, with the
     broker and the recording of each Screw (`seed.RECORDING_OF`) on its command line and no
-    dataset, as the controller of a real cell would be configured. Each number goes on its
+    dataset, as the controller of a real cell would be configured, and it is live once it has
+    connected to the broker. Each number goes on its
     command line as `str(float(x))`, after its flag.
 
     Args:
@@ -161,6 +166,7 @@ def participants(
                 ),
             ],
             device=True,
+            ready_line=ROBOT_CONNECTED,
         ),
         Participant(
             JMS.Learner1,
@@ -253,6 +259,7 @@ def start_run(
                 participant.command,
                 workflows=participant.workflows,
                 has_service=not participant.device,
+                ready_line=participant.ready_line,
             )
     except Exception as error:
         supervisor.stop_all()

@@ -2,8 +2,7 @@
 
 It parses `uc1/ontology/integration_usecase.ttl` offline and checks the ten properties of the
 effective values (who holds each, its range, its unit, and that each is functional), the retired
-names, the superclasses, the Screw type `:M4`, the parameter copy, and the outcome vocabulary. `test_uc1_ontology_live.py` loads
-the same file into a live GraphDB and hydrates it through the object-graph mapper.
+names, the superclasses, the Screw type `:M4`, the parameter copy, and the outcome vocabulary.
 """
 
 from __future__ import annotations
@@ -49,6 +48,7 @@ PROPERTIES = {
     "hasMinScrewHeadPosition": (PLACEMENT_HOLDERS, POSITION),
     "hasMaxScrewHeadPosition": (PLACEMENT_HOLDERS, POSITION),
 }
+
 
 def uq(local_name: str) -> URIRef:
     return URIRef(UQ_NS + local_name)
@@ -252,7 +252,7 @@ def test_each_class_sits_directly_under_its_core_class(graph: Graph) -> None:
         "ScrewType": {core("ComponentType")},
         "AngleGrinder": {core("Assembly"), core("Product")},
     }
-    # The artifact's undeclared `:Product` is gone, and nothing names it any more.
+    # Nothing names an undeclared `:Product`.
     assert (term("Product"), None, None) not in graph
     assert (None, None, term("Product")) not in graph
 
@@ -298,8 +298,8 @@ def test_the_product_is_both_an_assembly_and_a_product(graph: Graph) -> None:
 
 
 def test_the_artifacts_product_class_is_gone(graph: Graph) -> None:
-    """`:Screw rdfs:subClassOf :Product` named a class that nothing declared, here and in the
-    published artifact alike. `cfc:Product` is Core's and is a different term."""
+    """No triple names `:Product`, a class that nothing declares. `cfc:Product` is Core's and is a
+    different term."""
     mine = term("Product")
 
     assert [triple for triple in graph if mine in triple] == []
@@ -428,10 +428,10 @@ def test_the_claim_is_checked_and_not_assumed(graph: Graph, why: str) -> None:
 def test_an_operation_names_its_workpiece_and_a_screw_names_its_operation(
     graph: Graph,
 ) -> None:
-    """Figure 7 of the paper draws both. `:concernsWorkpiece` is the step from the operation to the
+    """`:concernsWorkpiece` is the step from the operation to the
     product, from which `cfc:hasAssemblyType` reaches the assembly type and `:hasExpectedScrewType` the
-    Screw type the design calls for. `:hasOperation` is the back-link that gives §5.1 the
-    bidirectional traceability it claims for R4. `:hasOperation` is the `owl:inverseOf`
+    Screw type the design calls for. `:hasOperation` is the back-link from the Screw to its
+    operation. `:hasOperation` is the `owl:inverseOf`
     `:concernsScrew`, so a repository on rdfsplus-optimized infers the back-link in the operation's own
     commit; the planner also writes it explicitly."""
     assert (term("concernsWorkpiece"), RDF.type, OWL.ObjectProperty) in graph
@@ -590,8 +590,13 @@ def test_the_ontology_names_none_of_the_six_old_terms() -> None:
 UNSCREWING = "http://w3id.org/circularfactory/Unscrewing"
 
 
-@pytest.mark.parametrize("name", ["ontology/integration_usecase.ttl", "shapes/integration_usecase_shapes.ttl"])
-def test_the_file_declares_the_unscrewing_namespace_as_prefix_and_base(name: str) -> None:
+@pytest.mark.parametrize(
+    "name",
+    ["ontology/integration_usecase.ttl", "shapes/integration_usecase_shapes.ttl"],
+)
+def test_the_file_declares_the_unscrewing_namespace_as_prefix_and_base(
+    name: str,
+) -> None:
     """The namespace is spelled out here, not read from `JMS_NS`, so that the test fails when the
     file or the constant drifts from the agreed namespace."""
     text = read_asset("jms_kapps.uc1", *name.split("/"))
@@ -612,7 +617,9 @@ def uncertainty_module() -> Graph:
     )
 
 
-def test_the_uncertainty_module_declares_probsparqls_terms_and_the_domain_class() -> None:
+def test_the_uncertainty_module_declares_probsparqls_terms_and_the_domain_class() -> (
+    None
+):
     module = uncertainty_module()
 
     assert (UNCERTAINTY, RDF.type, OWL.Ontology) in module
@@ -629,7 +636,10 @@ def test_the_uncertainty_module_declares_probsparqls_terms_and_the_domain_class(
     }
     assert module.value(distribution, RDFS.domain) == uq("RandomVariable")
     assert module.value(distribution, RDFS.range) == uq("gmmLiteral")
-    assert set(module.objects(domain, RDF.type)) == {OWL.ObjectProperty, OWL.FunctionalProperty}
+    assert set(module.objects(domain, RDF.type)) == {
+        OWL.ObjectProperty,
+        OWL.FunctionalProperty,
+    }
     assert module.value(domain, RDFS.domain) == uq("RandomVariable")
     assert module.value(domain, RDFS.range) == uq("Domain")
     represented_by = uq("representedBy")
@@ -646,7 +656,10 @@ def test_the_uncertainty_module_cites_wu_et_al_and_the_domain_class_does_not() -
     assert "according to Wu et al. (2026)" in str(cited)
     assert "doi:10.1007/978-3-032-42029-9_19" in str(cited)
     (domain,) = module.objects(uq("Domain"), RDFS.comment)
-    assert str(domain) == "The range of uq:hasDomain: the value domain of a random variable."
+    assert (
+        str(domain)
+        == "The range of uq:hasDomain: the value domain of a random variable."
+    )
 
 
 def test_the_vocabulary_module_matches_the_uncertainty_module() -> None:

@@ -1,0 +1,71 @@
+cff-version: 1.2.0
+message: "Cite the paper, and this record of the software that you use."
+type: software
+title: "jms-kapps: the two use cases of the paper KAPPS, and its measurement of commit time"
+authors:
+  - family-names: Hoffmann
+    given-names: Etienne
+    affiliation: Karlsruhe Institute of Technology
+    orcid: "https://orcid.org/0009-0001-5914-9999"
+  - family-names: Weindel
+    given-names: Sören
+    affiliation: Karlsruhe Institute of Technology
+    orcid: "https://orcid.org/0009-0007-1475-1138"
+doi: 10.5281/zenodo.23772468
+license: MIT
+repository-code: "https://github.com/circularfactory/jms_kapps"
+references:
+  - type: software
+    title: >-
+      The reference implementation of the KAPPS architecture: kapps-triplestore-interface,
+      kapps-ogm and kapps-semantic-middleware
+    authors:
+      - family-names: Hoffmann
+        given-names: Etienne
+        affiliation: Karlsruhe Institute of Technology
+        orcid: "https://orcid.org/0009-0001-5914-9999"
+      - family-names: Weindel
+        given-names: Sören
+        affiliation: Karlsruhe Institute of Technology
+        orcid: "https://orcid.org/0009-0007-1475-1138"
+    doi: 10.5281/zenodo.23772750
+preferred-citation:
+  type: article
+  title: "KAPPS: A knowledge-based CPPS Architecture for the Circular Factory"
+  journal: "Journal of Manufacturing Systems"
+  status: submitted
+  year: 2026
+  doi: 10.48550/arXiv.2605.22457
+  authors:
+    - family-names: Hoffmann
+      given-names: Etienne
+      affiliation: "Institute for Material Handling and Logistics (IFL), Karlsruhe Institute of Technology"
+      orcid: "https://orcid.org/0009-0001-5914-9999"
+    - family-names: Klein
+      given-names: Jan-Felix
+      affiliation: "Department of Production Engineering, KTH Royal Institute of Technology"
+    - family-names: Weindel
+      given-names: Sören
+      affiliation: "Institute for Material Handling and Logistics (IFL), Karlsruhe Institute of Technology"
+      orcid: "https://orcid.org/0009-0007-1475-1138"
+    - family-names: Goebels
+      given-names: Max
+      affiliation: "Institute of Production Science (wbk), Karlsruhe Institute of Technology"
+    - family-names: Behrendt
+      given-names: Sebastian
+      affiliation: "Institute of Production Science (wbk), Karlsruhe Institute of Technology"
+    - family-names: Hernández
+      given-names: Daniel
+      affiliation: "Analytic Computing, Institute for Artificial Intelligence, University of Stuttgart"
+    - family-names: Thapa
+      given-names: Ratan Bahadur
+      affiliation: "Analytic Computing, Institute for Artificial Intelligence, University of Stuttgart"
+    - family-names: Fleischer
+      given-names: Jürgen
+      affiliation: "Institute of Production Science (wbk), Karlsruhe Institute of Technology"
+    - family-names: Furmans
+      given-names: Kai
+      affiliation: "Institute for Material Handling and Logistics (IFL), Karlsruhe Institute of Technology"
+    - family-names: Staab
+      given-names: Steffen
+      affiliation: "Analytic Computing, Institute for Artificial Intelligence, University of Stuttgart; Electronics and Computer Science, University of Southampton"

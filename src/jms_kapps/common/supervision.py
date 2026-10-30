@@ -2,8 +2,8 @@
 
 A launcher spawns each child through a `Supervisor`, which keeps one handle per child, keyed by
 the child's resource IRI. A child is a middleware process with a service in the graph, or a device
-process without one (use case 1's robot controller stand-in), whose state rests on its process
-alone. The supervisor prints each child's command line, in the form of the
+process without one (use case 1's robot controller stand-in), whose state rests on its process and
+on the line of its output that says it is ready, if it has one. The supervisor prints each child's command line, in the form of the
 platform's shell, so the child can be run on its own, and echoes every line the child writes with
 the child's name in front. It reads each child's state from the child's service in the graph,
 through the one reader of a service (`common.services`): a child is live once its service is live
@@ -13,15 +13,14 @@ hide the exit. Its readiness gate, `wait_until_ready`, waits until every child i
 child turns `failed`, it prints one line with the child's name and why, because a launcher without
 a page, as the bench launcher, shows nothing else: the exit code if its process exited, and, if
 its service stopped being ready while it runs, which part of ready the service misses
-(`why_not_ready`), from one more read of that service, live or not, outside the lock. The pattern
-is the Launcher of the middleware's transferunits demo.
+(`why_not_ready`), from one more read of that service, live or not, outside the lock.
 
 A stop asks each child to stop, and the child deregisters its service in its own shutdown. A
 child that the stop kills at the stop timeout, or that exited without a stop, as a crash does,
 skipped that shutdown, and its service stays registered until its heartbeat is stale: see
 `may_not_have_deregistered`. A stop signal that fails is recorded, and the stop goes on to every
-later child. The reference page on stopping, `docs/reference/stopping.md`, lists every case that
-cannot deregister, with why. How a child is asked to stop, its process group and the form of its
+later child. The setup page, `docs/setup.md`, lists every case that cannot
+deregister, with why. How a child is asked to stop, its process group and the form of its
 printed command line are the platform's (`jms_kapps.common.platforms`). The process states, and the sets
 of them that a launcher asks about, are defined here and nowhere else.
 
@@ -77,9 +76,11 @@ STOP_TIMEOUT_SECONDS = 10
 # group ended it, as a terminal's Ctrl+C does; otherwise a Ctrl+C to the process group would print
 # a "failed" line for each process. Any other child that had exited before a stop asked it stays
 # `failed` when the stop reaches it: its exit skipped the deregistration too. A child without a
-# service (`Supervisor.spawn`, `has_service=False`) is never `starting`: it is `live` from its
-# start while its process runs, and `failed` once it exits unasked; no read of the graph touches
-# it, and it never counts as one that may not have deregistered.
+# service (`Supervisor.spawn`, `has_service=False`) is `live` while its process runs, from its
+# start or, if it has a ready line, from the first line of its output that holds the ready line;
+# before that it is `starting`, and `failed` when the ready line has not come within the start
+# timeout. It is `failed` once it exits unasked. No read of the graph touches it, and it never
+# counts as one that may not have deregistered.
 State = Literal["starting", "live", "failed", "stopped", "killed"]
 
 # The states at which the readiness gate stops waiting: the child will not turn live by waiting,
@@ -176,11 +177,17 @@ def refuse_if_live(
 
 
 def why_not_ready(
-    found: Iterable[Service], workflows: Collection[IRI], now: datetime
+    found: Iterable[Service],
+    workflows: Collection[IRI],
+    now: datetime,
+    *,
+    max_age_seconds: float = MAX_HEARTBEAT_AGE_SECONDS,
 ) -> str | None:
     """Why the newest service in `found`, every service of one resource, newest heartbeat first,
     live or not, is not ready at `now` for a child that registers `workflows`: the part of ready
     it misses. None if it misses none, as when it turned ready again since the read that missed it.
+    A heartbeat older than `max_age_seconds` is stale: the age the reader of the live services
+    judged by.
 
     A deregistration removes the address and every endpoint and keeps a fresh heartbeat, so the
     address is asked before the heartbeat, and the workflows after both.
@@ -195,7 +202,7 @@ def why_not_ready(
         if beat.tzinfo is None:
             beat = beat.replace(tzinfo=UTC)
         age = (now - beat).total_seconds()
-        if age > MAX_HEARTBEAT_AGE_SECONDS:
+        if age > max_age_seconds:
             return f"its last heartbeat is {age:.0f} s old"
     missing = set(workflows) - service.workflows.keys()
     if missing:
@@ -221,8 +228,14 @@ class _Child:
     # The classes of the workflows the child registers: it is live only once its service has them.
     workflows: frozenset[IRI] = frozenset()
     # Whether the child registers a service in the graph. A device process, such as use case 1's
-    # robot controller stand-in, registers none: its state rests on its process alone.
+    # robot controller stand-in, registers none: its state rests on its process, and on its ready
+    # line if it has one.
     has_service: bool = True
+    # The text that a line of a device's output holds once the device is ready, or None for a
+    # device that is ready at its start.
+    ready_line: str | None = None
+    # Whether a line of the device's output has held `ready_line`.
+    saw_ready_line: bool = False
     state: State = "starting"
     started_at: float = field(default_factory=time.monotonic)
     stopping: bool = False
@@ -336,6 +349,10 @@ class Supervisor:
             None.
         stop_timeout: How long a stop waits for a child to exit before it kills the child.
         start_timeout: How long a child may start before it counts as failed.
+        live_heartbeat_age_seconds: How old a heartbeat may be for a service to count as live:
+            the age `services` reads by, by which the line of a child that failed judges its
+            heartbeat stale. A harness run gives both the run's age
+            (`measurement.bench.new_supervisor`).
     """
 
     def __init__(
@@ -346,8 +363,10 @@ class Supervisor:
         echo: Callable[[str], None] | None = None,
         stop_timeout: float = STOP_TIMEOUT_SECONDS,
         start_timeout: float = START_TIMEOUT_SECONDS,
+        live_heartbeat_age_seconds: float = MAX_HEARTBEAT_AGE_SECONDS,
     ) -> None:
         self._services = services
+        self._live_heartbeat_age_seconds = live_heartbeat_age_seconds
         self._service_of = service_of
         self._heartbeat_error: str | None = None
         self._echo = echo if echo is not None else _print
@@ -367,6 +386,7 @@ class Supervisor:
         *,
         workflows: Collection[IRI] = (),
         has_service: bool = True,
+        ready_line: str | None = None,
     ) -> None:
         """Start `command` as the process of `resource`, shown as `name`, which is live once its
         service has registered a workflow of each class in `workflows`.
@@ -379,10 +399,18 @@ class Supervisor:
                 registers none, and `workflows` is then empty: it is live from its start, as long
                 as its process runs, with no address, and it has failed once its process exits
                 without being asked. No read of the graph decides its state.
+            ready_line: For a device only: the text that a line of its output holds once it is
+                ready. The device is then starting until such a line comes, and failed when none
+                has come within the start timeout.
 
         Raises:
-            ValueError: If a child was spawned for `resource` already. Nothing is started then.
+            ValueError: If a child was spawned for `resource` already, or if a child with a service
+                is given a ready line. Nothing is started then.
         """
+        if has_service and ready_line is not None:
+            raise ValueError(
+                f"{name!r} has a service: its service, not a line, says it is ready."
+            )
         with self._lock:
             earlier = self._children.get(IRI(resource))
         if earlier is not None:
@@ -408,7 +436,8 @@ class Supervisor:
             process=process,
             workflows=frozenset(IRI(w) for w in workflows),
             has_service=has_service,
-            state="starting" if has_service else "live",
+            ready_line=ready_line,
+            state="starting" if has_service or ready_line is not None else "live",
         )
         with self._lock:
             self._children[child.resource] = child
@@ -421,6 +450,8 @@ class Supervisor:
             line = raw.rstrip("\n")
             with self._lock:
                 child.output.append(line)
+                if child.ready_line is not None and child.ready_line in line:
+                    child.saw_ready_line = True
             self._echo(f"{child.name}  {line}")
 
     def refresh(self) -> None:
@@ -458,8 +489,16 @@ class Supervisor:
                 if not child.runs():
                     turned.append(self._exited_unasked(child))
                 elif not child.has_service:
-                    # A device: live while it runs, whatever the graph holds.
-                    child.state = "live"
+                    # A device: live while it runs once its ready line has come, whatever the
+                    # graph holds.
+                    if child.ready_line is None or child.saw_ready_line:
+                        child.state = "live"
+                    elif now - child.started_at > self._start_timeout:
+                        turned.append(
+                            child.fail(
+                                f"it did not turn live within {self._start_timeout:g} s"
+                            )
+                        )
                 elif ready is not None:
                     child.state = "live"
                 elif child.state == "live":
@@ -491,7 +530,15 @@ class Supervisor:
             except Exception:  # noqa: BLE001
                 found = None
             if found is not None:
-                why = why_not_ready(found, child.workflows, datetime.now(UTC)) or why
+                why = (
+                    why_not_ready(
+                        found,
+                        child.workflows,
+                        datetime.now(UTC),
+                        max_age_seconds=self._live_heartbeat_age_seconds,
+                    )
+                    or why
+                )
         with self._lock:
             if child.fail_count == fail_count:
                 child.why_failed = why
@@ -609,7 +656,7 @@ class Supervisor:
         process exits with code 0 before a stop asks it has `stopped`, not `failed`.
 
         A stop signal can reach a child before the launcher asks it: a terminal's Ctrl+C, or a
-        SIGINT to the process group of `./run-uc2`, reaches every process of the launcher's
+        SIGINT to the process group of `uv run jms-uc2`, reaches every process of the launcher's
         process group at once, while the launcher still waits for the open connections of its
         own page. A child ends on Ctrl+C with code 0, once it has deregistered its service. An exit
         with any other code still turns it `failed`.

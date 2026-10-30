@@ -4,7 +4,7 @@ Every module and the WarehouseManagementSystem keeps its own stream. The graph h
 the stream lives (`fc:hasHandoverEventStream`, which each participant commits at startup), never
 its events: a monitor finds the stream through the graph and reads the events from the participant.
 
-**Two kinds for now.**
+**Two kinds.**
 
 - **`commit_refused`.** A participant emits it when the store refuses the entry of one of its
   handovers, with the store's validation report verbatim, and the WarehouseManagementSystem when
@@ -13,8 +13,8 @@ its events: a monitor finds the stream through the graph and reads the events fr
   deadlock alarm time, counted from its first ask of a Reserve, with the modules it asks
   (`asked`). The box keeps waiting.
 
-The other kinds of the full stream (a Reserve answered, a reservation dropped, an admitted commit,
-an arrival) belong to the monitor on the middleware's dashboard, which comes later.
+The stream has no other kind: a Reserve answered, a reservation dropped, an admitted commit or
+an arrival emits no event.
 
 **The event** is JSON: its `id`, its `time` (UTC, ISO 8601), the `resource` that emitted it, its
 `kind`, the `box`, the `peer` and the `transport` it is about, a `reason`, for a refusal the

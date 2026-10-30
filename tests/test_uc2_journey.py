@@ -68,7 +68,7 @@ B1 = box_iri(1)
 # The term the UC2 ontology once had for a Convey workflow, taken out since.
 CONVEY_WORKFLOW = IRI("ConveyWorkflow", base=FC_NS)
 
-# A journey of one hop takes well under a second on a local store; the shared KIT store is slower.
+# A journey of one hop takes well under a second on a local store; the shared remote store is slower.
 JOURNEY_SECONDS = 30.0
 
 
@@ -91,11 +91,10 @@ def in_order(records: list[str], expected: list[str]) -> bool:
     return all(any(record == wanted for record in found) for wanted in expected)
 
 
-@pytest.mark.paper_claim
 def test_a_box_goes_from_the_wms_over_one_hop_and_back_through_queued_running_and_done(
     dataset, records
 ):
-    """Paper claim 4 (§5.2), by the parties' own records: the hop as the code makes it. Module 2 accepts Module 1's Reserve, then its Receive, and carries the box on to
+    """By the parties' own records (§5.2): the hop as the code makes it. Module 2 accepts Module 1's Reserve, then its Receive, and carries the box on to
     the WMS, which takes it back done; the store holds a graph that breaks no rule."""
     with participants(dataset) as party:
         spawned = party.spawn()
@@ -218,14 +217,13 @@ class Exchanges:
             return [seen for seen in self.seen if seen[0] == kind]
 
 
-@pytest.mark.paper_claim
 def test_a_spawn_and_a_hop_each_make_one_commit_between_their_calls(
     dataset, records, monkeypatch
 ):
-    """Paper claims 3 and 4 (§5.2). Claim 3: a party finds a peer's workflow in the graph and
+    """A party finds a peer's workflow (§5.2) in the graph and
     calls it directly. Every party serves on a port that the system gave it at its start, so no
     address exists anywhere but in the graph, and each call goes to the endpoint that the graph
-    names for the peer's workflow of its class. Claim 4, the hop as the code makes it: the giver asks the receiver's Reserve, makes one commit, the handover, conveys
+    names for the peer's workflow of its class. The hop as the code makes it: the giver asks the receiver's Reserve, makes one commit, the handover, conveys
     the box, its own move, and calls the receiver's Receive; no party exposes a Convey.
 
     The spawn: the WMS asks Module 1's Reserve, makes one commit, which creates the box on
@@ -374,9 +372,8 @@ def test_a_spawn_onto_an_origin_with_no_route_to_the_destination_is_refused_by_i
 
 def box_stranded_on_module_3(db) -> None:
     """Setup before any party starts: Box 1 on Module 3, its transport running from Module 1 to
-    Module 2, as a hop from Module 1 leaves it. Module 1 reaches Module 2, so the store admits the
-    transport (`:ReachableDestinationShape` checks the origin); Module 3 has no connection on, so
-    it has no route to Module 2."""
+    Module 2, as a hop from Module 1 leaves it. Module 3 has no connection on, so it has no route
+    to Module 2."""
     place_box(OGM(db=db), B1, on=M3, origin=M1, destination=M2)
 
 

@@ -1,7 +1,7 @@
 #
 # The repository the jms_kapps use cases run against. `compose.yaml` creates it from this file.
-# Adapted from kapps-semantic-middleware's examples/docker/graphdb-repo-config.ttl: same SHACL
-# settings, id changed to jms-kapps, and a smaller ruleset, for the reason given at the ruleset.
+# SHACL validation is on, and the ruleset is `rdfsplus-optimized`, for the reason given at the
+# ruleset.
 # The seed clears its default graph and replaces its shapes graph on every run, so never
 # point it at a repository anything else uses.
 #
@@ -27,13 +27,12 @@
                 graphdb:read-only "false" ;
 
                 # Inference and Validation
-                # `rdfsplus-optimized` is enough here. The middleware's example repository runs
-                # `owl-max` for one entailment: that a class named only as the `rdfs:range` of a
+                # `rdfsplus-optimized` is enough here. `owl-max` adds one entailment that the
+                # object-graph mapper can need: that a class named only as the `rdfs:range` of a
                 # property is an `rdfs:Class`. The object-graph mapper refuses an IRI as a class
                 # without it. The use cases do not need it, because every class their ontologies
-                # and the middleware's shared ontologies name as a range is declared, which
-                # tests/test_ontology_declarations.py checks. The UC2 shapes follow explicit paths
-                # and need no OWL inference either.
+                # and the middleware's shared ontologies name as a range is declared. The UC2
+                # shapes follow explicit paths and need no OWL inference either.
                 #
                 # Measured on GraphDB 10.8.1, one run each: every `graphdb` test passes under either
                 # ruleset, and on the same 795 statements after a run, `owl-max` infers 1146 where

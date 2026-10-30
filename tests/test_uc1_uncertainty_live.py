@@ -106,7 +106,9 @@ def test_an_update_of_the_distribution_leaves_only_the_new_one(db, mw) -> None:
     new = measurement_literal(0.3, 0.1)
 
     OGM(db=db).commit(
-        changes=[Update(instance_iri=IRI(variable), data={str(UQ.hasDistribution): [new]})]
+        changes=[
+            Update(instance_iri=IRI(variable), data={str(UQ.hasDistribution): [new]})
+        ]
     )
 
     (row,) = distributions(db, variable)

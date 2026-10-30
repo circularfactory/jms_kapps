@@ -6,53 +6,46 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-# Changed from the artifact (`turtle/fleyconveyor_usecase_JMS.ttl` on `paper`, d3201180):
+# The design of this ontology:
 #
-# - The three prefixes declared as the empty IRI (`domain:`, `kadi:`, `sp_ins:`) are gone. They
-#   were never used, and they stopped the file loading without a client-supplied base URI.
 # - `cfc:` is the published Core (http://w3id.org/circularfactory/Core#), which the middleware
-#   loads, not the old sfb1574.kit.edu/core# namespace.
-# - Possession is Core's reified `cfc:PossessionState`, written by the middleware's handover. The
-#   binary `:hasPossession` / `:isPossessedBy` pair is gone, so `:Box` is a `cfc:Workpiece`.
-# - The `cfc_wf:` workflow layer is gone: its import, its payload blank nodes, its five
-#   `*Response` classes and the `accepts` / `receives` / `returns` restrictions, which pointed at
-#   nothing. `:refersTo*` went with it. The workflow classes are `svc:Workflow` directly.
-# - The class-level `cfc_wf:hasWorkflow` links from `:FlexConveyorModule` and
-#   `:WarehouseManagementSystem` to their workflow classes are gone, not moved to `svc:`:
-#   `svc:hasWorkflow` runs from a Service, so the move would type both classes as services. The
-#   middleware links each running service to its workflows when it registers them.
+#   loads.
+# - Possession is Core's reified `cfc:PossessionState`, written by the middleware's handover, so
+#   `:Box` is a `cfc:Workpiece`.
+# - The workflow classes are `svc:Workflow` directly. No class-level link runs from
+#   `:FlexConveyorModule` or `:WarehouseManagementSystem` to a workflow class: `svc:hasWorkflow`
+#   runs from a Service, so such a link would type both classes as services. The middleware links
+#   each running service to its workflows when it registers them.
 # - The alignment the middleware checks at registration is stated directly: each service class
 #   under `svc:Service`, each workflow class under `svc:Workflow`, each capability class under
 #   `cfc:Capability`. The check reads one `rdfs:subClassOf` triple and does not follow a chain.
-# - `:BoxTransportOperation` is new: the job of carrying one box, one individual per box, under
-#   `cfc:Operation`. `:hasBox` is new with it, and `:hasOrigin` and `:hasDestination` apply to it
-#   instead of to `:Box`. Its status is the middleware's `svc:hasOperationStatus`. The object-graph
-#   mapper finds a property of a class only by its `rdfs:domain`, so each of these properties
-#   declares one.
-# - `:AcceptBoxWorkflow` and `:AcceptBoxCapability` are gone. The destination module notifies the
-#   WarehouseManagementSystem through the middleware once the box is back, and the
-#   WarehouseManagementSystem checks the graph; no module calls a workflow of it.
-# - `:BoxTransportCapability` and `:BoxTransportWorkflow` are new. Every module provides the
-#   capability to carry a box's transport on, realized by its workflow. A `:BoxTransportOperation`
-#   is assigned to one module at a time: Core's `cfc:executedOn` names that module, and the
-#   operation implements that module's capability.
-# - A box has no lifecycle state of its own. `:hasState`, `:BoxState` and its individuals
-#   `:Created`, `:InTransit` and `:Delivered` are gone: they said again what the transport's
-#   status and the box's possessor already say, and every change had to write both.
-# - `:hasHandoverEventStream` is new: where a module's or the WarehouseManagementSystem's handover
-#   event stream is served. Each participant commits it at startup, and a monitor finds the
-#   streams through it.
-# - `:hasTransport` is new: the link from a box to its transport, the inverse of `:hasBox`. The
+# - `:BoxTransportOperation` is the job of carrying one box, one individual per box, under
+#   `cfc:Operation`. `:hasBox`, `:hasOrigin` and `:hasDestination` apply to it. Its status is the
+#   middleware's `svc:hasOperationStatus`. The object-graph mapper finds a property of a class only
+#   by its `rdfs:domain`, so each of these properties declares one.
+# - No module calls a workflow of the WarehouseManagementSystem. The destination module notifies
+#   the WarehouseManagementSystem through the middleware once the box is back, and the
+#   WarehouseManagementSystem checks the graph.
+# - `:BoxTransportCapability` and `:BoxTransportWorkflow`: every module provides the capability to
+#   carry a box's transport on, realized by its workflow. A `:BoxTransportOperation` is assigned
+#   to one module at a time: Core's `cfc:executedOn` names that module, and the operation
+#   implements that module's capability.
+# - A box has no lifecycle state of its own. The transport's status and the box's possessor say
+#   where the journey is and where the box is, and a change writes each fact once.
+# - `:hasHandoverEventStream`: where a module's or the WarehouseManagementSystem's handover event
+#   stream is served. Each participant commits it at startup, and a monitor finds the streams
+#   through it.
+# - `:hasTransport`: the link from a box to its transport, the inverse of `:hasBox`. The
 #   transport's opening writes both directions, so a module that holds a box reads its transport
 #   through the box, and no party finds a transport from the box's name.
 # - A hop between two modules works like the real FlexConveyor: the giving module asks the
 #   receiving module's Reserve, commits the handover, conveys the box, a move of its own, and
 #   calls the receiving module's Receive, its light barrier, from which the receiving module
-#   carries the box on. No module exposes a `:ConveyWorkflow` any more. The comments of
-#   `:BoxTransportOperation` and `:BoxTransportWorkflow` say so.
-# - `:ConveyWorkflow` and `:ConveyCapability` are gone. A module's convey is its own move, which no
-#   party calls, and the WarehouseManagementSystem spawns a box directly on its origin: it asks the
-#   origin's Reserve, creates the box there with its transport in one commit, and notifies the
+#   carries the box on. The comments of `:BoxTransportOperation` and `:BoxTransportWorkflow` say
+#   so.
+# - A module's convey is its own move, which no party calls, so no module exposes a workflow or a
+#   capability for it. The WarehouseManagementSystem spawns a box directly on its origin: it asks
+#   the origin's Reserve, creates the box there with its transport in one commit, and notifies the
 #   origin. The comment of `:BoxTransportOperation` says so.
 # - On the station only the module a transport is assigned to writes it: the module that passed
 #   the box on writes nothing when it cannot reach the receiving module's Receive, and the

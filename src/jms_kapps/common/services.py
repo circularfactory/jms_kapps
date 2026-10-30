@@ -19,6 +19,7 @@ takes the same rule from `live_pattern`.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -27,11 +28,14 @@ from kapps_semantic_middleware.vocabulary import SVC
 from kapps_triplestore_interface import IRI
 from rdflib.namespace import XSD
 
+from jms_kapps.common.heartbeats import live_heartbeat_age
 from jms_kapps.common.triplestore import Queryable, bindings
 
-# The middleware's own staleness threshold: it writes a heartbeat every 30 s, and its watchdog
-# sweeps a service whose heartbeat is older than 90 s.
-MAX_HEARTBEAT_AGE_SECONDS = 90.0
+# How old a heartbeat may be for its service to count as live: the middleware's own staleness
+# threshold, 90 s, unless the process was started with `JMS_KAPPS_LIVE_HEARTBEAT_AGE_SECONDS`
+# (`common.heartbeats`), as a harness run with its heartbeats off starts each participant. Read
+# once, here, so that every reader of this process judges by the same age.
+MAX_HEARTBEAT_AGE_SECONDS = live_heartbeat_age(os.environ)
 
 
 @dataclass(frozen=True)
@@ -78,6 +82,7 @@ def services(
     *,
     resource: IRI | None = None,
     workflows: Collection[IRI] = (),
+    capability_linked: bool = True,
     live_only: bool = True,
     max_age_seconds: float = MAX_HEARTBEAT_AGE_SECONDS,
 ) -> list[Service]:
@@ -87,6 +92,10 @@ def services(
         resource: Read only the services of this resource; every resource's if None.
         workflows: The classes of the workflows to read with each service. A service that has not
             registered one of them yet, or has deregistered, has no entry for it.
+        capability_linked: Whether a workflow counts only once a capability links to it. The
+            middleware writes that link last, and a caller that resolves a capability reaches the
+            workflow through it, so a readiness gate asks for it. False is for a caller that calls
+            the workflow's endpoint directly.
         live_only: False reads every service, live or not, with its address and heartbeat where
             it has them: what a check of a run reads after the run has stopped.
         max_age_seconds: How old a heartbeat may be for its service to count as live.
@@ -101,6 +110,11 @@ def services(
     of_resource = f"VALUES ?resource {{ <{resource}> }}" if resource is not None else ""
     registered = ""
     if workflows:
+        link = (
+            f"?capability <{SVC.realizedByWorkflow}> ?workflow ."
+            if capability_linked
+            else ""
+        )
         classes = " ".join(f"<{workflow_class}>" for workflow_class in workflows)
         registered = f"""
             OPTIONAL {{
@@ -108,6 +122,7 @@ def services(
                 ?workflow <{SVC.isWorkflowOf}> ?service ;
                           a ?class ;
                           <{SVC.hasEndpoint}> ?endpoint .
+                {link}
             }}
         """
     rows = bindings(

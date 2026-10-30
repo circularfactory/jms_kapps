@@ -143,8 +143,8 @@ def render(state: ScrewingState) -> str:
         + hint(
             "Curves is the id of the frame that holds the attempt's time series. Type values "
             "are the values of the Screw type that the attempt was given, in this order: "
-            f"{', '.join(prop.fragment.removeprefix('has') for prop in TYPE_LEVEL)}; the "
-            "replay ignores them. Status is "
+            f"{', '.join(prop.fragment.removeprefix('has') for prop in TYPE_LEVEL)}. "
+            "Status is "
             "the operation's status after the detector's answer, or after the screwing "
             "resource itself ended it."
         )

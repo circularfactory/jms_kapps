@@ -4,7 +4,7 @@ Every GET reads only the monitor's memory: what its background task read last (`
 two PUTs set how the monitor reads, its mode and the interval of its graph read, and change
 nothing else: the monitor writes nothing to the graph. The backend renders no HTML: `/api/state`
 is JSON, and the page in `static/` draws it. The middleware's own welcome at `/` gives way to the
-page, as the transferunits demo's station board replaces it.
+page.
 """
 
 from __future__ import annotations
@@ -97,7 +97,7 @@ def _by_name(box: IRI) -> tuple[str, str]:
     """Where `box` stands in the Boxes table: by its name, as text sorts it, and by its whole IRI
     where two names are the same.
 
-    A box is named by a UUID, which has no order a person counts in. Interim name."""
+    A box is named by a UUID, which has no order a person counts in."""
     return (str(_local(box)), str(box))
 
 

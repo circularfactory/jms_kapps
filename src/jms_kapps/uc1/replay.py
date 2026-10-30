@@ -5,13 +5,12 @@ caller gives. The screwing resource writes the result like any other frame. A fr
 time-series store already holds does not need the replay: the reader gives the same `Frame` back.
 
 **The recordings are example data:** two example recordings of an unscrewing attempt, to try the
-anomaly detector against, not training data. `success.csv` and `missing_screw.csv` in
-`data/unscrewing_timeseries/` come from the paper's artifact, commit `d320118`, without a change.
+anomaly detector against: `success.csv` and `missing_screw.csv` in
+`data/unscrewing_timeseries/`.
 
-- The units are an assumption of the demo, not a property of the files: the replay takes the
-  ontology's units (newton, newton metre, millimetre, second) and copies the values without a
-  conversion.
-- Their `Time` column is taken to be in seconds, as part of that assumption.
+- The replay takes the ontology's units (newton, newton metre, millimetre, second) and copies the
+  values without a conversion.
+- Their `Time` column is taken to be in seconds.
 - Their phases come from their last column, `comment`, which a person wrote by hand. The replay
   maps each of its labels to a phase in `PHASE_OF_LABEL`. A label that names no phase gives no
   phase. The one label it maps against its wording is the touching sample's: the labels call it

@@ -1,0 +1,1335 @@
+{
+  "store": "kit",
+  "server": {
+    "url": "https://graphdb.[redacted private-hosts 1]",
+    "version": "10.8.5",
+    "edition": "GRAPHDB_ENTERPRISE",
+    "licensed_cores": 4,
+    "ruleset": "rdfsplus-optimized",
+    "heap_max_bytes": 12884901888
+  },
+  "client": {
+    "cpu": "AMD Ryzen 9 7900X 12-Core Processor",
+    "logical_cpus": 24,
+    "memory_bytes": 66585944064,
+    "os": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39",
+    "store_on_this_host": false
+  },
+  "jms_kapps": {
+    "version": "0.0.4",
+    "commit": "bc2d4d5edfffc4323a5fe0adeb1ce3dbb2e4bdba",
+    "source": "file:///home/etienneh/code/jms_kapps/[redacted banned-path-fragments 1]worktrees/final-run-2026-10-27",
+    "modified": false
+  },
+  "repetition_orders": [
+    {
+      "heartbeats": "on",
+      "repetition": 1,
+      "arms": [
+        "kapps-shacl-on",
+        "writes-only",
+        "kapps-shacl-off"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 2,
+      "arms": [
+        "kapps-shacl-off",
+        "kapps-shacl-on",
+        "writes-only"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 3,
+      "arms": [
+        "kapps-shacl-on",
+        "writes-only",
+        "kapps-shacl-off"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 4,
+      "arms": [
+        "kapps-shacl-off",
+        "kapps-shacl-on",
+        "writes-only"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 5,
+      "arms": [
+        "kapps-shacl-on",
+        "writes-only",
+        "kapps-shacl-off"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 6,
+      "arms": [
+        "kapps-shacl-off",
+        "kapps-shacl-on",
+        "writes-only"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 7,
+      "arms": [
+        "kapps-shacl-on",
+        "writes-only",
+        "kapps-shacl-off"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 8,
+      "arms": [
+        "kapps-shacl-off",
+        "kapps-shacl-on",
+        "writes-only"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 9,
+      "arms": [
+        "kapps-shacl-on",
+        "writes-only",
+        "kapps-shacl-off"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 10,
+      "arms": [
+        "kapps-shacl-off",
+        "kapps-shacl-on",
+        "writes-only"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 11,
+      "arms": [
+        "kapps-shacl-on",
+        "writes-only",
+        "kapps-shacl-off"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 12,
+      "arms": [
+        "kapps-shacl-off",
+        "kapps-shacl-on",
+        "writes-only"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 13,
+      "arms": [
+        "kapps-shacl-on",
+        "writes-only",
+        "kapps-shacl-off"
+      ]
+    },
+    {
+      "heartbeats": "on",
+      "repetition": 14,
+      "arms": [
+        "kapps-shacl-off",
+        "kapps-shacl-on",
+        "writes-only"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 1,
+      "run_id": "20261027-180421-e676",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "status: done": 150,
+        "status: running": 150,
+        "operation": 599,
+        "heartbeat": 307,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.8,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 1,
+      "run_id": "20261027-181812-8d50",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "heartbeat": 309,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.43,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 2,
+      "run_id": "20261027-182514-8f6a",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "heartbeat": 307,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.305,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 2,
+      "run_id": "20261027-183217-5bb5",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "heartbeat": 308,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.39,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 3,
+      "run_id": "20261027-184613-02ad",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "heartbeat": 305,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.225,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 3,
+      "run_id": "20261027-190003-8549",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "heartbeat": 309,
+        "status: done": 150,
+        "status: running": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.42,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 4,
+      "run_id": "20261027-190704-fb21",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150,
+        "heartbeat": 308
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.31,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 4,
+      "run_id": "20261027-191408-b4d3",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "heartbeat": 310,
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.195,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 5,
+      "run_id": "20261027-192753-04c3",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "heartbeat": 309,
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.32,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 5,
+      "run_id": "20261027-194146-13d8",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: done": 150,
+        "status: running": 150,
+        "heartbeat": 308,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.359999999999999,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 6,
+      "run_id": "20261027-194850-7745",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "heartbeat": 310,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.38,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 6,
+      "run_id": "20261027-195553-6f2a",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "heartbeat": 309,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.3,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 7,
+      "run_id": "20261027-200944-c9c1",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "heartbeat": 310,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.81,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 7,
+      "run_id": "20261027-202330-a81b",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "heartbeat": 308,
+        "status: done": 150,
+        "status: running": 150,
+        "operation": 599,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.8,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 8,
+      "run_id": "20261027-203033-3a7d",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150,
+        "heartbeat": 310
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.8,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 8,
+      "run_id": "20261027-203733-67af",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "heartbeat": 310,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.76,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 9,
+      "run_id": "20261027-205125-49aa",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "heartbeat": 310,
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.8,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 9,
+      "run_id": "20261027-210515-c19a",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "heartbeat": 310,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.824999999999999,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 10,
+      "run_id": "20261027-211215-073e",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "heartbeat": 307,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.76,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 10,
+      "run_id": "20261027-211916-985b",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "heartbeat": 309,
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.8,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 11,
+      "run_id": "20261027-213309-f846",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "heartbeat": 309,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.76,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 11,
+      "run_id": "20261027-214700-49b3",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 601,
+        "heartbeat": 308,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.81,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 12,
+      "run_id": "20261027-215401-81df",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 601,
+        "status: running": 150,
+        "status: done": 150,
+        "heartbeat": 307,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.8,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 12,
+      "run_id": "20261027-220102-7e83",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "heartbeat": 309,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.755,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 13,
+      "run_id": "20261027-221502-c869",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "heartbeat": 309,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.845,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 13,
+      "run_id": "20261027-222855-81b4",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 601,
+        "heartbeat": 308,
+        "status: running": 150,
+        "status: done": 150,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.76,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-off",
+      "heartbeats": "on",
+      "repetition": 14,
+      "run_id": "20261027-223557-825c",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: running": 150,
+        "status: done": 150,
+        "heartbeat": 310,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.8,
+      "other_activity": "none"
+    },
+    {
+      "arm": "kapps-shacl-on",
+      "heartbeats": "on",
+      "repetition": 14,
+      "run_id": "20261027-224258-66db",
+      "run_kind": "uc2",
+      "outcome": "completed",
+      "valid": true,
+      "checks_made": [
+        "one accepted done or failed",
+        "at most one accepted running",
+        "no done before its running",
+        "the matcher saw the graph's ends",
+        "deadlock alarm"
+      ],
+      "failed_checks": [],
+      "commits_admitted_in_window": {
+        "operation": 600,
+        "status: done": 150,
+        "status: running": 150,
+        "heartbeat": 309,
+        "status: queued": 150
+      },
+      "commits_not_admitted_in_window": {},
+      "refusals_in_window": {},
+      "timed_out_in_window": 0,
+      "connection_dropped_in_window": 0,
+      "spawns_offered_in_window": 150,
+      "spawns_accepted_in_window": 150,
+      "client_cpu_median_percent": 6.76,
+      "other_activity": "none"
+    }
+  ],
+  "replays": [
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 1,
+      "run_id": "20261027-181149-705c",
+      "replayed_run": "20261027-180421-e676",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 658,
+      "writes_in_the_window": 1357,
+      "verified_receipts": 2015,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.010388,
+      "overtaking_writes": 2,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 2,
+      "run_id": "20261027-183951-d2d4",
+      "replayed_run": "20261027-183217-5bb5",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 660,
+      "writes_in_the_window": 1359,
+      "verified_receipts": 2019,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.005196,
+      "overtaking_writes": 3,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 3,
+      "run_id": "20261027-185345-84f2",
+      "replayed_run": "20261027-184613-02ad",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 661,
+      "writes_in_the_window": 1357,
+      "verified_receipts": 2018,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.00094,
+      "overtaking_writes": 1,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 4,
+      "run_id": "20261027-192138-4481",
+      "replayed_run": "20261027-191408-b4d3",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 661,
+      "writes_in_the_window": 1360,
+      "verified_receipts": 2021,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.000896,
+      "overtaking_writes": 3,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 5,
+      "run_id": "20261027-193523-3088",
+      "replayed_run": "20261027-192753-04c3",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 660,
+      "writes_in_the_window": 1360,
+      "verified_receipts": 2020,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.005985,
+      "overtaking_writes": 2,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 6,
+      "run_id": "20261027-200327-3dd2",
+      "replayed_run": "20261027-195553-6f2a",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 661,
+      "writes_in_the_window": 1359,
+      "verified_receipts": 2020,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.001204,
+      "overtaking_writes": 2,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 7,
+      "run_id": "20261027-201711-3005",
+      "replayed_run": "20261027-200944-c9c1",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 659,
+      "writes_in_the_window": 1359,
+      "verified_receipts": 2018,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.000833,
+      "overtaking_writes": 5,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 8,
+      "run_id": "20261027-204506-cd29",
+      "replayed_run": "20261027-203733-67af",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 659,
+      "writes_in_the_window": 1360,
+      "verified_receipts": 2019,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.000694,
+      "overtaking_writes": 2,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 9,
+      "run_id": "20261027-205854-915b",
+      "replayed_run": "20261027-205125-49aa",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 660,
+      "writes_in_the_window": 1360,
+      "verified_receipts": 2020,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.000613,
+      "overtaking_writes": 1,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 10,
+      "run_id": "20261027-212648-b755",
+      "replayed_run": "20261027-211916-985b",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 663,
+      "writes_in_the_window": 1359,
+      "verified_receipts": 2022,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.009512,
+      "overtaking_writes": 3,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 11,
+      "run_id": "20261027-214039-b3fc",
+      "replayed_run": "20261027-213309-f846",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 661,
+      "writes_in_the_window": 1359,
+      "verified_receipts": 2020,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.000697,
+      "overtaking_writes": 1,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 12,
+      "run_id": "20261027-220837-4abf",
+      "replayed_run": "20261027-220102-7e83",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 661,
+      "writes_in_the_window": 1359,
+      "verified_receipts": 2020,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.000544,
+      "overtaking_writes": 0,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 13,
+      "run_id": "20261027-222233-05b1",
+      "replayed_run": "20261027-221502-c869",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 663,
+      "writes_in_the_window": 1359,
+      "verified_receipts": 2022,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.000885,
+      "overtaking_writes": 3,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    },
+    {
+      "arm": "writes-only",
+      "heartbeats": "on",
+      "repetition": 14,
+      "run_id": "20261027-225031-5986",
+      "replayed_run": "20261027-224258-66db",
+      "mode": "writes only",
+      "outcome": "completed",
+      "valid": true,
+      "writes_before_the_window": 657,
+      "writes_in_the_window": 1360,
+      "verified_receipts": 2017,
+      "late_writes": 0,
+      "largest_lateness_seconds": 0.000862,
+      "overtaking_writes": 1,
+      "mismatches": 0,
+      "not_comparable": 0,
+      "mismatched_writes": [],
+      "other_activity": "none"
+    }
+  ],
+  "replays_with_mismatches": [],
+  "runs_with_refused_spawns": [],
+  "runs_without_spawn_counts": []
+}

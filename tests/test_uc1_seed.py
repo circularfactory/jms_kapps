@@ -2,7 +2,7 @@
 thresholds.
 
 These tests need no store. What they check is the one thing a seed must get right: that the two
-recordings the paper's artifact ships classify as what their names say, under the values the seed
+example recordings classify as what their names say, under the values the seed
 writes. A threshold that does not fit those recordings makes the demo report a wrong outcome for a
 good screw, and raise on the missing one. `test_uc1_seed_live.py` writes the seed to a store.
 """
@@ -44,7 +44,7 @@ from jms_kapps.uc1.seed import (
 )
 from jms_kapps.uc1.vocabulary import JMS, PLACEMENT, TYPE_LEVEL
 
-# What each of the artifact's two recordings must classify as. Their names say it, and a demo that
+# What each of the two example recordings must classify as. Their names say it, and a demo that
 # says anything else is showing the thresholds, not the screw.
 EXPECTED = {"success": "ScrewIntact", "missing_screw": "MissingScrew"}
 
@@ -61,7 +61,7 @@ def seeded_values():
 
 @pytest.mark.parametrize("recording", sorted(EXPECTED))
 def test_each_recording_of_the_artifact_classifies_as_its_name(recording: str) -> None:
-    """The acceptance the seed exists for. With `:M4`'s example values and placement values
+    """What the seed exists for. With `:M4`'s example values and placement values
     that do not fit, `success` reaches `LooseAnchor` or `HeadOccluded` and `missing_screw` raises,
     because the screw-head band then sits where the recording never touches and the preload is
     reached only at the last sample."""
@@ -76,8 +76,7 @@ def test_the_seed_covers_every_recording_the_artifact_ships() -> None:
 
 
 def test_the_loosening_minimum_stays_above_the_preload_minimum() -> None:
-    """So that a force held at the preload level is not read as a rise.
-    The ticket of the UC1 runtime names this as a criterion of the seed."""
+    """So that a force held at the preload level is not read as a rise."""
     assert (
         M4_VALUES[JMS.hasMinLooseningAxialForce]
         > M4_VALUES[JMS.hasMinPreloadAxialForce]

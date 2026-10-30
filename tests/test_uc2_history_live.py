@@ -68,8 +68,8 @@ def db(dataset) -> TripleStore:
 
 
 def a_launch_s_reset(db: TripleStore, *, collect_history: bool) -> None:
-    """What a launch of the pair from the Launcher seeds, with the option or without it."""
-    TripleStoreGraph(db).seed(load_topology("pair"), 0, collect_history=collect_history)
+    """What a launch of the line from the Launcher seeds, with the option or without it."""
+    TripleStoreGraph(db).seed(load_topology("line"), 0, collect_history=collect_history)
 
 
 def middleware(ogm: OGM, module: IRI) -> SemanticMiddleware:
@@ -129,6 +129,6 @@ def test_a_past_possessor_is_read_back_by_a_query_that_names_the_box(db):
         f"{{ <{box}> <{CFC.hasPossessedWorkpiece}> ?state }}",
     )
     assert [str(row["state"]) for row in state_then] == [possession_state(db, first)]
-    # The possessor then, by the query the reference page on past possessions shows.
+    # The possessor then, by the history module's query.
     possessor_then = bindings(db, possessor_query(box, then))
     assert [str(row["possessor"]) for row in possessor_then] == [str(first)]

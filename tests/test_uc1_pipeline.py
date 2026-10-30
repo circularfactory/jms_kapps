@@ -47,7 +47,7 @@ pytestmark = [
 ]
 
 # The screwing resource, built and never served, because a commit needs only its object-graph
-# mapper. Neither IRI is declared; use case 1's participants are not built yet.
+# mapper. Neither IRI is declared.
 SCREWING_RESOURCE = IRI("TestScrewingResource", base=JMS_NS)
 SCREWING_SERVICE = IRI("TestScrewingService", base=JMS_NS)
 # The Capability each operation implements: the screwing resource's.

@@ -88,7 +88,6 @@ class FC:
     )
     DoneTransportBoxReleasedShape = IRI("DoneTransportBoxReleasedShape", base=FC_NS)
     BoxOnModuleHasTransportShape = IRI("BoxOnModuleHasTransportShape", base=FC_NS)
-    ReachableDestinationShape = IRI("ReachableDestinationShape", base=FC_NS)
 
 
 def local_name(iri: str) -> str:
@@ -143,20 +142,19 @@ def box_iri(n: int) -> IRI:
 
 
 UUID_BOX_PREFIX = "Box-"
-"""What the local name of a box named by a UUID starts with, before its UUID (interim)."""
+"""What the local name of a box named by a UUID starts with, before its UUID."""
 
 
 def uuid_box_iri(box_id: uuid.UUID) -> IRI:
     """The IRI of the box named by the UUID `box_id`: `Box-<UUID>`, in the instances'
-    namespace, as the WarehouseManagementSystem and the prefill name their boxes. Interim name."""
+    namespace, as the WarehouseManagementSystem and the prefill name their boxes."""
     return IRI(f"{UUID_BOX_PREFIX}{box_id}", base=FCI_NS)
 
 
 def new_box_iri() -> IRI:
     """The IRI of a new box, named by a new random UUID (version 4): how the
     WarehouseManagementSystem names each box it spawns, so that more than one middleware can
-    create boxes without a shared number, and without reading the boxes in the graph. Interim
-    name.
+    create boxes without a shared number, and without reading the boxes in the graph.
     """
     return uuid_box_iri(uuid.uuid4())
 

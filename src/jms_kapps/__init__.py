@@ -5,9 +5,7 @@ learner, coordinated through the knowledge graph. `uc2` is the decentral FlexCon
 one process for each conveyor module, which hand boxes over to each other. `common` holds what
 both of them use.
 
-All Python here is built against `kapps_semantic_middleware`. The ontology, the shapes and the
-time-series frames come from the artifact that the paper describes. The Python of that artifact
-does not: it is written against a different middleware, and it is not carried forward.
+All Python here is built against `kapps_semantic_middleware`.
 """
 
 __all__ = ["__version__"]

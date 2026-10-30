@@ -42,7 +42,7 @@ spawn due, a box spawned or a spawn refused with why; every transport ended, don
 reason, within 5 minutes after the rate is 0; and a clean end of the run. It prints the counts by
 reason.
 
-A fourth, the run of the strategies, starts on the pair and launches the grid from the Launcher,
+A fourth, the run of the strategies, starts on the line and launches the grid from the Launcher,
 as the page does, with `real` for both strategies and every transit time 0, then sets the spawn
 rate to 30 boxes a minute for 2 minutes, then to 0. It finds every process on the dataset the
 run names, with its strategy on its command line; every spawned box arrived, or its transport
@@ -120,8 +120,7 @@ pytestmark = [
 
 M1, M2, M3, M4, M5, M6 = (module_iri(n) for n in range(1, 7))
 
-# The merge of two streams is the shipped topology `merge-fault-demo`: the live
-# suite no longer keeps a copy of its own. Two streams into Module 4, the exit: Module 2 over
+# The merge of two streams is the shipped topology `merge-fault-demo`. Two streams into Module 4, the exit: Module 2 over
 # Module 3, and Module 1 over Module 5 and Module 6. Module 3 and Module 6 hand boxes to Module 4,
 # and only Module 5 to Module 6.
 #
@@ -876,7 +875,7 @@ STRATEGIES_RATE = 30.0
 STRATEGIES_SECONDS = 120.0
 STRATEGIES_DUE = round(STRATEGIES_RATE * STRATEGIES_SECONDS / 60)
 
-PAIR_PROCESSES = len(shipped_topology("pair").modules) + 2
+LINE_PROCESSES = len(shipped_topology("line").modules) + 2
 
 # A launch from the page stops every process, clears the dataset, seeds and starts the grid.
 LAUNCHED_WITHIN_SECONDS = 180.0
@@ -908,12 +907,12 @@ def module_processes_shown(run: Run) -> tuple[list[str], str]:
 def test_the_grid_launched_from_the_launcher_with_real_for_both_settles_every_spawned_box(
     dataset,
 ):
-    """The ticket's live run: the grid launched from the Launcher with `real` for both strategies
+    """A live run: the grid launched from the Launcher with `real` for both strategies
     and every transit time 0, the spawn rate at 30 boxes a minute for 2 minutes, then 0. Every
     process runs against the dataset the run names, with its strategy on its command line.
     Within 5 minutes after the rate is 0, every spawned box has reached its destination or its
     transport has ended failed with a reason, and the state names `real` for both."""
-    with running(dataset, "pair", PAIR_PROCESSES) as run:
+    with running(dataset, "line", LINE_PROCESSES) as run:
         run.wait_until_live()
         launched = launch_from_the_page(
             name="grid", transit_time=0, module_strategy="real", wms_strategy="real"

@@ -9,6 +9,193 @@ for the version being released, and stops the release if there is no such headin
 as the work lands, not at release time. Name that heading nowhere else in this file: the release
 mechanism insists on finding exactly one.
 
+## 0.1.0 — 2026-10-30
+
+### Added
+
+- The paper's commit time run is in the repository, packed: its raw data in
+  `commit_time/results/raw_data/`, one tar.xz per used repetition and store (14 repetitions of
+  two stores; repetition 15 is excluded, as its `parameters.json` records), with its
+  `parameters.json`, its spec under the name the run wrote, `MANIFEST.json` and a README; and in
+  `commit_time/results/reports/` what the scripts derive from those archives: per store the
+  index and the results page, the figure script's output and `REPRODUCE.md`, the steps to unpack
+  the archives, redraw the figure and repeat a run. `commit_time/pack.py`
+  (`jms_kapps.commit_time.packing`) packs a finished run so. It reads only the run's folder,
+  leaves out the repetitions that `parameters.json` excludes, refuses a run whose records name
+  more than one jms_kapps commit, or none, replaces each string the release's hygiene checks ban
+  with a placeholder and lists each replacement, copies a file that is not text unchanged, and
+  ships a report over 50 MB as tar.xz. The experiment script packs its run so at its end.
+- A recorded refusal of use case 2, `docs/recorded-refusal.md`: one handover onto an
+  occupied module, without a reservation, refused by the triple store at
+  `:FlexConveyorModulePossessionShape` in a real run of the write path, with the commit that was
+  attempted, the validation report verbatim as the store sent it and as the module received it,
+  the state after the refusal and the recording's provenance. The page prints the report as Turtle
+  in the form of the paper's Listing 1. The report is `tests/reports/skip-reserve.nq`, which
+  replaces the earlier recording, with a Turtle copy beside it. `scripts/record_uc2_refusal.py`,
+  which ships, makes the recording in one run on the dataset it is given, and a live test makes
+  it again and compares the report with the committed one as RDF graphs. Recorded on
+  kapps-semantic-middleware 0.2.6, kapps-ogm 0.3.3 and kapps-triplestore-interface 2.2.3, with
+  the `http://` namespaces.
+- The video of the robot cell that the paper's Section 5.1 promises,
+  `docs/videos/robot_unscrewing.mp4`, linked from the landing page of use case 1.
+- The replay of the store-only baseline (`writes_only=True` of
+  `jms_kapps.commit_time.baseline`'s `read_recorded_run` and `run_baseline`, which the
+  experiment script runs) replays the recorded writes of a UC2 run alone, with no recorded read
+  and no login: the "replay" rows of the commit time figure. The harness
+  verifies each checked write's receipt right after the write's own answer, unmeasured, and a
+  receipt's removal waits for it, so an update answered after its recorded query's offset no
+  longer reads as "not applied". Every replayed write keeps its recorded send time, span ids,
+  category, recorded outcome and applied state, whether it overtook the participant's previous
+  write, and whether its outcome is the recorded one; a replay with a mismatch is invalid and the
+  table leaves it out. The record's `replay.mode` says "writes only" or "all requests"; a replay
+  without the option is otherwise unchanged.
+
+- The round-robin WMS strategy `roundrobin`, "Round robin (synthetic)", in
+  `jms_kapps.commit_time.round_robin`. The WarehouseManagementSystem takes the entry modules in
+  turn, the first after the last, and sends each box to the exit straight below its origin, so
+  that every entry module spawns at a fixed rate and every box takes the same lane. A turn whose
+  entry module is not free is refused as no candidate, and the slot is lost, never given to
+  another module. `jms-uc2 --wms-strategy`, the Launcher's picker and the harness's configuration
+  find it by name.
+
+- The commit time experiment, one command: `commit_time/experiment.py` runs use case 2 on the
+  reference implementation with SHACL on and off on the remote store and then on the local
+  GraphDB, replays each SHACL-on run right after it, leaves one folder per store (the index of
+  runs `arms.json` and the results page `results.md` and `results.json`), then makes the figures
+  and packs the run. It builds its two configurations itself. Every parameter is in its
+  `FULL_RUN` block: the round-robin WMS strategy at 30 boxes/min, heartbeats on, 14 repetitions
+  whose order alternates (odd ones SHACL on first, even ones SHACL off first) and a 300 s window.
+  `--debug` takes the small numbers of `DEBUG_RUN`: the cross at 6 boxes a minute over a 30 s
+  window, with both heartbeat levels. `--stores` and
+  `--repetitions` override them. A run whose window has a refused spawn, or whose record
+  counts no spawns, is named in the results page and makes the exit code 1, as a replay with an
+  outcome mismatch does; the script goes on. On a store that is not on loopback it starts only with
+  `TRIPLESTORE_ALLOW_DESTRUCTIVE=1` set on the command. The harness gains
+  `jms_kapps.commit_time.results` (the index and the page) and `spec.replay_fields`, the fields
+  of a replay's record that name the spec.
+
+- The commit time paper figure. `commit_time/figure.py` writes `commit-time-paper.pdf` and `.png`
+  (the PNG at 600 dpi), to the paper's figure spec: one figure at heartbeats on, 78 × 70 mm with
+  every glyph at 7 pt, a row for SHACL on, SHACL off and "replay" of the local store and of the
+  remote store. Each row label gives the row's n on a second line,
+  counted from the commits its box draws; the panel letters stand at the top left of each
+  panel, the axis titles are "time per commit (ms)" and "mean time per commit (ms)". Panel (a), with
+  `time_per_commit.csv`, draws box plots on a log axis, the mean as a diamond, whiskers at the 1st
+  and the 99th percentile, a circle for every commit of 1 s or more (none for the commits beyond
+  the whiskers under 1 s) and a dashed line at 3 s labelled "3 s". Panel (b), with
+  `time_per_commit_by_phase.csv`, shows where a commit's time goes, the mean of four parts stacked, with each
+  bar's mean in whole ms; Δ, the mean whole commit of SHACL on minus that of SHACL off, is not in
+  the figure. The legend shows the symbols of panel (a), the whiskers named "1st–99th percentile"
+  (the circle only if a row has one), then the four parts row by row. The figure's numbers for the
+  caption and the text (n per row, Δ with its bootstrap interval, the
+  class phases, the heartbeat share and the count and share of commits of 1 s or more per row) go
+  into `figures.json` under `numbers`. A test reads the written PDF for its page size and its
+  smallest glyph (pdfplumber, development group only).
+- The README says how to cite: the paper, as submitted to the Journal of Manufacturing Systems,
+  `jms-kapps` as the paper's supplementary material (doi:10.5281/zenodo.23772468), and the
+  reference implementation of the KAPPS architecture, its three libraries
+  (doi:10.5281/zenodo.23772750). `CITATION.cff` carries the same, with the paper as the preferred
+  citation.
+
+### Changed
+
+- jms_kapps requires kapps-semantic-middleware 0.3.0, kapps-ogm 0.4.0 and
+  kapps-triplestore-interface 2.3.0 or later within their minor versions; the lock moves to them.
+- The docs are six pages: the README, `docs/setup.md`, `docs/use-case-1.md`,
+  `docs/use-case-2.md`, `docs/glossary.md` and `commit_time/README.md`, beside the recorded
+  refusal. Each page states only what a reader needs to find, run or check what the paper states.
+  The user guide and the pages under `docs/reference/` are gone.
+  A table at the top of the README links each item of the paper to the page or the library that
+  holds it. The developers' README of the measurement harness does
+  not ship. `CITATION.cff` gives the paper's DOI in its preferred citation.
+  Every name marked interim in an earlier entry is final.
+- `jms-uc2 --help`: `--topology` takes a module list, and `--transit-time` gives its default, 3.
+  `commit_time/figure.py --help` describes the time of a commit in the reference implementation
+  against the replay. The refusal of a topology names its format, and says that use case 2 does
+  not read the short topology document.
+- The development status in `pyproject.toml` is `4 - Beta`.
+
+- The measurement of commit time keeps only what the final run and its figure need. The figure
+  script writes the paper figure with its two tables (`time_per_commit.csv`, `time_per_commit_by_phase.csv`),
+  the per-commit tables and the manifest; the CDF and box figures, the percentiles and the phase
+  table are gone. The harness loses the sweep, its rounds, heavy parts and precision rule, the
+  ramp and the ramp comparison, the approval files and the `approval` module, the arm latency, the
+  run report and table, the grid generator, the `southward` strategies, the earlier iterations'
+  specs, configurations and topologies, and the commands `jms-eval`,
+  `jms-eval-uc2`, `jms-eval-sweep`, `jms-eval-table`, `jms-eval-report`, `jms-eval-baseline`
+  and `jms-live-store`.
+- The measurement of commit time takes the paper's words, "the time of a commit", and is named
+  for what it is, a measurement of the implementation on use case 2: the
+  folder `evaluation/section_7/` is `commit_time/`, the package `jms_kapps.evaluation` is
+  `jms_kapps.commit_time`, the extra `evaluation` is `commit-time`
+  (`uv sync --extra commit-time`), and the `roundrobin` entry point loads
+  `jms_kapps.commit_time.round_robin`. A store folder's results page is `results.md` and
+  `results.json`, written by `jms_kapps.commit_time.results`. A run's dataset
+  is named `commit-time-<run id>` (was `eval-<run id>`). The experiment writes its spec as
+  `commit_time.toml`, series `commit-time`, and a new prefill names its generator
+  `jms_kapps.commit_time.prefill`; records written before keep their names and are read as they
+  are. No alias of an old name remains, and a test keeps the old names out of the shipped tree.
+- The commit time measurement calls its second store "the remote store". The paper figure labels
+  that row group "remote"; the CSVs' `store` column keeps the folder names `kit` and `local`, and
+  `figures.json` says "remote" in the `group` of each row. The prose of the measurement's
+  READMEs, docstrings, comments and glossary entries says "the remote store" where it said "the
+  server", "the KIT store" or "KIT". The drain counts the transports that the
+  WarehouseManagementSystem's log names.
+- The README sets up once, with one block for Linux and macOS and one for Windows, whose every
+  line runs as pasted. Then `uv run jms-uc1` and `uv run jms-uc2` start the use cases on every
+  operating system.
+- The local GraphDB of `compose.yaml` is 10.8.5, the remote store's version, on a fresh volume,
+  `graphdb-data-10-8-5`; the volume of 10.8.1, `graphdb-data`, is left as it was. Its heap stays
+  2g unless `JMS_KAPPS_GRAPHDB_HEAP` names another (the commit time experiment starts it with 12g).
+- The documentation site publishes the README and the pages under `docs/`, and no generated
+  module pages. A link between two of these files is a link between their
+  pages on the site; an image or the video loads from the public repository, and a link to any
+  other file points at it in the public repository, at the release's tag.
+
+### Removed
+
+- Use case 1's sequence page: the button *Sequence* and the route `/sequence` of use case 1's page,
+  and the page's file and its copy in `docs/reference/`.
+- The pytest marker `paper_claim` and its development test. The tests that show what the paper
+  claims run with `uv run pytest --dataset <name>`, and no test names a numbered claim.
+
+- The SHACL-SPARQL rule of use case 2, the reachable destination, with its shapes file
+  `flexconveyor_usecase_sparql_shapes.ttl`, the commands `jms-uc2 audit`,
+  `jms-uc2 reachable-destination` and `jms-uc2 capability-resource`, their guide sections, README
+  rows and tests, and the `sparql_shapes` option of the seed. The capability shape stays in both
+  use cases' shapes files, and the WarehouseManagementSystem's own check that a destination is
+  reachable stays.
+- The guide's section on the transferunits demo of the semantic middleware, its README row, the
+  extra `transferunits-demo` and its lock entries, and the dataset `kapps-demo` of the local stack:
+  its repository configuration, the compose file's creation of it and its health check. The
+  local stack creates `jms-kapps` only.
+- The shipped topologies `pair` and `tee`, with every page and test that names them. The shipped
+  topologies are `cross`, `grid`, `line` and `merge-fault-demo`.
+- `./run-uc2`, and its tests: the README's setup starts the local triple store and sets its
+  variables, and `uv run jms-uc2` runs use case 2.
+- The page on the assets. The seed's load of the middleware's operation-status shape is stated
+  with the dataset.
+
+### Fixed
+
+- `jms-uc1` counts the robot controller stand-in live only once it has connected to the broker,
+  so it says "Use case 1 runs" only when a press of Unscrew reaches the robot.
+- A participant counts as live only once a capability links to each of its workflows. A press of
+  Unscrew right after the readiness gate, as `jms-uc1 infeasible-operation` makes, could come
+  before that link, and the press was refused because no service could be resolved.
+
+- The UC2 monitor lists the WMS's handover of a new box to its origin also when no read finds the
+  box there. The origin commits its handover to the next module at once, with no move before it,
+  so on a store that answers in a few milliseconds the box stays on its origin for much less than
+  one read, and the first read finds it on the next module. Such a box now shows the WMS's
+  handover to its origin and one handover from its origin to where the read found it, as two
+  handovers between two reads show as one; before, it showed neither. A spawn in the GUI from
+  Module 2 shows "WarehouseManagementSystem1 → Module2" again.
+- Use case 1 runs on Windows: the robot stand-in starts its MQTT client on a Selector event loop,
+  chosen for that start alone, because aiomqtt needs `add_reader` and `add_writer`, which the
+  Proactor loop of a Windows process by default does not have. On Linux and macOS it keeps
+  asyncio's default loop.
+
 ## 0.0.4 — 2026-10-26
 
 ### Added
@@ -32,6 +219,18 @@ mechanism insists on finding exactly one.
 
 ### Added
 
+- The measurement harness's record links every store request to its commit and describes every
+  commit (interim names). A store request in the measures gains `span_id`,
+  `parent_id`, `commit`, `create` and `status_code`; a commit gains `span_id`, `kind` (`heartbeat`,
+  `status: <statuses>`, `operation + handover`, `operation`, `registration: <what>` (endpoint,
+  workflow, capability, event stream, service, address), `other update` or `no write`, by the
+  predicates its first checked write removes or sets), `update_outcome`, `update_refusal`,
+  `update_applied` and `checked_writes`. The report's steps and the dead-heartbeat point classify a
+  heartbeat update written with either spelling of the predicate (the old one
+  and `hasLastHeartbeat`) through one helper, `store_requests.names_heartbeat`. The report summary's
+  format rises to 6, because its classification changed: a summary of the format before is made
+  again from its record and spans. A record written before has none of the new fields and is read
+  as before.
 - Use case 1's knowledge graph can hold a measured position as a random variable with a Gaussian
   mixture in one typed literal, beside its best estimate. Every launch loads the uncertainty
   module (`uq`, `http://w3id.org/circularfactory/Uncertainty#`, according to Wu et al. 2026) with
@@ -70,6 +269,20 @@ mechanism insists on finding exactly one.
   the assumed standard deviation of 0.1 mm, and one sentence that querying the literals is
   ProbSPARQL's in the store and fusion is a fusion service's job, with both DOIs. The glossary,
   the use case 1 reference page and the UC1 sequence page say the same in their own places.
+
+- A run of the measurement harness can turn the participants' heartbeats off, for a measurement
+  with the heartbeats on and off: `jms-eval-uc2 <configuration>
+  --heartbeat-interval off --live-heartbeat-age 3600` starts no heartbeat loop in any participant
+  (the registration's one heartbeat stays) and judges every service live up to 3600 s, in the
+  participants and in the run's own supervisor. Two environment variables of the common code
+  carry the settings to the participants, `JMS_KAPPS_HEARTBEAT_INTERVAL_SECONDS` (read by a UC2
+  module and the WarehouseManagementSystem as they build their middleware) and
+  `JMS_KAPPS_LIVE_HEARTBEAT_AGE_SECONDS` (read by the services reader at its import); unset, every
+  process runs as before, the Launcher and `./run-uc2` included. A run sets them for its
+  participants only and sets back the harness's own after it; its record keeps the run's values
+  under `run_settings.heartbeat_interval_seconds` (null for off) and
+  `run_settings.live_heartbeat_age_seconds`. The heartbeat level is no key of the configuration.
+  Interim names.
 
 ## 0.0.2 — 2026-10-24
 
@@ -114,9 +327,9 @@ mechanism insists on finding exactly one.
   Module1 to Module4, and prints one row for each transaction that changed the box's possession,
   its transport's status or its assignment, with the time in UTC and in the server's local time.
   It writes the rows as JSON (`--out`, `trace-<box>.json` by default) and exits 0 when the
-  possessors agree with the handovers the participants logged. The user guide shows how to create
-  such a dataset, and [Past possessions](docs/reference/past-possessions.md) shows the query of
-  the history's change list that it sends.
+  possessors agree with the handovers the participants logged.
+  [Possession history](docs/use-case-2.md#possession-history) shows how to create such a dataset
+  and run it.
 
 - The shipped topology `line`: four modules one after another, Module1 the entry and Module4 the
   exit, each connected East to the next. `jms-uc2 --topology line` and the Launcher's picker offer

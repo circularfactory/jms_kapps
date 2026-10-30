@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import shlex
 import signal
 import subprocess
 import threading
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 # A child shares the launcher's process group, so that a terminal's Ctrl+C or SIGHUP reaches it
 # as it reaches the launcher.
@@ -21,6 +22,9 @@ HANGUP: int | None = signal.SIGHUP
 # closed still wait in the system; without it the port stays taken for up to a minute. A second
 # socket still cannot bind a port that one holds.
 REUSE_FIXED_PORT = True
+
+# asyncio's default loop watches sockets for reading and writing, as an MQTT client needs.
+EVENT_LOOP_FACTORY: Callable[[], asyncio.AbstractEventLoop] | None = None
 
 
 def request_stop(process: subprocess.Popen) -> None:

@@ -1,6 +1,6 @@
 """`jms-uc1 infeasible-operation` on a live GraphDB and a live InfluxDB.
 
-Paper claim 19: admission refuses a planned operation that the factory information state cannot
+Admission refuses a planned operation that the factory information state cannot
 carry out. The command seeds the dataset with a Screw whose Screw type holds none of the seven
 values an attempt needs, starts use case 1's five participants, presses Unscrew on `:Screw1` and
 then on that Screw, and stops them. The press is the planning decision: the planner issues the
@@ -104,9 +104,8 @@ def ran(
     return done, record
 
 
-@pytest.mark.paper_claim
 def test_the_store_refuses_the_infeasible_operation_by_the_shape(ran) -> None:
-    """Paper claim 19: the command exits 0, and prints the refusal by
+    """The command exits 0, and prints the refusal by
     `:UnscrewingOperationScrewShape` with its message, after the normal operation was admitted."""
     done, record = ran
 

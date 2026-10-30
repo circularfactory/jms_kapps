@@ -1,8 +1,8 @@
-"""Topologies seeded into a live store and read back from it, and the first iteration's cross run.
+"""Topologies seeded into a live store and read back from it, and a run on the cross's own file.
 
 What the store holds is read as written, apart from what its reasoner infers (`_explicit`), and
 compared with sources that are not the code under test (`_topologies`): what each shipped
-topology seeded before it became a module list, and the first iteration's own file.
+topology seeds, and the cross's own module list file.
 
 These tests clear the dataset they run against. They run only when the store's connection
 variables are set, against the dataset `--dataset` names (there is no default).
@@ -39,8 +39,7 @@ pytestmark = [
     ),
 ]
 
-# The handover abilities the seed gives every module, as it gave them before: the first
-# iteration's files carry none.
+# The handover abilities the seed gives every module: the module list files carry none.
 ABILITIES = {URIRef(MES.Pass), URIRef(MES.Retrieve)}
 
 JOURNEY_SECONDS = 120.0
@@ -102,13 +101,11 @@ def test_each_shipped_topology_converted_seeds_the_modules_it_seeded_before(
         )
 
 
-@pytest.mark.paper_claim
 def test_every_module_of_a_seeded_topology_is_a_core_resource_by_the_ontology(
     dataset,
 ):
-    """Paper claim 1 (§5.2): "Modules are typed as :FlexConveyorModule, a subclass of
-    cfc:Resource". The store holds the subclass axiom as use case 2's ontology writes it, and it
-    answers every module of the seeded cross as a `cfc:Resource`, although the seed writes each
+    """Modules are typed as `:FlexConveyorModule`, a subclass of `cfc:Resource`. The store holds
+    the subclass axiom as use case 2's ontology writes it, and it answers every module of the seeded cross as a `cfc:Resource`, although the seed writes each
     one as its role or as a FlexConveyorModule only: the store infers the rest from the ontology."""
     db = connect(dataset)
     cross = shipped_topology("cross")

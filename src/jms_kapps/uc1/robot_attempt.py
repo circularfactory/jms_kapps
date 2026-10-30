@@ -24,8 +24,6 @@ phases, and the source the robot named.
 longest recording (about seven seconds) and well below the planner's operation timeout, so that
 a robot that does not answer ends the operation `failed`, with the reason readable on the page
 and the screwing resource's dashboard, before the planner gives up on it.
-
-Every public name of this module is an interim name, marked so in the glossary.
 """
 
 from __future__ import annotations

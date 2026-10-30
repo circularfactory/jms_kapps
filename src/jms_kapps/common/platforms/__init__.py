@@ -17,19 +17,23 @@ which platform this is. Every user reads the choice from `PLATFORM`:
   and Windows has not.
 - **Whether a fixed port is bound with address reuse.**
 - **How a command line is printed**, so that it runs when pasted into the platform's shell.
+- **The event loop of a process that runs an MQTT client.** aiomqtt watches its socket with
+  `add_reader` and `add_writer`, which the Proactor loop that asyncio gives a Windows process by
+  default does not have. On Windows the factory is the Selector loop's, and `asyncio.run` takes it
+  for that one start (`loop_factory`), with no process-wide policy. On POSIX it is None, which asks
+  for asyncio's default loop.
 - **How another thread interrupts the main thread** as a stop signal does: on POSIX a SIGINT to
   the main thread alone, which also cuts short a call that waits there; on Windows, which cannot
   send a signal to one thread, the handler of SIGINT run at the main thread's next step (for the
   run limit of the measurement harness).
-
-The pattern is the Launcher of the middleware's transferunits demo.
 """
 
 from __future__ import annotations
 
+import asyncio
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Protocol
 
 
@@ -45,6 +49,9 @@ class Platform(Protocol):
     # Whether a fixed port, as the Launcher's page's, is bound with address reuse. A port the
     # system chooses is bound with it on every platform.
     REUSE_FIXED_PORT: bool
+    # The `loop_factory` that `asyncio.run` takes for a process that runs an MQTT client, or None
+    # for asyncio's default loop.
+    EVENT_LOOP_FACTORY: Callable[[], asyncio.AbstractEventLoop] | None
 
     def request_stop(self, process: subprocess.Popen) -> None:
         """Ask `process` to stop, so that it runs its shutdown. Raises OSError if the signal

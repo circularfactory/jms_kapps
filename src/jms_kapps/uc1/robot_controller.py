@@ -1,8 +1,7 @@
 """The robot controller stand-in: a device that speaks only MQTT and replays an example recording.
 
-It takes the place of the controller of the screwing resource's robot, as the PLC of the
-TransferUnit demo of kapps_semantic_middleware takes the place of a conveyor's. It knows nothing
-of the middleware, the ontology or the knowledge graph: it is configured like a device, with its
+It takes the place of the controller of the screwing resource's robot. It knows nothing of the
+middleware, the ontology or the knowledge graph: it is configured like a device, with its
 broker and its topics, and the graph describes it. The screwing resource's middleware instance
 builds its connectors from that description.
 
@@ -41,6 +40,7 @@ from collections.abc import Mapping, Sequence
 import aiomqtt
 from aiomqtt.types import PayloadType
 
+from jms_kapps.common.platforms import PLATFORM
 from jms_kapps.uc1.frame import AXIAL_FORCE, ROBOT_POSITION, UNSCREWING_TORQUE, Frame
 from jms_kapps.uc1.replay import EXAMPLE_RECORDINGS, example_frame
 
@@ -71,6 +71,10 @@ SETPOINTS: tuple[str, ...] = (
 # The pause before the first reconnect, and the longest pause.
 FIRST_RETRY_SECONDS = 0.2
 LONGEST_RETRY_SECONDS = 5.0
+
+# What the line holds that the stand-in logs once it has connected to the broker. Before it, no
+# setpoint and no start command reaches the stand-in, so the run counts it live only from it.
+CONNECTED = "Connected to the broker"
 
 
 def topic(parameter: str) -> str:
@@ -226,7 +230,7 @@ async def run(
             async with aiomqtt.Client(
                 host, port, identifier=f"{DEVICE}-controller"
             ) as client:
-                logger.info("Connected to the broker at %s:%d", host, port)
+                logger.info("%s at %s:%d", CONNECTED, host, port)
                 pause = FIRST_RETRY_SECONDS
                 await controller.serve(client)
         except aiomqtt.MqttError as error:
@@ -293,8 +297,11 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
     try:
+        # The loop for this start alone, and no policy for the process: aiomqtt needs a Selector
+        # loop, which Windows does not give by default.
         asyncio.run(
-            run(args.broker_host, args.broker_port, dict(args.recording), args.speed)
+            run(args.broker_host, args.broker_port, dict(args.recording), args.speed),
+            loop_factory=PLATFORM.EVENT_LOOP_FACTORY,
         )
     except KeyboardInterrupt:
         pass

@@ -81,12 +81,11 @@ def workflow_classes(db: Queryable, service: IRI) -> set[str]:
     return {str(row["class"]) for row in rows}
 
 
-@pytest.mark.paper_claim
 def test_a_module_that_comes_online_registers_reserve_receive_and_its_box_transport_workflow(
     dataset,
 ):
-    """Paper claim 2 (§5.2): a module's workflows are each "instantiated when a module comes online
-    and registered to the graph by the middleware". A module registers three: Reserve, Receive and
+    """A module's workflows are each instantiated when the module comes online, and its middleware
+    registers them in the graph. A module registers three: Reserve, Receive and
     the BoxTransportWorkflow, each realizing its capability, which the module provides. No module
     registers a Convey: a module's convey is its own move. Each endpoint lies
     under the address of the module's live service, where a peer calls it."""
@@ -107,13 +106,11 @@ def test_a_module_that_comes_online_registers_reserve_receive_and_its_box_transp
                 )
 
 
-@pytest.mark.paper_claim
 def test_a_module_that_stops_removes_its_address_and_keeps_its_service_and_workflows(
     dataset,
 ):
-    """Paper claim 9 (§4.3): "on shutdown, the middleware removes the address property so that no
-    workflow exposed by the service appears as invokeable, while preserving the service and
-    workflow individuals themselves". The block's end stops every party as a stop signal stops a
+    """On shutdown, the middleware removes the address of the service, so that no workflow of the
+    service can be called, and keeps the service and its workflows in the graph. The block's end stops every party as a stop signal stops a
     process: its server shuts down, and its middleware deregisters on the way out. Each endpoint
     goes with the address."""
     with participants(dataset) as party:

@@ -58,9 +58,8 @@ def snapshot_count(ogm: OGM) -> int:
     return int(row["n"])
 
 
-@pytest.mark.paper_claim
 def test_a_snapshot_without_its_classification_is_refused_by_the_store(ogm):
-    """Paper claim 16: the store refuses the write, the report names the shape at the snapshot,
+    """The store refuses the write, the report names the shape at the snapshot,
     and nothing of the write enters the graph."""
     with pytest.raises(ShaclValidationError) as raised:
         ogm.commit(

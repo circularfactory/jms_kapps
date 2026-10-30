@@ -2,7 +2,7 @@
 planner, and read what the run left in the graph.
 
 `test_uc1_run_live.py` drives the loop end to end with these, and `test_uc1_claims_live.py` proves
-use case 1's paper claims on one such run.
+use case 1's claims on one such run.
 """
 
 from __future__ import annotations

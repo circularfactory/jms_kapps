@@ -35,6 +35,7 @@ import asyncio
 import functools
 import logging
 import math
+import os
 import sys
 import threading
 import time
@@ -48,6 +49,7 @@ from kapps_semantic_middleware.dashboard import enable_dashboard
 from kapps_triplestore_interface import IRI
 from pydantic import BaseModel
 
+from jms_kapps.common.heartbeats import HeartbeatSettingRefused, heartbeat_interval
 from jms_kapps.common.process import (
     begin_stop,
     process_parser,
@@ -236,6 +238,10 @@ def build(
     """The middleware instance for one module, with its three workflows, its notification
     handler, the fault command, its handover event stream and its state dashboard.
 
+    The middleware's heartbeat interval is the environment's (`common.heartbeats`): the
+    middleware's own default, unless the process was started with
+    `JMS_KAPPS_HEARTBEAT_INTERVAL_SECONDS`, as a harness run with its heartbeats off starts it.
+
     The module's transit time, how long the simulated move of a box takes, is read from the graph
     once, here, with the longest one of any module, T: a box the module reserved itself for may
     take `ARRIVAL_BOUND_SECONDS` and T to arrive, or `ARRIVAL_BOUND_SECONDS` and two T for a box
@@ -251,9 +257,12 @@ def build(
             the module raises the deadlock alarm for it, `--deadlock-alarm-seconds`.
 
     Raises:
+        HeartbeatSettingRefused: If the heartbeat interval variable holds no number of seconds.
+            Nothing is read or registered then.
         TransitTimeError: If the graph holds no transit time for the module, or more than one.
             Nothing is registered then.
     """
+    interval = heartbeat_interval(os.environ)
     times = transit_times(ogm.db, IRI(resource_iri))
     middleware = SemanticMiddleware(
         mode=Mode.RESOURCE,
@@ -263,6 +272,7 @@ def build(
         host=host,
         port=port,
         activity_feed=True,
+        heartbeat_interval=interval,
     )
     # The middleware's state dashboard at `/dashboard`, for a person who opens it from the
     # Launcher page: the library's own boxes, what the instance holds and which of its writes the
@@ -431,9 +441,10 @@ def main() -> None:
             ),
             lambda address: f"{args.resource_iri} on {address}",
         )
-    except TransitTimeError as error:
-        # A module whose transit time the graph does not hold exactly once does not start. Its
-        # process ends with the reason, which the Launcher page shows with the state `failed`.
+    except (HeartbeatSettingRefused, TransitTimeError) as error:
+        # A module whose transit time the graph does not hold exactly once, or whose heartbeat
+        # interval variable holds no number, does not start. Its process ends with the reason,
+        # which the Launcher page shows with the state `failed`.
         print(f"jms-uc2 module: {error}", file=sys.stderr, flush=True)
         raise SystemExit(1) from None
 

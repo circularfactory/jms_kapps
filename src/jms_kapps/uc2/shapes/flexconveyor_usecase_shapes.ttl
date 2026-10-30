@@ -16,7 +16,7 @@
 #   3. Every capability belongs to exactly one resource
 #################################################################
 
-# Changed from the artifact (`turtle/flexconveyor_usecase_JMS_SHACL.ttl` on `paper`, d3201180):
+# The design of these shapes:
 #
 # - `cfc:` is the published Core, and possession is Core's reified `cfc:PossessionState`. A resource
 #   has one state from its first possession on, and points at it (`cfc:hasPossessor`); a box points
@@ -24,31 +24,19 @@
 #   link.
 # - `:FlexConveyorModuleShape` follows that path. Its property shape has an IRI, so that the
 #   validation report names it.
-# - A box has no lifecycle state, so the rules that tied the box's state to its possession are
-#   keyed on its `:BoxTransportOperation` instead: on the transport's `svc:hasOperationStatus`, and
-#   on the box's possessor. Section 2 replaces `:BoxShape` and the three SHACL-SPARQL shapes,
-#   `:CreatedBoxNotOnModuleShape`, `:DeliveredBoxNotPossessedShape` and
-#   `:InTransitBoxPossessedShape`. The origin and the destination are checked on the transport,
-#   which carries them now.
+# - A box has no lifecycle state, so the rules of section 2 are keyed on its
+#   `:BoxTransportOperation`: on the transport's `svc:hasOperationStatus`, and on the box's
+#   possessor. The origin and the destination are checked on the transport, which carries them.
 # - The rules look for a possessing module, not for any possessor, because the
 #   WarehouseManagementSystem holds a box at the end of its journey: it creates each box on its
 #   origin. One rule looks for any
-#   possessor: every box has exactly one (`:BoxHasOnePossessorShape`), which the artifact did not
-#   check.
+#   possessor: every box has exactly one (`:BoxHasOnePossessorShape`).
 # - The possession runs from the box forward to its state, then back to the possessor:
 #   `cfc:hasPossessedWorkpiece`, then the inverse of `cfc:hasPossessor`. Both properties point from
 #   their subject into the PossessionState, so a path that starts with the inverse of
 #   `cfc:hasPossessedWorkpiece` matches nothing.
 # - Every rule in this file is SHACL Core, and the store refuses a write that breaks one at commit.
-#   The one rule in SHACL-SPARQL, which SHACL Core cannot express, is in
-#   `flexconveyor_usecase_sparql_shapes.ttl`, loaded on request; its head says why.
 # vendor-check: off -- the backend the shapes were measured on
-# - What GraphDB 10.8.5 (RDF4J 4.3.15) does with SHACL-SPARQL at commit, measured with a SPARQL
-#   constraint on a node shape with sh:targetClass: it refuses a write that creates the focus node
-#   together with the violating data, and admits a violating property added later to an existing
-#   focus node, and a violation that a delete on another node causes. Validating the whole dataset
-#   reports those. The rule with a SPARQL target in `flexconveyor_usecase_sparql_shapes.ttl` is
-#   refused at commit in all three cases, see there.
 # - No rule ties an operation's resource (`cfc:executedOn`) to its capability's resource
 #   (`cfc:implementsCapability`). In RDF4J at tag 4.3.15, the engine of GraphDB 10.8.5, `sh:equals`
 #   has no validation at commit: its constraint component logs that it is not implemented and

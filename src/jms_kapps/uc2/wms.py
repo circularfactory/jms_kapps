@@ -214,7 +214,7 @@ def seeded_choice(seed: int | None) -> Choose:
     """The chooser a WarehouseManagementSystem picks its modules with: `random.choice`'s shared
     generator where `seed` is None, else the choice of a generator of its own that `seed` seeds, so
     that the same seed and the same candidates give the same sequence of picks. The seed is set per
-    repetition. Interim name. Every pick is made under the picking lock, one
+    repetition. Every pick is made under the picking lock, one
     at a time; concurrent spawns that reach it in another order draw the same numbers in that
     other order."""
     return random.choice if seed is None else random.Random(seed).choice
@@ -786,8 +786,7 @@ class WarehouseManagementSystem:
         is any module, and a picked one any free module. Where it names exit modules, a named
         destination must be one, and a picked one is one; where it names none, the destination
         is any module. A picked destination is never the origin, and a named one may not be. One
-        module may have both roles. Roles are optional, as the first iteration's
-        WarehouseManagementSystem had them.
+        module may have both roles. Roles are optional.
 
         **Only a reachable destination** (`spawn_candidates`). A picked destination is one the
         origin reaches over the connections, and a picked origin one that reaches the named

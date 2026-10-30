@@ -79,7 +79,9 @@ def process_id(resource: IRI) -> str:
         ValueError: The IRI has no fragment, so no path would reach its process.
     """
     if not resource.fragment:
-        raise ValueError(f"{resource} has no name after a '#' to pass requests through by")
+        raise ValueError(
+            f"{resource} has no name after a '#' to pass requests through by"
+        )
     return resource.fragment
 
 

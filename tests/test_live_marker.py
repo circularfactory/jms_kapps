@@ -1,7 +1,6 @@
 """A test that needs a live store is also a `live` test, so that `-m "not live"` is the offline tier.
 
-The release mechanism runs a repository's own offline tier as `pytest -m "not live"`, as the
-three libraries' CI does. Here a test that needs a live service is marked `graphdb` or
+The offline tier is `pytest -m "not live"`. Here a test that needs a live service is marked `graphdb` or
 `influxdb`, so each of them is also `live`, and the offline tier deselects them.
 
 Each case is a small pytest session in this process (pytest's own `pytester`), with the plugin
@@ -51,7 +50,9 @@ def session(pytester: pytest.Pytester) -> pytest.Pytester:
 
 def run(session: pytest.Pytester, *args: str) -> pytest.RunResult:
     # Without pytest-playwright: its hooks need a browser run's state that these sessions lack.
-    return session.runpytest_inprocess("-p", "_live_marker", "-p", "no:playwright", *args)
+    return session.runpytest_inprocess(
+        "-p", "_live_marker", "-p", "no:playwright", *args
+    )
 
 
 def test_the_offline_tier_deselects_every_test_of_a_live_service(
@@ -61,6 +62,8 @@ def test_the_offline_tier_deselects_every_test_of_a_live_service(
     result.assert_outcomes(passed=1, deselected=2)
 
 
-def test_the_live_tier_selects_the_tests_of_both_services(session: pytest.Pytester) -> None:
+def test_the_live_tier_selects_the_tests_of_both_services(
+    session: pytest.Pytester,
+) -> None:
     result = run(session, "-m", "live")
     result.assert_outcomes(passed=2, deselected=1)

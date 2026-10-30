@@ -23,8 +23,8 @@ registered in a connector registry of the screwing resource's own, so the proces
 registry stays as the middleware ships it. The descriptor also records each parameter it bound
 (`BoundParameter`): the setpoint writer needs the field and the node type of a parameter.
 
-**A setpoint is a persistence write that names the parameter** (`Setpoints`, an interim helper:
-the middleware has no public verb for it yet). The write sets the parameter's field on the robot's
+**A setpoint is a persistence write that names the parameter** (`Setpoints`, a helper of
+its own: the middleware has no public verb for it). The write sets the parameter's field on the robot's
 model in the data model and tells the persistence connector which field changed, so that exactly
 the write connector of that parameter publishes the value to its set topic, and the data model
 shows the value. It runs on the middleware's event loop, from the worker thread, through the loop
@@ -33,8 +33,6 @@ that an on-start-up callback captured.
 The screwing resource's code names no broker, port or topic: every connector comes from the graph
 description, and the broker comes up through the transport hook the build is given
 (`mqtt_broker.ensure_transport`).
-
-Every public name of this module is an interim name, marked so in the glossary.
 """
 
 from __future__ import annotations
@@ -275,7 +273,7 @@ def robot_wiring(
 
 class Setpoints:
     """Writes a value of a parameter of the robot into the data model of the screwing resource's
-    middleware, so that the parameter's write connector publishes it to its set topic. Interim: the
+    middleware, so that the parameter's write connector publishes it to its set topic. The
     middleware has no public verb for a write that names a parameter.
 
     The write runs on the middleware's event loop, where the connectors run: it reads the

@@ -6,8 +6,6 @@ parameter of the robot, before it builds the first connector for that address. T
 starts an in-process amqtt broker there, on a daemon thread with its own event loop. The broker
 lives as long as the process that started it and needs no teardown. The robot controller
 stand-in reconnects to it when it is not there yet.
-
-It follows the transport hook of the TransferUnit demo of kapps_semantic_middleware.
 """
 
 from __future__ import annotations

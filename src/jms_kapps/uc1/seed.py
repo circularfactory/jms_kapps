@@ -11,13 +11,12 @@ one per Screw. So one run shows both exits of an attempt, `ScrewIntact` and `Mis
 
 **Every value here is an example value, fitted to the two example recordings, and none of it is
 measured.** The thresholds are fitted to the two
-recordings the paper's artifact ships (`data/unscrewing_timeseries/`), which are the only
+recordings in `data/unscrewing_timeseries/`, which are the only
 unscrewing data use case 1 has: with them the recording `success` classifies as `ScrewIntact` and
 `missing_screw` as `MissingScrew`, which is what a demonstration must show. Thresholds that do not
 fit those recordings make the demo report `HeadOccluded` for a good screw and raise on the missing
 one, because the screw-head band then sits where the recording never touches and the preload is
-reached only at the last sample. `test_uc1_seed.py` holds both facts as tests. Milestone 2 replaces
-all of them with values measured on the real cell.
+reached only at the last sample. `test_uc1_seed.py` holds both facts as tests.
 
 The seed keeps `hasMinLooseningAxialForce` above `hasMinPreloadAxialForce`, so that a force held at
 the preload level is not read as a rise.
@@ -119,8 +118,7 @@ POSITION_STANDARD_DEVIATION = 0.1
 
 # The broker that carries every parameter of the robot. The screwing resource's middleware
 # instance brings it up at this address when it builds its connectors (`mqtt_broker`), and the
-# stand-in is started with it. The port is the use case's own: not 1883, and not a port of the
-# TransferUnit demo or of the middleware's test suite.
+# stand-in is started with it. The port is the use case's own, not 1883, the default port of MQTT.
 MQTT_BROKER_IP = "127.0.0.1"
 MQTT_BROKER_PORT = 18860
 

@@ -2,18 +2,12 @@
 
 `jms-uc2` runs use case 2 from a topology behind the Launcher page (`launcher/runner.py`). It clears
 the dataset it is given, `--dataset`, and refuses to while another run is live there, unless
-`--force` is given. `jms-uc2 audit` clears nothing: it validates the whole of `--dataset` against
-both shape files and prints the report (`audit.py`). `jms-uc2 capability-resource` shows the store refuse a
-capability that does not belong to exactly one resource, in three writes on `--dataset`, which must
-be a disposable one, since it clears it (`capability_resource.py`). `jms-uc2 reachable-destination` shows the store
-refuse the SHACL-SPARQL rule of the reachable destination at commit, in four steps on `--dataset`,
-which must be a disposable one too (`reachable_destination.py`). `jms-uc2 trace-box` runs one box
-over the topology `line` and reads every change of its possession back from the triple store's
-history, on `--dataset`, a disposable one, whose history collection it turns on for good
-(`trace_box.py`).
+`--force` is given. `jms-uc2 trace-box` runs one box over the topology `line` and reads every
+change of its possession back from the triple store's history, on `--dataset`, a disposable one,
+whose history collection it turns on for good (`trace_box.py`).
 `--transit-time` sets the transit time of every module that has none of its own in the topology, and
-the default of the Launcher page's field of the same name: a few seconds by default, so that a
-person sees each box on each module, and 0 in the tests. The seed writes it into the graph, where
+the default of the Launcher page's field of the same name: 3 s by default, so that a person sees
+each box on each module, and 0 in the tests. The seed writes it into the graph, where
 each module reads its own. `--retry-time` sets how long a
 module waits before it asks again a module that refused to reserve itself, once its detour has
 refused too: 1 s by default, and 0.1 s in the tests. `--module-strategy` and `--wms-strategy` name
@@ -59,14 +53,14 @@ def main(argv: list[str] | None = None) -> int:
         "--topology",
         default="cross",
         help=f"A shipped topology ({', '.join(topology_names())}) or the path of a JSON file "
-        "that holds a module list, as the first iteration wrote one (default: cross)",
+        "that holds a module list (default: cross)",
     )
     parser.add_argument(
         "--transit-time",
         type=float,
         default=None,
         help="Seconds a module takes to convey a box, unless the topology gives the module its "
-        "own (default: a few, so that a person sees each move)",
+        "own (default: 3)",
     )
     parser.add_argument(
         "--retry-time",
@@ -101,34 +95,6 @@ def main(argv: list[str] | None = None) -> int:
         "be read; it stays on until it is turned off by hand (default: off)",
     )
     commands = parser.add_subparsers(dest="command")
-    audit_parser = commands.add_parser(
-        "audit",
-        help="Validate the whole dataset against both shape files, the SHACL-SPARQL file "
-        "included, and print the report; clears nothing",
-    )
-    audit_parser.add_argument("--dataset", default=argparse.SUPPRESS)
-    owner_parser = commands.add_parser(
-        "capability-resource",
-        help="Show the store refuse a capability that does not belong to exactly one resource: "
-        "three writes on a dataset whose name starts with ogm-disposable-, which it clears",
-    )
-    owner_parser.add_argument("--dataset", default=argparse.SUPPRESS)
-    sparql_parser = commands.add_parser(
-        "reachable-destination",
-        help="Show the store refuse the SHACL-SPARQL rule of the reachable destination at commit: "
-        "four steps on a dataset whose name starts with ogm-disposable-, which it clears",
-        description="Show the store refuse the SHACL-SPARQL rule of use case 2 at commit: a "
-        "transport may only be opened toward a module that the station's connections reach from "
-        "its origin. Seeds three modules, opens a transport, and prints the store's answer to "
-        "a transport toward a module no connection reaches and to a removed connection. Exits 0 "
-        "when every step behaved as stated.",
-    )
-    sparql_parser.add_argument(
-        "--dataset",
-        default=argparse.SUPPRESS,
-        help="The dataset to use; its name must start with ogm-disposable-, and the command "
-        "clears it at its start and its end",
-    )
     trace_parser = commands.add_parser(
         "trace-box",
         help="Run one box over the topology line and read every change of its possession back "
@@ -185,18 +151,6 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # Imported here, so that `--help` answers without loading the middleware.
-    if args.command == "audit":
-        from jms_kapps.uc2.audit import run as run_audit
-
-        return run_audit(args.dataset)
-    if args.command == "capability-resource":
-        from jms_kapps.uc2.capability_resource import run as run_capability_resource
-
-        return run_capability_resource(args.dataset)
-    if args.command == "reachable-destination":
-        from jms_kapps.uc2.reachable_destination import run as run_reachable_destination
-
-        return run_reachable_destination(args.dataset)
     if args.command == "trace-box":
         from jms_kapps.uc2.trace_box import run as run_trace_box
 

@@ -1,9 +1,7 @@
 """The Launcher's HTTP surface: JSON routes over `backend.Launcher`, and the static page.
 
 The backend answers in JSON only, and renders no HTML. The page in `static/` is plain HTML,
-JavaScript and CSS, and learns everything it shows from these routes. The pattern is the
-middleware's transferunits demo, `index.py` plus `templates/index.html`, with the two halves
-kept apart.
+JavaScript and CSS, and learns everything it shows from these routes.
 
 **A launch names a shipped topology, or carries one edited on the page, which the server checks
 itself.** Launching clears the dataset and seeds it again. A shipped topology is chosen by its

@@ -24,8 +24,8 @@ DEPRECATED = {
     "TRIPLESTORE_PASSWORD": "GRAPHDB_PASSWORD",
 }
 
-# The dataset names a run may give, among them a disposable one, as the live criteria run on.
-NAMES = ("Tests", "jms-kapps", "ogm-disposable-jms62")
+# The dataset names a run may give, among them a disposable one, as the live tests run on.
+NAMES = ("Tests", "jms-kapps", "ogm-disposable-tests")
 
 # What a graphdb test looks like to pytest, and one test that needs no dataset.
 SESSION_TESTS = f"""

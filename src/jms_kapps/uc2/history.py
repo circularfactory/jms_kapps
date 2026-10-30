@@ -19,9 +19,8 @@ own graphs lists this module as its one exception.
   clear while it is off is not logged, and the cleared data then disappears from every earlier
   point in time. With the collection on, GraphDB refuses only a clear of the whole repository,
   which the reset never sends: it clears the default graph and each graph it loads by name.
-  (Measured on the KIT GraphDB 10.8.5 on 2026-10-01.)
 - **The reading.** `possessor_query` is the query for the possessor of one box at one point in
-  time, which `docs/reference/past-possessions.md` shows: the point is a graph of the plugin's,
+  time: the point is a graph of the plugin's,
   in the server's local time (`server_time` asks the server for it), and the query names its
   subject, the box, because a query that does not returns the live data. The plugin's transaction IRIs are in UTC. Only a
   person, `jms-uc2 trace-box` and the live tests read the history: no participant does.
@@ -30,8 +29,8 @@ own graphs lists this module as its one exception.
   change, so a possession shorter than a second is in it too, which a point in time, to the
   second, can miss. Each change's timestamp carries the server's offset from UTC.
 
-KIT runs GraphDB 10.8.5. The plugin's own transaction IDs are used, never custom ones: 10.8.6
-fixed major issues of the plugin with transaction IDs, and the default ones worked on 10.8.5.
+The plugin's own transaction IDs are used, never custom ones: 10.8.6 fixed major issues of the
+plugin with transaction IDs, and the default ones work on 10.8.5.
 """
 
 from __future__ import annotations
@@ -96,8 +95,7 @@ def possessor_query(box: IRI, moment: datetime) -> str:
     """The query for the possessor of `box` at `moment`, the server's local time: one row, the
     possessor, or none where the box had no possessor then.
 
-    It names its subject, the box, because a query that does not returns the live data (measured
-    on the KIT GraphDB 10.8.5 on 2026-10-01). Its second pattern, the possessor's link to its own
+    It names its subject, the box, because a query that does not returns the live data. Its second pattern, the possessor's link to its own
     possession state, never changes, so the live data answers it right either way.
     """
     return (

@@ -8,9 +8,10 @@ checks each one against the value that `subprocess` and `signal` define there.
 from __future__ import annotations
 
 import _thread
+import asyncio
 import signal
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 # `subprocess.CREATE_NEW_PROCESS_GROUP`: the child gets a process group of its own, so that a
 # CTRL_BREAK reaches that child alone, and never the launcher.
@@ -31,6 +32,12 @@ HANGUP: int | None = None
 # second Launcher would not fire. Without it, the next Launcher still binds the port of one that
 # stopped.
 REUSE_FIXED_PORT = False
+
+# The default loop of a Windows process is the Proactor loop, which has no `add_reader` and no
+# `add_writer`, and an MQTT client needs both. The Selector loop has them.
+EVENT_LOOP_FACTORY: Callable[[], asyncio.AbstractEventLoop] | None = (
+    asyncio.SelectorEventLoop
+)
 
 
 def request_stop(process: subprocess.Popen) -> None:

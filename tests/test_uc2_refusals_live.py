@@ -88,16 +88,16 @@ pytestmark = [
 M3, M4, M5 = (module_iri(n) for n in (3, 4, 5))
 CROSS = shipped_topology("cross")
 
-# The transit time of the Done-when: each move takes 1 s.
+# The transit time of these tests: each move takes 1 s.
 TRANSIT_SECONDS = 1.0
 
-# The Done-when of the interim monitor's refusals: a refusal is shown within this long.
+# The monitor shows a refusal within this long.
 SHOWN_WITHIN_SECONDS = 3.0
 
 # The monitor finds the streams every 5 s, after it has seen the participants live.
 FOLLOWED_WITHIN_SECONDS = 30.0
 
-# A box's journey over two hops of 1 s each, on the shared KIT store.
+# A box's journey over two hops of 1 s each, on the shared remote store.
 ARRIVES_WITHIN_SECONDS = 90.0
 
 # How long Module 3's move of A may wait for the test. Module 4's reservation for A has a bound of
@@ -214,15 +214,14 @@ def test_each_participant_commits_where_its_stream_lives(dataset):
             assert url.startswith(f"http://{HOST}:")
 
 
-@pytest.mark.paper_claim
 def test_skip_reserve_onto_an_occupied_module_is_refused_before_any_move_and_arrives(
     dataset, records
 ):
     """Fault scenario 1, in the running FlexConveyor station.
 
-    Paper claims 5 and 8. Claim 5 (§5.2): the store refuses the handover onto the occupied module
-    before anything is admitted: the box stays the giver's, and the receiver keeps its own box.
-    Claim 8 (R9), enforcement at the moment of execution: the refused handover never runs its
+    The store refuses the handover onto the occupied module before anything is admitted (§5.2): the
+    box stays the giver's, and the receiver keeps its own box. Enforcement at the moment of
+    execution (R9): the refused handover never runs its
     body, the move, so the giver never moves the box until a later handover is admitted."""
     a_may_arrive = threading.Event()
     moved_by_module_3: list[str] = []
@@ -426,7 +425,7 @@ FEEDING_AN_ENTRY = Topology(
 )
 
 # The bound of a reservation for the WMS's box, counted from the origin's answer to Reserve, and
-# the time of one read of the shared KIT store after it.
+# the time of one read of the shared remote store after it.
 SPAWN_BOUND_SECONDS = 30.0
 ONE_READ_SECONDS = 10.0
 

@@ -2,7 +2,7 @@
 
 A disposable dataset is one created for a test run, from `graphdb/jms-kapps-repo-config.ttl`
 with only its ID changed, and deleted afterwards. Its name starts with `ogm-disposable-`, as the
-disposable datasets on the KIT GraphDB are named. The live tests of the history collection run on
+disposable datasets on the remote store are named. The live tests of the history collection run on
 a disposable dataset only, never on `Tests`.
 """
 

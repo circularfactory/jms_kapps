@@ -1,0 +1,179 @@
+{
+  "block": "FULL_RUN",
+  "parameters": {
+    "topology": "grid",
+    "module_strategy": "real",
+    "wms_strategy": "roundrobin",
+    "preload_statements": 1000000,
+    "preload_seed": 1,
+    "boxes_per_minute": 30,
+    "transit_seconds": 3.0,
+    "retry_seconds": 1.0,
+    "warm_up_seconds": 60,
+    "window_seconds": 300,
+    "drain_bound_seconds": 300,
+    "matcher_interval_seconds": 2,
+    "wrapper": true,
+    "collect_history": false,
+    "repetitions": 15,
+    "shacl_levels": [
+      true,
+      false
+    ],
+    "alternate_order": true,
+    "heartbeat_levels": [
+      "on"
+    ],
+    "heartbeat_interval_seconds": {
+      "on": 30.0,
+      "off": null
+    },
+    "live_heartbeat_age_seconds": {
+      "on": 90.0,
+      "off": 3600.0
+    },
+    "stores": [
+      "kit",
+      "local"
+    ],
+    "local_heap": "12g"
+  },
+  "repetitions_used": 14,
+  "excluded": [
+    {
+      "repetition": 15,
+      "stores": [
+        "kit",
+        "local"
+      ],
+      "runs": [
+        "20261027-225646-f010",
+        "20261027-230413-c0f4",
+        "20261027-231030-401e",
+        "20261028-060149-2832",
+        "20261028-060857-0ca4",
+        "20261028-061445-d8fc"
+      ],
+      "why": "a stall of the remote GraphDB instance (kit) of about 20 s, for unknown reasons; the whole repetition is excluded in both stores, all arms"
+    }
+  ],
+  "overrides": {
+    "stores": null,
+    "repetitions": null,
+    "live_checks": null
+  },
+  "arms": [
+    "kapps-shacl-on",
+    "kapps-shacl-off",
+    "writes-only"
+  ],
+  "repetition_orders": {
+    "1": [
+      "kapps-shacl-on",
+      "writes-only",
+      "kapps-shacl-off"
+    ],
+    "2": [
+      "kapps-shacl-off",
+      "kapps-shacl-on",
+      "writes-only"
+    ],
+    "3": [
+      "kapps-shacl-on",
+      "writes-only",
+      "kapps-shacl-off"
+    ],
+    "4": [
+      "kapps-shacl-off",
+      "kapps-shacl-on",
+      "writes-only"
+    ],
+    "5": [
+      "kapps-shacl-on",
+      "writes-only",
+      "kapps-shacl-off"
+    ],
+    "6": [
+      "kapps-shacl-off",
+      "kapps-shacl-on",
+      "writes-only"
+    ],
+    "7": [
+      "kapps-shacl-on",
+      "writes-only",
+      "kapps-shacl-off"
+    ],
+    "8": [
+      "kapps-shacl-off",
+      "kapps-shacl-on",
+      "writes-only"
+    ],
+    "9": [
+      "kapps-shacl-on",
+      "writes-only",
+      "kapps-shacl-off"
+    ],
+    "10": [
+      "kapps-shacl-off",
+      "kapps-shacl-on",
+      "writes-only"
+    ],
+    "11": [
+      "kapps-shacl-on",
+      "writes-only",
+      "kapps-shacl-off"
+    ],
+    "12": [
+      "kapps-shacl-off",
+      "kapps-shacl-on",
+      "writes-only"
+    ],
+    "13": [
+      "kapps-shacl-on",
+      "writes-only",
+      "kapps-shacl-off"
+    ],
+    "14": [
+      "kapps-shacl-off",
+      "kapps-shacl-on",
+      "writes-only"
+    ],
+    "15": [
+      "kapps-shacl-on",
+      "writes-only",
+      "kapps-shacl-off"
+    ]
+  },
+  "replay_factor": 1.0,
+  "preload_file": "/home/etienneh/code/jms_kapps/[redacted banned-path-fragments 1]worktrees/final-run-2026-10-27/evaluation/section_7/prefills/grid-1000000.ttl",
+  "software": {
+    "jms-kapps": {
+      "version": "0.0.4",
+      "commit": "bc2d4d5edfffc4323a5fe0adeb1ce3dbb2e4bdba",
+      "source": "file:///home/etienneh/code/jms_kapps/[redacted banned-path-fragments 1]worktrees/final-run-2026-10-27",
+      "modified": false
+    },
+    "kapps-semantic-middleware": {
+      "version": "0.2.6",
+      "commit": null,
+      "source": "a package index"
+    },
+    "kapps-ogm": {
+      "version": "0.3.3",
+      "commit": null,
+      "source": "a package index"
+    },
+    "kapps-triplestore-interface": {
+      "version": "2.2.3",
+      "commit": null,
+      "source": "a package index"
+    },
+    "python": {
+      "version": "3.12.3",
+      "path": "/home/etienneh/code/jms_kapps/[redacted banned-path-fragments 1]worktrees/final-run-2026-10-27/.venv/bin/python"
+    },
+    "os": {
+      "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.39"
+    }
+  }
+}

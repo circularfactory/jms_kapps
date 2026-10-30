@@ -1,4 +1,4 @@
-"""The `--uc1-save-measurements-as-uq` option of the live runs of use case 1 (interim name).
+"""The `--uc1-save-measurements-as-uq` option of the live runs of use case 1.
 
 With it, every run of `jms-uc1` that a live test starts (`_uc1_run.started_uc1`) saves
 measurements as uncertainty quantifications from its start; without it, the runs keep the

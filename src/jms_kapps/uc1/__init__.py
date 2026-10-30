@@ -6,7 +6,7 @@ the results. A planner opens each operation. The four of them find each other in
 graph; the planner's dispatch and the resource's call of the detector go over REST, to addresses
 that the graph names.
 
-`seed.py` writes what a run finds before any participant starts: the demo grinder, the Screw in it, the model it is, and the example thresholds of the Screw type that model is built with, fitted to the two example recordings the paper's artifact ships.
+`seed.py` writes what a run finds before any participant starts: the demo grinder, the Screw in it, the model it is, and the example thresholds of the Screw type that model is built with, fitted to the two example recordings.
 
 `ontology/integration_usecase.ttl` declares the classes of this use case: the Screw type and the
 Screw, the ten properties of their effective values, the parameter copy and the unscrewing
@@ -15,9 +15,9 @@ the ten values of one Screw, seven from its Screw type and three placement value
 decides with. `frame.py` holds a frame, the raw curves of one attempt, and `timeseries.py` writes frames
 to InfluxDB and reads them back through the reference an operation holds. `replay.py` makes a
 frame from a recording in place of the robot. `data/unscrewing_timeseries/` holds the two
-recordings of the paper's artifact, one of a successful unscrewing attempt and one of a missing
+recordings, one of a successful unscrewing attempt and one of a missing
 screw. Both are example data: example recordings of an unscrewing attempt, to try the anomaly
-detector against, not training data.
+detector against.
 
 Two parts of the domain logic are built. `decision_tree` is the decision tree that classifies one
 unscrewing attempt, as a pure function. `learner` is the learner, which derives the maximum dynamic

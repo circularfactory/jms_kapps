@@ -32,8 +32,11 @@ from jms_kapps.uc2.vocabulary import FC, FC_NS
 
 
 def workflow_endpoint(db: Queryable, resource: IRI, workflow_class: IRI) -> str | None:
-    """The endpoint of the workflow of class `workflow_class` on `resource`'s live service."""
-    for service in services(db, resource=resource, workflows=(workflow_class,)):
+    """The endpoint of the workflow of class `workflow_class` on `resource`'s live service. A
+    caller calls it directly, so it needs no capability's link to the workflow."""
+    for service in services(
+        db, resource=resource, workflows=(workflow_class,), capability_linked=False
+    ):
         if workflow_class in service.workflows:
             return service.workflows[workflow_class]
     return None

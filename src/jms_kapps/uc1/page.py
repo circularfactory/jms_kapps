@@ -19,7 +19,7 @@ quantifications, each from one SPARQL query that it shows exactly as it was sent
 button, as use case 2's Launcher shows its query of the boxes. The queries run in a background
 read of their own (`page_lists.PageLists`), every second.
 
-**The switch** "Save measurements as uncertainty quantifications" (interim name), at the head of
+**The switch** "Save measurements as uncertainty quantifications", at the head of
 the measured positions, shows and sets the anomaly detector's mode. The page's server holds no
 connection to the detector: it draws the switch off and disabled, and `page.js` reads and sets the
 mode on the detector's own route (`anomaly_detector.MODE_ROUTE`) through the passthrough, like
@@ -27,9 +27,6 @@ every other page of a process.
 
 Everything the page shows comes from memory, the supervisor's (`Supervisor.snapshot`) and the
 background read's (`PageLists.last`), so a poll sends no request to the triple store.
-
-The page links to "The UC1 sequence", the paper's scenario told step by step with the seeded names,
-which it serves itself at `/sequence` (`sequence`).
 
 The page launches nothing and stops nothing: Ctrl+C at the terminal stops the run. What passes
 through to a process, a press of Unscrew and a change of the switch included, goes to the
@@ -71,7 +68,6 @@ from jms_kapps.uc1.page_lists import (
     ShownList,
     local_name,
 )
-from jms_kapps.uc1.sequence import sequence_html
 
 PAGE_HOST = "127.0.0.1"
 PAGE_PORT = 8091
@@ -102,7 +98,7 @@ DEVICE_ADDRESS = "no address: a device, it speaks only MQTT"
 # What the copy button of a query says, until it says what became of a copy.
 COPY_QUERY = "Copy the query"
 
-# The label of the switch of the anomaly detector's mode (interim name).
+# The label of the switch of the anomaly detector's mode.
 SAVE_UQ_LABEL = "Save measurements as uncertainty quantifications"
 
 # The process whose mode the switch shows and sets, by its name in the run.
@@ -224,7 +220,9 @@ def _dashboard_link(
     )
 
 
-def _process_with_resource(children: Sequence[ChildSnapshot], iri: str | None) -> ChildSnapshot | None:
+def _process_with_resource(
+    children: Sequence[ChildSnapshot], iri: str | None
+) -> ChildSnapshot | None:
     """The process of the run whose resource is `iri`, or None."""
     return next((c for c in children if str(c.resource) == iri), None)
 
@@ -273,7 +271,8 @@ def lists_json(lists: Lists, children: Sequence[ChildSnapshot]) -> dict:
             [operation_json(row, children) for row in lists.operations.rows],
         ),
         "learned_values": _list_json(
-            lists.learned_values, [row.model_dump() for row in lists.learned_values.rows]
+            lists.learned_values,
+            [row.model_dump() for row in lists.learned_values.rows],
         ),
         "measured_positions": _list_json(
             lists.measured_positions,
@@ -293,7 +292,9 @@ def _operation_row(row: dict) -> str:
     to its dashboard once it has one."""
     decider = row["decided_by_name"]
     if decider is not None and row["decided_by_dashboard"] is not None:
-        decided = f'<td class="decided-by">{_link(row["decided_by_dashboard"], decider)}</td>'
+        decided = (
+            f'<td class="decided-by">{_link(row["decided_by_dashboard"], decider)}</td>'
+        )
     else:
         decided = _cell(decider, "decided-by")
     cells = "".join(
@@ -382,13 +383,17 @@ def render(children: Sequence[ChildSnapshot], lists: Lists | None = None) -> str
     learned_query = _query_block(
         "learned-values", shown.learned_values, "Screw type", "Screw types"
     )
-    measured_rows = "\n".join(_measured_row(row) for row in shown.measured_positions.rows)
+    measured_rows = "\n".join(
+        _measured_row(row) for row in shown.measured_positions.rows
+    )
     measured_query = _query_block(
         "measured-positions", shown.measured_positions, "position", "positions"
     )
     switch = _switch(children)
     planner = _dashboard_link(children, "Planner", "the planner's dashboard")
-    detector = _dashboard_link(children, DETECTOR_NAME, "the anomaly detector's dashboard")
+    detector = _dashboard_link(
+        children, DETECTOR_NAME, "the anomaly detector's dashboard"
+    )
     learner = _dashboard_link(children, "Learner", "the learner's dashboard")
     # Hidden while the planner has no address: nothing to open yet.
     planner_button = _dashboard_link(
@@ -410,7 +415,6 @@ def render(children: Sequence[ChildSnapshot], lists: Lists | None = None) -> str
 <span class="muted">Ctrl+C at the terminal stops the run.</span>
 <span class="spacer"></span>
 {planner_button}
-<a class="button" href="sequence">Sequence</a>
 </header>
 <main>
 <p id="status" class="message warning" role="status" hidden>The page's server does not answer. What is shown is from its last answer.</p>
@@ -428,7 +432,7 @@ def render(children: Sequence[ChildSnapshot], lists: Lists | None = None) -> str
 </ol>
 <details>
 <summary>Where the attempts come from</summary>
-<p>The seed gives each screw a recording to replay: a good attempt for Screw1 and one with no screw in it for Screw2. The <a href="sequence">sequence</a> tells the scenario step by step with the seeded names.</p>
+<p>The seed gives each screw a recording to replay: a good attempt for Screw1 and one with no screw in it for Screw2.</p>
 </details>
 </section>
 
@@ -523,7 +527,9 @@ def _process_json(child: ChildSnapshot, services: Mapping[IRI, IRI]) -> dict:
         "links": links_of(child),
         "unconfirmed_for": child.unconfirmed_for,
         "resource": str(child.resource),
-        "service": str(services[child.resource]) if child.resource in services else None,
+        "service": str(services[child.resource])
+        if child.resource in services
+        else None,
     }
 
 
@@ -532,9 +538,8 @@ def build_app(
     services: Mapping[IRI, IRI] | None = None,
     lists: LastLists | None = None,
 ) -> FastAPI:
-    """The app of the page: `/` renders the snapshot, `/sequence` serves the page "The UC1
-    sequence", `/static` serves the stylesheet, the script and the logo, `/api/state` returns
-    the snapshot as JSON: for each process its name, state, PID, command line, recent output,
+    """The app of the page: `/` renders the snapshot, `/static` serves the stylesheet, the script
+    and the logo, `/api/state` returns the snapshot as JSON: for each process its name, state, PID, command line, recent output,
     address, dashboard, links, how long its state has been unconfirmed (or null), resource IRI
     and service class IRI (or null), and `/p/<id>/` passes every page of each process through
     (`passthrough`), the process found in the snapshot by its id (`process_of`). No route reads
@@ -556,10 +561,6 @@ def build_app(
     @app.get("/", response_class=HTMLResponse)
     def page() -> str:
         return render(snapshot(), last())
-
-    @app.get("/sequence", response_class=HTMLResponse)
-    def sequence() -> str:
-        return sequence_html()
 
     @app.get("/api/state")
     def state() -> dict:

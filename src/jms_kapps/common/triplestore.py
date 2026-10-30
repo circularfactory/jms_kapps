@@ -180,8 +180,7 @@ def clear_graph_by_graph(store: TripleStore) -> int:
     dataset without SHACL validation has no shapes to remove, and its store refuses `shapes_set`
     as not supported: the clear goes on. One request for each graph, through the interface's and
     the middleware's own calls, and never one request for the whole dataset: the store refuses
-    that while it collects history, and clears each graph (measured on the KIT store on
-    2026-10-01). Nothing here turns the history collection off: a clear while it is off is not
+    that while it collects history, and clears each graph. Nothing here turns the history collection off: a clear while it is off is not
     recorded, and the cleared data would then disappear from every earlier point in time.
 
     The interface takes every absolute IRI as the name of a graph, so the receipts graph is listed
@@ -227,7 +226,7 @@ def statement_count(db: Queryable) -> int:
     axioms of its ruleset.
 
     The scope of the written statements is stated through the interface's query builder
-    (`include_implicit=False`), which writes it in the form its store understands. On the KIT
+    (`include_implicit=False`), which writes it in the form its store understands. On the remote
     store that scope is the written statements of the default graph alone, beside every named
     graph of the dataset (the documentation of its query behaviour), so each named graph is
     counted on its own. A statement of the default scope that a named graph holds too is counted

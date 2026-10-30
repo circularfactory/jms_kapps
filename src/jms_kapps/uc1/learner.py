@@ -1,8 +1,8 @@
 """The learner of use case 1: it refines a threshold of each Screw type from the graph's history.
 
 The learner is a participant of its own, with its own resource and its own middleware instance
-(`learner_process`). No notification starts it: it runs every so often, as the KAPPS paper's
-learner "periodically queries" the graph. Each run:
+(`learner_process`). No notification starts it: it runs every so often and queries the graph.
+Each run:
 
 1. finds, in one query, the unscrewing operations that are `done` with the outcome ScrewIntact and
    that it has not learned from yet, each with its Screw type and its time-series reference;
@@ -20,14 +20,14 @@ decision, and the parameter copy that it records, hold the new value.
 **The rule is a placeholder, not a regression.** The new maximum dynamic torque of a Screw type is
 `PLACEHOLDER_MARGIN` (20 %) above the highest dynamic torque that the type's ScrewIntact attempts
 recorded in their Disassembly phase. It shows the loop: a threshold changes from the graph's own
-history, and the next decision uses it. A real regression, and the other thresholds, are left for
-the use case's second milestone. The first value that the learner derives for a Screw type replaces
+history, and the next decision uses it. The learner refines no other threshold.
+The first value that the learner derives for a Screw type replaces
 whatever the type held, a seeded example value too, higher or lower. After that the value only rises.
 
 **It learns from the decision tree's own outcomes.** An outcome is what the detector observed, not
 a confirmed Screw condition. So the rule takes a ScrewIntact attempt for an intact screw, and a
-wrong threshold can reinforce itself. Where a confirmed Screw condition comes from is left for the
-second milestone too.
+wrong threshold can reinforce itself. The learner has no source of a confirmed Screw
+condition.
 
 **What it remembers** is in memory: the operations it has learned from, and the value it derived
 last for each Screw type. A learner that starts again learns from every completed operation once

@@ -1,8 +1,8 @@
 """The decision tree: the recorded signals of one unscrewing attempt and the effective values in,
 one Detection result out.
 
-The tree is Figure 2 of the UC1 anomaly-detection paper, with its drawn exits only. It asks its
-nodes in the figure's order, and the first node that fails decides. It is a pure function: it
+The tree is Figure 2 of Goebels et al. (reference [68] of the paper), with its drawn exits only.
+It asks its nodes in the figure's order, and the first node that fails decides. It is a pure function: it
 reads no graph and does no I/O, so a detector can feed it from wherever its values and signals
 come from.
 

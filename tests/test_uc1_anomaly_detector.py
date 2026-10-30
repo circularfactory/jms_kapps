@@ -276,11 +276,10 @@ def test_a_running_operation_ends_done_with_its_outcome_and_its_decision_snapsho
     assert reads.frames_read == [REFERENCE]
 
 
-@pytest.mark.paper_claim
 def test_the_classification_is_a_prov_activity_of_the_detector_in_the_same_commit(
     middleware, ogm
 ):
-    """Paper claim 16, the PROV witness on the decision: the commit that ends the operation `done`
+    """The PROV witness on the decision: the commit that ends the operation `done`
     also creates the classification, with the detector's resource as its agent and the clock's
     time as its end, and the snapshot names it."""
     reads = Reads(
@@ -946,9 +945,7 @@ def test_with_the_mode_on_a_failure_after_contact_writes_both_positions_and_vari
     contact and fails; the commit holds the end of the approach and the head position, each with
     its own variable."""
     signals = attempt_signals(example_frame("success"))
-    at_contact = contact_position(
-        signals, effective(SUCCESS_PASSING_M4_VALUES).values
-    )
+    at_contact = contact_position(signals, effective(SUCCESS_PASSING_M4_VALUES).values)
     assert at_contact is not None
     placed = {
         **RECORDING_PLACEMENT_VALUES,

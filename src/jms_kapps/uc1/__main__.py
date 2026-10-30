@@ -248,7 +248,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 code = 1
             finally:
                 lists.stop()
-                print("Stopping the five participants...", flush=True)
+                print("Stopping the five processes...", flush=True)
                 supervisor.stop_all()
                 left = supervisor.may_not_have_deregistered()
                 if left:

@@ -58,7 +58,6 @@ from jms_kapps.uc2.discovery import workflow_endpoint
 from jms_kapps.uc2.handshake import CONVEYED
 from jms_kapps.uc2.history import Change, changes
 from jms_kapps.uc2.process import module_command
-from jms_kapps.uc2.reachable_destination import DISPOSABLE_PREFIX
 from jms_kapps.uc2.run_core import (
     Participant,
     RunGraph,
@@ -74,6 +73,9 @@ from jms_kapps.uc2.wms import SPAWNED, TAKEN_BACK
 from jms_kapps.uc2.wms_process import wms_command
 
 PROGRAM = "jms-uc2 trace-box"
+
+# The datasets the command takes: the store helper's disposable ones.
+DISPOSABLE_PREFIX = "ogm-disposable-"
 
 # The shipped topology the command runs on.
 TOPOLOGY = "line"

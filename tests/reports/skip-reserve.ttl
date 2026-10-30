@@ -1,0 +1,34 @@
+@prefix : <http://w3id.org/circularfactory/FlexConveyor#> .
+@prefix cfc: <http://w3id.org/circularfactory/Core#> .
+@prefix fci: <http://w3id.org/circularfactory/FlexConveyorInstances#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdf4j: <http://rdf4j.org/schema/rdf4j#> .
+@prefix rsx: <http://rdf4j.org/shacl-extensions#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+:FlexConveyorModulePossessionShape a sh:PropertyShape ;
+    sh:maxCount 1 ;
+    sh:message "A FlexConveyorModule may possess at most one Box at a time." ;
+    sh:path _:Nbddfd155f27e4bd89d60f4df36f59c37 .
+
+[] a sh:ValidationReport ;
+    rdf4j:truncated false ;
+    sh:conforms false ;
+    sh:result [ a sh:ValidationResult ;
+            rsx:shapesGraph rdf4j:SHACLShapeGraph ;
+            sh:focusNode fci:Module2 ;
+            sh:resultMessage "A FlexConveyorModule may possess at most one Box at a time." ;
+            sh:resultPath _:Nbddfd155f27e4bd89d60f4df36f59c37 ;
+            sh:resultSeverity sh:Violation ;
+            sh:sourceConstraintComponent sh:MaxCountConstraintComponent ;
+            sh:sourceShape :FlexConveyorModulePossessionShape ] .
+
+_:N4acdab5efd84492cb05db5cfc28cf238 sh:inversePath cfc:hasPossessedWorkpiece .
+
+_:Nfbebe05b3867448f9fb147b20ef05edc rdf:first _:N4acdab5efd84492cb05db5cfc28cf238 ;
+    rdf:rest () .
+
+_:Nbddfd155f27e4bd89d60f4df36f59c37 rdf:first cfc:hasPossessor ;
+    rdf:rest _:Nfbebe05b3867448f9fb147b20ef05edc .
+

@@ -1,4 +1,4 @@
-"""Use case 1's paper claims of §5.1 on one run of `jms-uc1`, on a live GraphDB and a live
+"""Use case 1's claims of §5.1 on one run of `jms-uc1`, on a live GraphDB and a live
 InfluxDB.
 
 One run serves every test of the module. `jms-uc1` seeds the dataset and starts the planner, the
@@ -7,8 +7,8 @@ Unscrew on the planner for Screw1, waits until its operation is `done`, waits un
 committed a new `:M4` value, then presses Unscrew for Screw2 and waits until that operation has
 ended: `failed`, because its outcome, MissingScrew, is a failure outcome. The run records
 what it saw on the way; each test reads the record, the graph, the
-time-series store, or the run's terminal output, and asserts its claim. Claim 13 is proved by a
-scan of the source (`test_uc1_writes.py`).
+time-series store, or the run's terminal output, and asserts its claim. A scan of the source
+checks the writes of the services (`test_uc1_writes.py`).
 
 **Only on a dataset you can lose.** The run clears the dataset `--dataset` names, as every graphdb
 test does. On a shared store never `Tests`, which every library's live suite shares, nor
@@ -257,9 +257,8 @@ def effective_value_reads(log: Path, screw: IRI) -> list[str]:
     return [line for line in log.read_text().splitlines() if marker in line]
 
 
-@pytest.mark.paper_claim
 def test_the_participants_coordinate_through_the_graph(loop):
-    """Paper claim 10 (§5.1), read as: coordination is state and data.
+    """Coordination is state and data (§5.1).
     Every state change, handover and result of the loop is in the graph, and the participants find
     each other there: the five processes are started with no address of another, each live service
     and its workflow is in the graph, the planner hands each operation to the service that
@@ -275,7 +274,9 @@ def test_the_participants_coordinate_through_the_graph(loop):
     # IRI, which is not an address of anything: it is left out of this check and holds no `http`
     # address of a service below.
     middleware_children = [
-        child for child in loop.children if "jms_kapps.uc1.robot_controller" not in child
+        child
+        for child in loop.children
+        if "jms_kapps.uc1.robot_controller" not in child
     ]
     assert len(middleware_children) == 4, loop.children
     assert not [child for child in middleware_children if "://" in child], loop.children
@@ -316,11 +317,10 @@ def test_the_participants_coordinate_through_the_graph(loop):
     assert set(ClassifyRequest.model_fields) == {"operation"}
 
 
-@pytest.mark.paper_claim
 def test_the_detector_reads_the_screw_types_thresholds_through_the_mapper_at_every_attempt(
     loop,
 ):
-    """Paper claim 11 (§5.1): at each attempt the detector reads the Screw's effective values
+    """At each attempt the detector reads the Screw's effective values
     afresh, through the object-graph mapper, from the Screw and through its Screw type, `:M4`. Its
     terminal line says so once for each attempt, and each parameter copy holds `:M4`'s
     thresholds as they were at that attempt: the seeded value for Screw1, and for Screw2 the value
@@ -347,11 +347,10 @@ def test_the_detector_reads_the_screw_types_thresholds_through_the_mapper_at_eve
     }, second
 
 
-@pytest.mark.paper_claim
 def test_the_learner_commits_a_value_from_completed_operations_and_the_detector_uses_it_next(
     loop, influxdb
 ):
-    """Paper claim 12 (§5.1): the learner, which runs every second on its own, finds the completed operation in the graph, reads its curves, and commits a new maximum
+    """The learner, which runs every second on its own, finds the completed operation in the graph, reads its curves, and commits a new maximum
     dynamic torque to `:M4`; the next attempt's parameter copy holds it. The value is the
     placeholder rule's over the first attempt's frame: the rule is a placeholder, not the
     paper's regression."""
@@ -363,9 +362,8 @@ def test_the_learner_commits_a_value_from_completed_operations_and_the_detector_
     assert snapshot_of(loop.db, SCREW_2)[JMS.hasMaxDynamicTorque] == [loop.learned]
 
 
-@pytest.mark.paper_claim
 def test_the_sensor_channels_are_a_replay_of_recorded_series(loop, influxdb):
-    """Paper claim 14 (§5.1): the curves of each attempt are a replay of a recorded series, the
+    """The curves of each attempt are a replay of a recorded series, the
     example recording the demo names for the Screw. The frame that the operation's reference
     names in the time-series store holds the recording's samples, at the recording's spacing,
     with its phases, and says which recording it replays."""

@@ -4,7 +4,7 @@ module it may step to when that one declines.
 A path is counted in hops over the station's connections (`fc:hasConnection` / `fc:connectsTo`),
 and each connection leads one way, from the module that has it. Of several shortest paths, the one
 whose next module has the lowest IRI wins, so every module decides the same way on the same graph.
-The old use case 2 ran Dijkstra with unit weights, which finds the same paths. A box never goes
+A box never goes
 straight back to the module it came from: a path that runs back through it counts for nothing
 (`avoid`), unless a crash has left a neighbour out for the box (below).
 

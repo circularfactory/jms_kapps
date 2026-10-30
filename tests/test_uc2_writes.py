@@ -28,15 +28,8 @@ SETUP = {
     Path("common/triplestore.py"),
     Path("uc1/seed.py"),
     Path("uc2/seed.py"),
-    Path("evaluation/seed.py"),
+    Path("commit_time/seed.py"),
     Path("uc2/history.py"),
-    # The demonstration that the store refuses a capability without exactly one resource: it
-    # starts no party, and writes plain triples on purpose, since the middleware never breaks the
-    # rule.
-    Path("uc2/capability_resource.py"),
-    # The demonstration that the store refuses an unreachable destination: it starts no party, and
-    # removes a connection with a direct write, since no party ever does.
-    Path("uc2/reachable_destination.py"),
 }
 
 REGISTRATION = "kapps_semantic_middleware.registration"
@@ -68,9 +61,8 @@ def test_the_source_is_found():
 @pytest.mark.parametrize(
     "path", sources(), ids=lambda path: str(path.relative_to(SOURCE))
 )
-@pytest.mark.paper_claim
 def test_no_party_writes_past_the_middleware(path):
-    """Paper claim 7 (§5.2, §4.3), on jms_kapps' side: every write of a party is a commit of its
+    """On jms_kapps' side (§5.2, §4.3): every write of a party is a commit of its
     middleware, which goes through the object-graph mapper. Only the reset and the setup write
     directly, before any party starts: the seed, the Launcher's Clear, which stops every process
     first, and the switch of the store's history, the last step of a reset."""

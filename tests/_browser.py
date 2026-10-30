@@ -4,16 +4,22 @@ pytest-playwright's options choose the browser (`--browser`, `--browser-channel`
 default it is Playwright's own Chromium, which `uv run playwright install chromium` downloads.
 Where that one is not installed and no channel was named, the Google Chrome installed on this
 machine runs the tests instead.
+
+Playwright itself starts here too, in place of pytest-playwright's own start: see
+`start_playwright`.
 """
 
 from __future__ import annotations
 
+import asyncio
 import re
 from collections.abc import Callable
 
 import pytest
-from playwright.sync_api import Browser
+from playwright.sync_api import Browser, Playwright
 from playwright.sync_api import Error as PlaywrightError
+
+from jms_kapps.common.platforms import PLATFORM, windows
 
 # How Playwright says that the browser it was to launch is not on this machine: one of its own
 # ("Executable doesn't exist at ..."), or one a channel names ("... is not found at ...").
@@ -51,3 +57,24 @@ def launch(
         if not _not_installed(error):
             raise
         pytest.skip(f"No browser is installed to run the page in: {_HOW_TO_INSTALL}.")
+
+
+def start_playwright(start: Callable[[], Playwright]) -> Playwright:
+    """Playwright, started with `start`: on Windows on a Proactor loop, elsewhere as it is.
+
+    Playwright runs its driver as a child process. It makes its event loop once, at its start,
+    from the event-loop policy in effect, and keeps it. On Windows only a Proactor loop can start a
+    child process, and an MQTT client needs a Selector loop. The sync layer of the middleware sets
+    a policy of Selector loops for the whole process when its MQTT connector is imported, so there
+    the policy of Proactor loops is in effect for Playwright's start alone. After the start, failed
+    or not, the policy is the one before, and the tests of an MQTT client keep their Selector
+    loops.
+    """
+    if PLATFORM is not windows:
+        return start()
+    before = asyncio.get_event_loop_policy()
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    try:
+        return start()
+    finally:
+        asyncio.set_event_loop_policy(before)

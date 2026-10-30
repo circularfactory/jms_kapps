@@ -11,7 +11,7 @@ These things belong here, and nothing else:
 - the one port of a run's page, through which every page of the run passes (`passthrough.py`).
 
 A module that only one use case uses belongs in that use case. This package is not a place for
-code that has no other home. The harness that measures a run belongs to the evaluation of the
-revised paper, in `jms_kapps.evaluation`, which the demonstration runs without: the evaluation lives
-in a folder of its own.
+code that has no other home. The harness that measures a run belongs to the commit time
+measurement, in `jms_kapps.commit_time`, which the demonstration runs without: the measurement
+lives in a folder of its own.
 """

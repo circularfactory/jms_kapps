@@ -16,7 +16,7 @@ learner's list of completed ScrewIntact operations, and the screwing resource's 
 detector by its capability. The middleware's own registration of a service, which writes
 directly, is the middleware's, not the service's, and lies outside this package's source; its
 move to the mapper is the middleware's to make. The modules of `common/` that a service uses are
-read by claim 7's scan, `test_uc2_writes.py`.
+read by the scan of every party, `test_uc2_writes.py`.
 
 These are read from the source under `src/`, without a store.
 """
@@ -125,9 +125,8 @@ def test_the_services_are_found():
 @pytest.mark.parametrize(
     "path", services(), ids=lambda path: str(path.relative_to(SOURCE))
 )
-@pytest.mark.paper_claim
 def test_no_service_of_use_case_1_writes_past_its_middleware(path):
-    """Paper claim 13 (§5.1), read as: no service of use case 1 writes
+    """No service of use case 1 writes
     state to the store through SPARQL, and every write it makes goes through its middleware and
     the object-graph mapper. Its SPARQL lookups read only, and stay."""
     tree = ast.parse(path.read_text(encoding="utf-8"))

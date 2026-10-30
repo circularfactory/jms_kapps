@@ -30,11 +30,10 @@ pytestmark = [
 WHY = "trace-box turns the store's history collection on, for good"
 
 
-@pytest.mark.paper_claim
 def test_every_change_of_a_box_s_possession_is_read_back_from_the_store_s_history(
     dataset, tmp_path, capsys
 ):
-    """Paper claim 20: a run of use case 2 with four modules in a line reads every change of
+    """A run of use case 2 with four modules in a line reads every change of
     possession of a box back from the history of the triple store. The spawn is one
     transaction, with the possession, the `queued` status and the assignment; each handover
     between modules is one, with the possession and the assignment; the give-back to the

@@ -3,8 +3,7 @@
 The ontology has one property with a domain and a range, one subclass axiom and one inverse pair.
 The store must materialize the subclass conclusion and the inverse conclusion: the use cases rely
 on both. The test prints whether the store also typed an individual from the range and from the
-domain, and asserts nothing about either: no read of the use cases relies on those two, and the
-documentation claims nothing about them beyond a dated observation (see the glossary entry
+domain, and asserts nothing about either: no read of the use cases relies on those two (see the glossary entry
 "Inference").
 
 These tests clear the dataset they run against. They run only when the store's connection

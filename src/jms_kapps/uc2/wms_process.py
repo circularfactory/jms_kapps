@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import random
 import sys
 from collections.abc import Callable, Iterable
@@ -36,6 +37,7 @@ from kapps_semantic_middleware import Mode, SemanticMiddleware
 from kapps_semantic_middleware.dashboard import enable_dashboard
 from kapps_triplestore_interface import IRI
 
+from jms_kapps.common.heartbeats import HeartbeatSettingRefused, heartbeat_interval
 from jms_kapps.common.process import GRACEFUL_SHUTDOWN_SECONDS, stop_has_begun
 from jms_kapps.common.triplestore import connect
 from jms_kapps.uc2.discovery import GraphView
@@ -81,7 +83,7 @@ def wms_command(dataset: str, *, pick_seed: int | None = None) -> list[str]:
     """The command line that runs the WarehouseManagementSystem against `dataset`. It takes
     no transit time: it moves no box. With
     `pick_seed` it ends with `--pick-seed <pick_seed>`: the seed of the generator it picks its
-    modules with, unseeded where None. Interim name."""
+    modules with, unseeded where None."""
     return [
         sys.executable,
         "-m",
@@ -105,7 +107,14 @@ def build(
     notification handler, its handover event stream and its dashboard. `choose` picks a module
     out of several, at random unless a test says otherwise, so that a live test can cover every
     ordered pair of modules in a few boxes. `strategy`, named `strategy_name`, picks the origin and
-    the destination of a spawn among its candidates, with `choose`."""
+    the destination of a spawn among its candidates, with `choose`. The middleware's heartbeat
+    interval is the environment's (`common.heartbeats`), as for a module.
+
+    Raises:
+        HeartbeatSettingRefused: If the heartbeat interval variable holds no number of seconds.
+            Nothing is registered then.
+    """
+    interval = heartbeat_interval(os.environ)
     middleware = SemanticMiddleware(
         mode=Mode.RESOURCE,
         resource_iri=str(WMS),
@@ -114,6 +123,7 @@ def build(
         host=host,
         port=port,
         activity_feed=True,
+        heartbeat_interval=interval,
     )
     graph = GraphView(ogm.db, fetch=middleware.fetch)
     wms = WarehouseManagementSystem(
@@ -250,18 +260,23 @@ def main() -> None:
     except UnknownStrategy as unknown:
         print(f"jms-uc2 WMS: {unknown}", file=sys.stderr, flush=True)
         raise SystemExit(1) from None
-    run_process(
-        args.host,
-        lambda port: build(
-            OGM(db=connect(args.dataset)),
+    try:
+        run_process(
             args.host,
-            port,
-            choose=seeded_choice(args.pick_seed),
-            strategy=strategy,
-            strategy_name=args.wms_strategy,
-        ),
-        lambda address: f"{WMS} on {address}",
-    )
+            lambda port: build(
+                OGM(db=connect(args.dataset)),
+                args.host,
+                port,
+                choose=seeded_choice(args.pick_seed),
+                strategy=strategy,
+                strategy_name=args.wms_strategy,
+            ),
+            lambda address: f"{WMS} on {address}",
+        )
+    except HeartbeatSettingRefused as refused:
+        # A WMS whose heartbeat interval variable holds no number does not start, as a module.
+        print(f"jms-uc2 WMS: {refused}", file=sys.stderr, flush=True)
+        raise SystemExit(1) from None
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 """The `live` marker: every test that needs a live service, so that `-m "not live"` is the offline tier.
 
 A test that needs a live store is marked by the service it needs, `graphdb` or `influxdb`. This
-plugin marks each of them `live` too, at collection, so that the offline tier is the same command
-here as in the three libraries and in the release mechanism's own tier: `pytest -m "not live"`.
+plugin marks each of them `live` too, at collection, so that the offline tier is one command:
+`pytest -m "not live"`.
 """
 
 from __future__ import annotations

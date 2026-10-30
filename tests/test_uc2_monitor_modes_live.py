@@ -2,11 +2,9 @@
 headless browser, opened through the Launcher's port as a person opens it.
 
 It starts and stops `jms-uc2` with the helpers of `test_uc2_running_system.py`, against the
-dataset `--dataset` names, which it clears. It imports them from that test module, unlike
-the helpers in `tests/_*.py`, so that this change leaves the running system's test as it is: if a
-helper there is renamed, this test breaks at its import, and moving them into a helper module of
-their own is a refactor of its own. It arms `complete-without-releasing` on Module 5
-through the Launcher, and spawns Box A from Module 1 toward Module 5 through the WMS's spawn
+dataset `--dataset` names, which it clears. It imports them from that test module, not from
+a helper in `tests/_*.py`: if a helper there is renamed, this test breaks at its import. It arms
+`complete-without-releasing` on Module 5 through the Launcher, and spawns Box A from Module 1 toward Module 5 through the WMS's spawn
 workflow: Module 5 commits the transport `done` before it gives the box back, the store refuses
 that, and Module 5 emits the refusal on its handover event stream. Then it spawns Box B from Module
 2 toward Module 4, and on the page:
@@ -65,7 +63,7 @@ pytestmark = [
 
 M1, M2, M4, M5 = (module_iri(n) for n in (1, 2, 4, 5))
 
-# A box's journey over two hops of a few seconds each, on the shared KIT store.
+# A box's journey over two hops of a few seconds each, on the shared remote store.
 JOURNEY_SECONDS = 120.0
 
 # The monitor finds the streams every 5 s: a query for them that has not gone for longer than

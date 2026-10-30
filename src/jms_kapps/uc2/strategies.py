@@ -40,11 +40,11 @@ makes traffic a benchmark can repeat, says so: its label ends in "(synthetic)".
 **Finding strategies.** Each kind has a Python entry-point group, declared in the pyproject of the
 package that provides it: `jms_kapps.uc2.module_strategies` and `jms_kapps.uc2.wms_strategies`.
 Each entry loads one strategy object, and the entry's name is the strategy's name; jms_kapps
-registers `real` in both. An entry whose module cannot be imported, as when the `evaluation` folder
+registers `real` in both. An entry whose module cannot be imported, as when the `commit_time` folder
 that holds the benchmark strategies is not there, is skipped with one WARNING; so is an object of
 the other kind, or of none; and of two strategies of one kind with one name, the first found
 counts, and one WARNING names the other. No registry holds strategies beyond the entry points.
-Use case 2 imports nothing from the `evaluation` folder, so the demonstration runs without it.
+Use case 2 imports nothing from the `commit_time` folder, so the demonstration runs without it.
 
 A strategy is chosen at start in the Launcher, for the WMS and for the modules; the default is
 the real behaviour.

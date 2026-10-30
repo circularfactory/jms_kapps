@@ -5,8 +5,8 @@ read of the graph and no read of the time-series store. The detector writes it a
 from what each classification reads anyway: a classification once its commit has reached the
 store, and the values of a Screw type at each read of a Screw's effective values.
 
-It also holds the detector's mode, "Save measurements as uncertainty quantifications", on or off
-(interim name), which the detector reads at each classification and which can be set while it
+It also holds the detector's mode, "Save measurements as uncertainty quantifications", on or off,
+which the detector reads at each classification and which can be set while it
 runs.
 """
 

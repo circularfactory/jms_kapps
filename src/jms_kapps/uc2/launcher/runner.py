@@ -11,8 +11,7 @@ line, and the stop goes on without one.
 The page is on one fixed port, the only address worth a bookmark, and the only port a person needs:
 every other process takes a free port and registers it in the graph, and the Launcher passes each
 process's pages through on its own port, under `/p/<id>/`. Over SSH, WSL or VS Code, forwarding
-this one port reaches every page of the run. The fixed port is not 8080, which the middleware's
-transferunits demo takes.
+this one port reaches every page of the run.
 """
 
 from __future__ import annotations

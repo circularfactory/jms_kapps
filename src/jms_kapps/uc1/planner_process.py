@@ -18,7 +18,7 @@ the loop would wait for itself forever. `asyncio.to_thread` keeps it off.
 
 **The planner finds its grinders in the graph, with one SPARQL query**, because the object-graph
 mapper cannot enumerate a class. Everything else — each grinder's Screws — it reads in
-object-graph projections. It is no longer told what it works on; the graph is its source of truth.
+object-graph projections. It is not told what it works on; the graph is its source of truth.
 
 **The offer comes from the graph, and the graph is its source of truth.** The offer lists every
 Screw of the grinders that has no operation yet — a Screw that holds `:hasOperation` is no longer

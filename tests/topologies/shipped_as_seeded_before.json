@@ -43,15 +43,5 @@
   {"id": "Module2", "label": "Module 2", "types": ["FlexConveyorModule"], "connections": [["East", "Module3", 0]]},
   {"id": "Module3", "label": "Module 3", "types": ["FlexConveyorModule"], "connections": [["East", "Module4", 0]]},
   {"id": "Module4", "label": "Module 4", "types": ["ExitModule"], "connections": []}
- ],
- "pair": [
-  {"id": "Module1", "label": "Module 1", "types": ["EntryModule"], "connections": [["South", "Module2", 0]]},
-  {"id": "Module2", "label": "Module 2", "types": ["ExitModule"], "connections": []}
- ],
- "tee": [
-  {"id": "Module1", "label": "Module 1", "types": ["EntryModule"], "connections": [["South", "Module2", 0]]},
-  {"id": "Module2", "label": "Module 2", "types": ["FlexConveyorModule"], "connections": [["East", "Module3", 0], ["South", "Module4", 0]]},
-  {"id": "Module3", "label": "Module 3", "types": ["ExitModule"], "connections": []},
-  {"id": "Module4", "label": "Module 4", "types": ["ExitModule"], "connections": []}
  ]
 }

@@ -173,7 +173,7 @@ def _frame() -> str:
 def _box_label(box: IRI) -> str:
     """What the cardboard box says: the box's name, or, for a box named by a UUID, `Box-` and
     the first four characters of the UUID, as the monitor's disc shows those four: a box's whole
-    name, `Box-<UUID>`, does not fit on it. Interim name."""
+    name, `Box-<UUID>`, does not fit on it."""
     name = local_name(box)
     if name.startswith(UUID_BOX_PREFIX):
         return name[: len(UUID_BOX_PREFIX) + 4]

@@ -179,8 +179,8 @@ and emitted on the module's handover event stream.
   the box back. The store refuses that while the module holds the box, and the module then gives
   the box back properly, with the last handover.
 
-This is the adaptation the paper describes, hardcoded. A module that reads the report and decides
-for itself is future work.
+This is the adaptation the paper describes, hardcoded: a module does not read the report to
+decide for itself.
 
 Only a `ShaclValidationError` is the graph's refusal, and its report travels verbatim. Any other
 error of the store, such as a dataset that does not exist or a read that failed, is not caught.

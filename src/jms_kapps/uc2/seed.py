@@ -37,31 +37,21 @@ from jms_kapps.uc2.vocabulary import (
 
 MODULES = (module_iri(1), module_iri(2))
 
-# The transit time of a launch's modules unless `--transit-time` or the page's field sets it: a few seconds, so that a person
-# watching the demo sees each box on each module. The tests give 0. Not 5 s: a party reads the
-# store right after a move, and a store that closes a connection after 5 s idle can close it just
-# as that read is sent. The store's client does not send such a read again, so the read fails. The
-# ticket "A query on a connection that the store closed when idle fails instead of being retried
-# (14)" in kapps_triplestore_interface fixes the client; after its release the default can go
-# back to 5 s.
+# The transit time of a launch's modules unless `--transit-time` or the page's field sets it: 3 s,
+# so that a person watching the demo sees each box on each module. The tests give 0. Not 5 s: a
+# party reads the store right after a move, and a store that closes a connection after 5 s idle
+# can close it just as that read is sent. The store's client does not send such a read again, so
+# the read fails.
 DEFAULT_TRANSIT_SECONDS = 3.0
 
 Triple = tuple[IRI, IRI, IRI]
 
 
-def shapes_document(*, sparql_shapes: bool) -> str:
-    """The shapes that the store receives as one document: the Core file, followed by the
-    SHACL-SPARQL file when `sparql_shapes`.
-
-    The store's `shapes_set` replaces every shape, so two files must go as one document. `reset`
-    adds the middleware's operation-status shape in front of it.
-    """
-    document = read_asset("jms_kapps.uc2", "shapes", "flexconveyor_usecase_shapes.ttl")
-    if sparql_shapes:
-        document += "\n" + read_asset(
-            "jms_kapps.uc2", "shapes", "flexconveyor_usecase_sparql_shapes.ttl"
-        )
-    return document
+def shapes_document() -> str:
+    """The shapes that use case 2's seed sends to the store: its shapes file. `reset` adds the
+    middleware's operation-status shape in front of it, since the store's `shapes_set` replaces
+    every shape."""
+    return read_asset("jms_kapps.uc2", "shapes", "flexconveyor_usecase_shapes.ttl")
 
 
 def reset_uc2(
@@ -70,16 +60,13 @@ def reset_uc2(
     individuals: str = "",
     collect_history: bool = False,
     with_shapes: bool = True,
-    sparql_shapes: bool = False,
 ) -> None:
     """Empty the dataset and load use case 2's ontology and shapes, then `individuals`.
 
     The shapes are set through the store's `shapes_set`, so a dataset without SHACL validation
     refuses the reset, before it loads anything: shapes stored there would validate nothing.
     Only with `with_shapes` False does the reset send no shapes, and seed such a dataset without
-    them: the measurement harness sets it for its SHACL-off twin, and nothing else does. The
-    SHACL-SPARQL rule is loaded only with `sparql_shapes`, which the shape tests, the audit and the
-    SHACL-SPARQL demo ask for and a launch does not.
+    them: the measurement harness sets it for its SHACL-off twin, and nothing else does.
 
     With `collect_history`, the launch option, the reset then turns on the store's history
     collection, with no filter, after it loaded the ontology: its last step
@@ -93,7 +80,7 @@ def reset_uc2(
     reset(
         db,
         ontology=read_asset("jms_kapps.uc2", "ontology", "flexconveyor_usecase.ttl"),
-        shapes=shapes_document(sparql_shapes=sparql_shapes) if with_shapes else None,
+        shapes=shapes_document() if with_shapes else None,
         individuals=individuals,
     )
     if collect_history:
@@ -108,14 +95,12 @@ def seed_topology(
     resources: Mapping[IRI, str] | None = None,
     collect_history: bool = False,
     with_shapes: bool = True,
-    sparql_shapes: bool = False,
 ) -> None:
     """Empty the dataset, then seed every module of `topology`, the WarehouseManagementSystem,
     and each of `resources`. With `collect_history`, the launch option, the reset then turns on the
     store's history collection (`reset_uc2`). With
     `with_shapes` False, the reset sends no shapes, for a dataset without SHACL validation; by
-    default a dataset without it refuses the seed (`reset_uc2`). The SHACL-SPARQL rule is loaded
-    only with `sparql_shapes`, which the shape tests, the audit and the SHACL-SPARQL demo ask for.
+    default a dataset without it refuses the seed (`reset_uc2`).
 
     Every module gets exactly one `fc:hasTransitTime`: its own from the topology, else
     `transit_seconds`, the launch's. Each of `resources` is a plain `cfc:Resource` with the label
@@ -150,21 +135,17 @@ def seed_topology(
         individuals=graph.serialize(format="turtle"),
         collect_history=collect_history,
         with_shapes=with_shapes,
-        sparql_shapes=sparql_shapes,
     )
 
 
-def seed_two_modules(
-    db: TripleStore, *, transit_seconds: float, sparql_shapes: bool = False
-) -> tuple[IRI, IRI]:
+def seed_two_modules(db: TripleStore, *, transit_seconds: float) -> tuple[IRI, IRI]:
     """Seed module 1, connected east to module 2, and the WarehouseManagementSystem, with both
-    modules at `transit_seconds`. The SHACL-SPARQL rule is loaded only with `sparql_shapes`, which
-    the shape tests ask for.
+    modules at `transit_seconds`.
 
     Returns:
         The two module IRIs, upstream first.
     """
-    reset_uc2(db, sparql_shapes=sparql_shapes)
+    reset_uc2(db)
     upstream, downstream = MODULES
     for n, module in enumerate(MODULES, start=1):
         _add_module(db, module, n, transit_seconds)
@@ -186,24 +167,6 @@ def seed_two_modules(
     )
     db.triple_add((upstream, FC.hasConnection, connection))
     return upstream, downstream
-
-
-def seed_three_modules(
-    db: TripleStore, *, transit_seconds: float, sparql_shapes: bool = False
-) -> tuple[IRI, IRI, IRI]:
-    """Seed the two modules of `seed_two_modules`, and a third, which no connection reaches or
-    leaves, at `transit_seconds` like the other two. The SHACL-SPARQL rule is loaded only with
-    `sparql_shapes`, which the SHACL-SPARQL demonstration asks for.
-
-    Returns:
-        The three module IRIs: module 1, connected to module 2, and module 3 apart.
-    """
-    upstream, downstream = seed_two_modules(
-        db, transit_seconds=transit_seconds, sparql_shapes=sparql_shapes
-    )
-    apart = module_iri(3)
-    _add_module(db, apart, 3, transit_seconds)
-    return upstream, downstream, apart
 
 
 def _add_module(db: TripleStore, module: IRI, n: int, transit_seconds: float) -> None:

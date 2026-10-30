@@ -120,7 +120,15 @@ def _operation_rows(db: TripleStore, query: str) -> list[tuple]:
 def _shown_operation(row: dict) -> tuple:
     return tuple(
         row[key]
-        for key in ("operation", "screw", "issuer", "status", "outcome", "reason", "decided_by")
+        for key in (
+            "operation",
+            "screw",
+            "issuer",
+            "status",
+            "outcome",
+            "reason",
+            "decided_by",
+        )
     )
 
 
@@ -182,7 +190,9 @@ def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
     # stand-in is a device without a service: its row has no address, no links and no dashboard,
     # so it is skipped here.
     processes = state(page_url)
-    assert [p["name"] for p in processes if p["address"] is None] == ["Robot controller"]
+    assert [p["name"] for p in processes if p["address"] is None] == [
+        "Robot controller"
+    ]
     assert all(p["links"] == [] for p in processes if p["address"] is None)
     for process in processes:
         if process["address"] is None:
@@ -195,7 +205,9 @@ def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
                 stream = urljoin(href, "activity/stream")
                 with httpx.stream("GET", stream, timeout=10) as events:
                     assert events.status_code == 200, stream
-                    assert events.headers["content-type"].startswith("text/event-stream")
+                    assert events.headers["content-type"].startswith(
+                        "text/event-stream"
+                    )
         dashboard = urljoin(page_url, process["dashboard"])
         eventually(
             lambda dashboard=dashboard: f"  {dashboard}\n" in log.read_text(),
@@ -225,7 +237,9 @@ def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
 
     # The attempt was given the seven values of `:M4`, and the screwing resource's dashboard and
     # log line show them.
-    attempts = urljoin(page_url, f"p/{SCREWING_RESOURCE.fragment}/dashboard/box/attempts")
+    attempts = urljoin(
+        page_url, f"p/{SCREWING_RESOURCE.fragment}/dashboard/box/attempts"
+    )
     eventually(
         lambda: _type_values_of(attempts, SCREW) == [_seeded_values(before)],
         timeout=10,
@@ -308,8 +322,10 @@ def test_a_press_runs_the_loop_end_to_end_and_the_learner_closes_it(
     # Its background read runs every second, so the lists may lag.
     detector_dashboard = f"p/{DETECTOR.fragment}/dashboard"
     eventually(
-        lambda: [r["outcome"] for r in _lists(page_url)["operations"]["rows"]]
-        == ["ScrewIntact", "MissingScrew"],
+        lambda: (
+            [r["outcome"] for r in _lists(page_url)["operations"]["rows"]]
+            == ["ScrewIntact", "MissingScrew"]
+        ),
         timeout=10,
         interval=POLL_SECONDS,
     )

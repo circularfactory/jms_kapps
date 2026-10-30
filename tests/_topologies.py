@@ -1,16 +1,13 @@
 """The topologies the tests compare with, from sources that are not the code under test.
 
-`topologies/` holds two files. `modules_preview_cross.json` is the first iteration's cross,
-copied unchanged from the `paper` branch of the old use-case repository, at commit
-d32011805be9199291eec0731acab241e5bd74f1. `shipped_as_seeded_before.json` is what the seed wrote
-for each shipped topology before the shipped topologies became module lists: every
-module's types, label and connections, as `Topology.graph()` on main at c432426 wrote them from
-the short topology documents of that time, one module to a line, with one change since: the
-cross's Modules 1 and 2 are entry modules and Modules 4 and 5 exit modules, as the first
-iteration's cross has them. The `line` came later, as a module list: its entry is written by hand
-from the topology's description, four modules one after another, each connected East to the next.
+`topologies/` holds two files. `modules_preview_cross.json` is the cross as a module list, in a
+file of its own. `shipped_as_seeded_before.json` holds what the seed writes for each shipped
+topology, recorded outside the code under test: every module's types, label and connections, one
+module to a line. In its cross, Modules 1 and 2 are entry modules and Modules 4 and 5 exit modules.
+Its `line` is written by hand from the topology's description: four modules one after another, each
+connected East to the next.
 
-The shipped cross names the roles of the first iteration's cross; Module 3 has none.
+The shipped cross names the same roles as `modules_preview_cross.json`; Module 3 has none.
 """
 
 from __future__ import annotations
@@ -51,7 +48,7 @@ def module_entry(
     transit_time: object | None = None,
     links: Sequence[tuple[object, ...]] = (),
 ) -> dict:
-    """One module of a module list, written as the first iteration wrote one: `local` is its local
+    """One module of a module list: `local` is its local
     name in `fci:`, each type a class of `fc:`, and each link a (direction, module) pair, on port
     0, or a (direction, module, port) triple."""
     entry: dict = {"id": FCI_NS + local}

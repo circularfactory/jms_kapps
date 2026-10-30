@@ -14,7 +14,7 @@ refines: the value now, from the latest read, and the value at the run's start, 
 read that found a Screw type. So the reads start after the seed, before which the dataset still holds the
 previous run's values; the learner commits nothing before the first press.
 
-**Measured positions** (interim title) lists each measured position that the anomaly detector saved
+**Measured positions** lists each measured position that the anomaly detector saved
 as an uncertainty quantification: a Screw's head position, and the approach end position of an
 unscrewing operation, each with its best estimate, the Gaussian-mixture literal of its random
 variable, and the standard deviation, the square root of the variance that the literal holds.
@@ -192,7 +192,9 @@ class Lists(BaseModel):
 
     operations: ShownList[OperationRow] = ShownList[OperationRow]()
     learned_values: ShownList[LearnedValue] = ShownList[LearnedValue]()
-    measured_positions: ShownList[MeasuredPositionRow] = ShownList[MeasuredPositionRow]()
+    measured_positions: ShownList[MeasuredPositionRow] = ShownList[
+        MeasuredPositionRow
+    ]()
 
 
 def _value(row: dict, name: str) -> str | None:
@@ -297,7 +299,9 @@ class PageLists:
 
     def _learned(self, rows: list[dict]) -> list[LearnedValue]:
         found = {
-            local_name(str(row["screwType"]["value"])): str(row["maxDynamicTorque"]["value"])
+            local_name(str(row["screwType"]["value"])): str(
+                row["maxDynamicTorque"]["value"]
+            )
             for row in rows
         }
         # The first read that finds a Screw type: one of a dataset that holds none yet sets
@@ -305,7 +309,9 @@ class PageLists:
         if self._at_start is None and found:
             self._at_start = found
         return [
-            LearnedValue(screw_type=name, now=now, at_start=(self._at_start or {}).get(name))
+            LearnedValue(
+                screw_type=name, now=now, at_start=(self._at_start or {}).get(name)
+            )
             for name, now in found.items()
         ]
 
@@ -322,7 +328,9 @@ class PageLists:
                 self.read()
                 stopped.wait(self._interval)
 
-        threading.Thread(target=read_until_stopped, name="uc1-page-lists", daemon=True).start()
+        threading.Thread(
+            target=read_until_stopped, name="uc1-page-lists", daemon=True
+        ).start()
 
     def stop(self) -> None:
         """Stop the background read: no read starts after this. One under way finishes, and

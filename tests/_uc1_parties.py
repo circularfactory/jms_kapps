@@ -13,10 +13,8 @@ operation of each call, answers with a fixed detection result, and writes nothin
 an operation. A test that needs a detector which refuses the call, answers late, or ends the
 operation itself gives it what to do on each call. The detector's own tests serve the real one.
 
-**The planner is a stand-in too** until it is built (the ticket "UC1: the planner opens one
-unscrewing operation per screw and rings the screwing resource (362)" in
-kapps_semantic_middleware): a middleware that is never served, and dispatches an operation with
-`mw.issue_operation()`, as the planner will.
+**The planner is a stand-in too**: a middleware that is never served, and dispatches an operation
+with `mw.issue_operation()`, as the planner does.
 """
 
 from __future__ import annotations

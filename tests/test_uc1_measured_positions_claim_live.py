@@ -130,9 +130,8 @@ def measured(
     return float(row["estimate"]["value"]), row["literal"]
 
 
-@pytest.mark.paper_claim
 def test_each_measured_position_reads_back_as_a_gaussian_mixture_literal(run):
-    """Paper claim 21: a run of use case 1 commits each measured position as a random variable
+    """A run of use case 1 commits each measured position as a random variable
     with a Gaussian-mixture literal beside its best estimate, and fetches it back cleanly. The
     literal of the failed operation's approach end position and that of Screw1's head position
     each read back with the datatype `uq:gmmLiteral`, parse, and hold the best estimate as their

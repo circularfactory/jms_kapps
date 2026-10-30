@@ -1,8 +1,7 @@
 """The layout of a FlexConveyor: its modules, and which module each one hands boxes to.
 
-**A topology is the first iteration's module list**, the one format in which machines that run
-use case 2 exchange topologies: a JSON list of modules, as the first iteration of this use case
-(the paper's artifact) wrote them. Each module is a JSON object with its `id`, the module's IRI in
+**A topology is a module list**, the one format in which machines that run use case 2 exchange
+topologies: a JSON list of modules. Each module is a JSON object with its `id`, the module's IRI in
 `fci:`, and its properties under their IRIs, each IRI encoded as the OGM encodes a field name
 (`IRI.lined`), with a list of values::
 
@@ -19,9 +18,8 @@ use case 2 exchange topologies: a JSON list of modules, as the first iteration o
      ...]
 
 - `rdf:type` holds the module's types: `fc:FlexConveyorModule`, and the roles `fc:EntryModule`
-  and `fc:ExitModule`, which are optional. A module that lists no type is a FlexConveyorModule,
-  as the first iteration seeded it. Every type listed is written into the graph, where the first
-  iteration's seed kept the first and dropped the rest.
+  and `fc:ExitModule`, which are optional. A module that lists no type is a FlexConveyorModule.
+  Every type listed is written into the graph.
 - `rdfs:label` is optional. Without one, the pages show the module's local name.
 - `fc:hasTransitTime` is optional: the module's own transit time, a list of one number, the seconds
   it takes to convey a box. 0 is allowed and means that it conveys at once, with no wait. A module
@@ -29,16 +27,14 @@ use case 2 exchange topologies: a JSON list of modules, as the first iteration o
 - `fc:hasConnection` holds the connections, each a node with the module it leads to
   (`fc:connectsTo`), its direction (`fc:hasDirection`: `fc:North`, `fc:East`, `fc:South` or
   `fc:West`) and its port (`fc:onPort`, 0 where none is given). A connection runs one way, as it is
-  listed: a module that hands boxes back has a connection of its own. The first iteration's seed
-  added the way back of every link, which would make a topology that runs one way run both ways.
-  A node's own `id`, which some of the first iteration's files give, is not taken: the seed names
-  a connection by its module and its direction.
+  listed: a module that hands boxes back has a connection of its own. A node's own `id`, where a file
+  gives one, is not taken: the seed names a connection by its module and its direction.
 - Every value is in a list, even where there is one. An IRI is written as a string or as
-  `{"id": ...}`, as the first iteration wrote both.
+  `{"id": ...}`.
 - A key that is none of these is refused, so that a misspelt one is not silently dropped.
 
 `parse_topology` reads a module list, and `Topology.module_list` writes one. Every topology this
-package ships is one, below `topologies/`, and the first iteration's files load as they are.
+package ships is one, below `topologies/`.
 In memory a topology is a `Topology`, which names each module by the local name of its IRI in
 `fci:`, so that it reads without prefixes; the Launcher page shows the running one in those terms.
 
@@ -74,9 +70,8 @@ and on any module where it names none; it ends on an exit module where the topol
 on any module where it names none; never on its origin. The WarehouseManagementSystem spawns by
 this rule and its form offers by it (`entries_and_exits`). The load check looks at no role. The
 shipped cross names Modules 1 and 2 as entry modules and Modules 4 and 5 as exit modules, and
-Module 3, in the middle, none; the grid, the tee and the pair name theirs. Roles are optional, as the first iteration's
-WarehouseManagementSystem had them, and a module can be both. The monitor draws no hop strong: it
-maps destinations, not routes.
+Module 3, in the middle, none; the grid and the line name theirs. Roles are optional, and a
+module can be both. The monitor draws no hop strong: it maps destinations, not routes.
 """
 
 from __future__ import annotations
@@ -136,7 +131,7 @@ _LOCAL_NAME = r"[A-Za-z_][A-Za-z0-9_-]*"
 
 # The format a topology must have, for a refusal to name.
 TOPOLOGY_FORMAT = (
-    "A topology is a JSON list of modules, as the first iteration wrote them: each module a JSON "
+    "A topology is a JSON list of modules: each module a JSON "
     f'object with its "id", an IRI in {FCI_NS}, its types under "{TYPE_KEY}", an optional label '
     f'under "{LABEL_KEY}", an optional transit time in seconds under "{TRANSIT_TIME_KEY}", and its '
     f'connections under "{CONNECTION_KEY}", each one a JSON object with the module it leads to '
@@ -145,7 +140,7 @@ TOPOLOGY_FORMAT = (
 )
 
 
-# The types of a module that lists none, as the first iteration seeded it.
+# The types of a module that lists none.
 _DEFAULT_TYPES: list[ModuleType] = ["FlexConveyorModule"]
 
 
@@ -333,7 +328,7 @@ def parse_topology(data: Any) -> Topology:
         if isinstance(data, dict) and "modules" in data:
             found = (
                 'This is a JSON object with its modules under "modules", the short topology '
-                "document, which use case 2 reads no longer."
+                "document, which use case 2 does not read."
             )
         else:
             found = f"This is {_json_kind(data)}, not a list of modules."
@@ -359,8 +354,8 @@ def _json_kind(value: Any) -> str:
 
 
 def _values(entry: dict, key: str) -> list[Any]:
-    """The values under `key` in `entry`, a module or a connection of a module list: a list, as the
-    first iteration wrote them. A key that is missing has none.
+    """The values under `key` in `entry`, a module or a connection of a module list: a list. A key
+    that is missing has none.
 
     Raises:
         ValueError: If the value under `key` is not a list.
@@ -576,8 +571,7 @@ def choices[Key](
 
     **Roles are optional.** A box starts on an entry module where the modules name any, and on any
     module where they name none; it ends on an exit module where they name any, and on any module
-    where they name none. A module of both roles is both. Roles are optional, as the first
-    iteration's WMS had them.
+    where they name none. A module of both roles is both.
     """
     everyone = list(types)
     entries = [m for m, its_types in types.items() if "EntryModule" in its_types]

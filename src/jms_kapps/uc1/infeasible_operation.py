@@ -293,7 +293,7 @@ def play(
         print(f"{PROGRAM}: {error}", file=sys.stderr)
         return 1
     finally:
-        print("Stopping the five participants...", file=out, flush=True)
+        print("Stopping the five processes...", file=out, flush=True)
         supervisor.stop_all()
         left = supervisor.may_not_have_deregistered()
         if left:

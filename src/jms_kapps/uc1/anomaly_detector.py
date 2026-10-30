@@ -61,10 +61,10 @@ last read, from what the detector keeps in its memory as it classifies
 (`anomaly_detector_memory`): an open dashboard reads no store. A classification goes into the
 memory once its commit has reached the store.
 
-With the mode "Save measurements as uncertainty quantifications" on (interim name; off by
+With the mode "Save measurements as uncertainty quantifications" on (off by
 default, on from the start with `--save-measurements-as-uq`), the same commit also writes a random
 variable beside each measured position: see `AnomalyDetector`. The detector serves the mode on
-one route of its own, `MODE_ROUTE` (interim name): a read gives it, a write sets it, and the next
+one route of its own, `MODE_ROUTE`: a read gives it, a write sets it, and the next
 classification reads it. Use case 1's page reaches the route through its passthrough, for its
 switch.
 
@@ -189,7 +189,7 @@ ROBOT_SCOPE = ClassScope.from_property_chains(
 )
 
 # The option that turns the mode "Save measurements as uncertainty quantifications" on at the
-# start (interim name), on the detector's process and on `jms-uc1`, which passes it on. Off
+# start, on the detector's process and on `jms-uc1`, which passes it on. Off
 # without it.
 SAVE_UQ_OPTION = "--save-measurements-as-uq"
 SAVE_UQ_ARGUMENT: dict[str, Any] = {
@@ -201,7 +201,7 @@ SAVE_UQ_ARGUMENT: dict[str, Any] = {
 }
 
 # The route on which the detector serves the mode "Save measurements as uncertainty
-# quantifications" (interim name): `GET` gives it, `PUT` sets it, as `SavesUq`.
+# quantifications": `GET` gives it, `PUT` sets it, as `SavesUq`.
 MODE_ROUTE = "/save-measurements-as-uq"
 
 
@@ -238,7 +238,7 @@ NO_FAILURE: DetectionResult = "ScrewIntact"
 NOT_CLASSIFIED = "the anomaly detector could not classify the attempt: "
 
 # How the reason of an operation that ended with a failure outcome begins, in its `svc:hasExecutionResult`,
-# followed by the outcome's local name. Interim text, so that it is told apart from an
+# followed by the outcome's local name. The prefix tells it apart from an
 # attempt that was not classified, a detector that was not reached, and an attempt that failed.
 ANOMALY = "ANOMALY: "
 

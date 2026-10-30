@@ -36,7 +36,10 @@ def pytest_collection_finish(session: pytest.Session) -> None:
     """Stop, once and before any test runs, when a selected test needs a dataset and none is
     named. It counts the tests left after `-m` and `-k`, and asks the connection variables as the
     graphdb tests' own skip does: without them no test reaches a store, so none needs a name."""
-    if session.config.getoption("--dataset") is not None or not triplestore_env_present():
+    if (
+        session.config.getoption("--dataset") is not None
+        or not triplestore_env_present()
+    ):
         return
     if any("dataset" in item.fixturenames for item in session.items):
         raise pytest.UsageError(NO_DATASET_MESSAGE)

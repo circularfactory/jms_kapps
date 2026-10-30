@@ -202,7 +202,7 @@ class ProcessState(BaseModel):
 if TYPE_CHECKING:
     ProcessStateJSON = dict[str, Any]
 else:
-    # The fields, not `get_type_hints(Link)`: that also evaluates the annotations BaseModel itself
+    # The fields, not `get_type_hints(Link)`: that also resolves the annotations BaseModel itself
     # carries, and a Pydantic release that names them only for type checkers breaks the import.
     LinkJSON = TypedDict(
         "Link", {name: field.annotation for name, field in Link.model_fields.items()}

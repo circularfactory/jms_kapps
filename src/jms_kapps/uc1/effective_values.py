@@ -238,7 +238,7 @@ def read_effective_values_with_origin(
 
     It reads the graph on each call and keeps nothing, so a value that the learner has changed
     counts from the next call. The mapper gives every value an individual holds, a second value of
-    a functional property too, so `resolve` still finds and refuses it (measured on 2026-10-15).
+    a functional property too, so `resolve` still finds and refuses it.
     The read does not ask the Screw for a type-level value, so a Screw that holds one in the graph
     is not seen here: the refusal covers what `resolve` is given.
 

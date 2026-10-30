@@ -4,29 +4,26 @@ Copied from ``kapps_triplestore_interface``'s ``docs/site/conf.py``, as the rele
 adoption steps say: the same toolchain, theme and version switcher, with the ``project`` block and
 the icon links changed: the GitHub link only, since jms_kapps is not published on PyPI.
 
-These things differ from that file. The first two follow from this repository having no
-hand-written pages; the last two keep its pages building with no warning:
+These things differ from that file. The site publishes the README, the pages under ``docs/`` and
+the glossary, and no generated module pages:
 
-- **The landing page is the README.** ``index.md`` is a stub, and ``setup()`` below hands
-  Sphinx ``README.md`` in its place while it reads that page. The page is the artefact: the two
-  cannot drift, and a README edit is a published-page edit. A link the README writes relative
-  to the repository root is pointed at the same file in the public repository, at this
+- **The pages are the repository's Markdown files.** ``index.md`` and, for each page under ``docs/``, a
+  file of the same name here (``setup.md``, ...) are stubs, and ``setup()`` below hands Sphinx ``README.md`` and
+  ``docs/<page>.md`` in their place while it reads them. The files are the artefact: a page and its
+  file cannot drift, and an edit of the file is a published-page edit. A link between two of these
+  files becomes a link between their pages; an image or a video is loaded from the public
+  repository, and a link to any other file points at that file in the public repository, at this
   release's tag, because a page on the documentation site has no repository root beside it.
-- **The reference lists undocumented members too** (``undoc-members``). Not every public class
-  and function here carries a docstring, and a reference that silently left them out would
-  read as the whole API while showing part of it. They appear with their signatures. A
-  deprecated name is left out: the reference shows the name that replaces it.
-- **Heading anchors** (``myst_heading_anchors``), for the README's links to its own sections.
-- **Instance-variable fields** (``napoleon_use_ivar``), for the ``Attributes:`` sections.
-- **The evaluation extra mocked** (``autodoc_mock_imports``): the build installs the package without
-  its optional ``evaluation`` extra, so the run report's modules document against stand-ins for
-  OpenTelemetry, pandas and matplotlib.
+- **No API reference.** The paper's reader runs the use cases and reads the pages; the code is read
+  in the repository, which the pages point into.
+- **Heading anchors** (``myst_heading_anchors``), for the pages' links to their own sections and to
+  each other's.
 
 The footer's copyright text is read from the ``LICENSE`` two directories above this file, so a
 vendored copy needs a ``Copyright (c) <year> <holder>`` line there, or the build raises.
 """
 
-import logging
+import posixpath
 import re
 from importlib.metadata import version as _installed_version
 from pathlib import Path
@@ -40,7 +37,7 @@ author = "Etienne Hoffmann, Sören Weindel"
 def _copyright_from_license(license_path: Path) -> str:
     """The footer's copyright text, read from the copyright lines of the LICENSE.
 
-    ``Copyright (c) 2026 Etienne Hoffmann`` becomes ``2026, Etienne Hoffmann``, the form Sphinx
+    ``Copyright (c) <year> <holder>`` becomes ``<year>, <holder>``, the form Sphinx
     prints. The LICENSE is the only place the holder and year are written; several lines join
     with ``; ``.
     """
@@ -70,11 +67,6 @@ _REPOSITORY = "circularfactory/jms_kapps"
 # -- Extensions -------------------------------------------------------------
 
 extensions = [
-    "sphinx.ext.autodoc",
-    # Google-style `Args:` sections render as a parameter table, not a literal block.
-    "sphinx.ext.napoleon",
-    "sphinx.ext.intersphinx",
-    "sphinx.ext.viewcode",
     # myst_nb registers myst_parser itself. Loading BOTH raises
     # "extension myst_parser is already registered" -- so only this one.
     "myst_nb",
@@ -82,42 +74,16 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "**.ipynb_checkpoints"]
-
-# -- autodoc ----------------------------------------------------------------
-
-autodoc_default_options = {
-    "members": True,
-    "undoc-members": True,
-    "show-inheritance": True,
-    # Source order, not alphabetical: a module read top to bottom stays in that order.
-    "member-order": "bysource",
-}
-# Types stay in the signature, so a reader sees the shape of a call without
-# scrolling down to the parameter table.
-autodoc_typehints = "signature"
-# The docs build installs the package without its optional `evaluation` extra; the modules of the
-# measurement harness that import it are documented against stand-ins instead of failing to import.
-autodoc_mock_imports = ["opentelemetry", "pandas", "matplotlib"]
+# A fence of the reference names a language that Pygments has no lexer for, `nquads`. It renders as
+# plain text, as on GitHub, and is no reason to fail the build.
+suppress_warnings = ["misc.highlighting_failure"]
 
 # -- MyST -------------------------------------------------------------------
 
 myst_enable_extensions = ["colon_fence", "deflist", "fieldlist"]
-# The README links its own sections by their GitHub anchors (`#the-triple-store`). The libraries'
-# READMEs do not, so their sites need no anchors; this one does.
+# The pages link their own sections and each other's by their GitHub anchors (`#the-triple-store`).
+# The libraries' READMEs do not, so their sites need no anchors; this one does.
 myst_heading_anchors = 3
-
-# -- napoleon -----------------------------------------------------------------
-
-# A class's `Attributes:` section renders as instance-variable fields. Rendered as attribute
-# entries, each would describe the class's annotated attribute a second time, since
-# `undoc-members` lists those too, and the duplicate fails the build.
-napoleon_use_ivar = True
-
-# -- intersphinx ------------------------------------------------------------
-
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-}
 
 # -- HTML -------------------------------------------------------------------
 
@@ -154,71 +120,89 @@ html_theme_options = {
     ],
 }
 
-# -- The landing page is the README ------------------------------------------
+# -- The pages are the repository's Markdown files -------------------------------
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
-# A Markdown link or image with an inline target: `[text](target)` or `![alt](target)`.
-_INLINE_TARGET = re.compile(r"(!?\[[^\]\n]*\]\()([^)\s]+)(\))")
+# A Markdown link or image with an inline target: `[text](target)` or `![alt](target)`. Its text may
+# wrap onto the next line, as the guide's do, but not across a blank line.
+_INLINE_TARGET = re.compile(r"(!?\[(?:[^\]\n]|\n(?!\n))*\]\()([^)\s]+)(\))")
+# A fenced block, whose text is code and is left as it is.
+_FENCE = re.compile(r"^[ \t]*(```|~~~).*?^[ \t]*\1[^\n]*$", re.MULTILINE | re.DOTALL)
 _URL_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
-
-# The README has no toctree of its own, so the reference is attached here. Hidden:
-# the navigation bar lists it, and the README reads as it does on GitHub.
-_TOCTREE = """
-
-```{toctree}
-:hidden:
-:maxdepth: 2
-
-reference/index
-```
-"""
+# What a page shows rather than links to: loaded from the public repository's raw files.
+_MEDIA = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".mp4")
 
 
-def _public_target(match: re.Match[str]) -> str:
-    opening, target, closing = match.groups()
+# Each published page by its file in the repository: the site's name of the page, in the order of
+# the navigation.
+PAGES: dict[str, str] = {
+    "README.md": "index",
+    "docs/setup.md": "setup",
+    "docs/use-case-1.md": "use-case-1",
+    "docs/use-case-2.md": "use-case-2",
+    "docs/recorded-refusal.md": "recorded-refusal",
+    "docs/glossary.md": "glossary",
+}
+
+# The README has no toctree of its own, so the pages are attached here, under the names the README's
+# links give them. Hidden: the navigation bar lists them, and the README reads as it does on GitHub.
+_SECTIONS = (
+    ("Setup and operation", ("setup",)),
+    ("Use case 1", ("use-case-1",)),
+    ("Use case 2", ("use-case-2", "recorded-refusal")),
+    ("Glossary", ("glossary",)),
+)
+_TOCTREE = "".join(
+    f"\n```{{toctree}}\n:hidden:\n:caption: {caption}\n:maxdepth: 1\n\n"
+    + "\n".join(pages)
+    + "\n```\n"
+    for caption, pages in _SECTIONS
+)
+
+
+def site_target(source: str, docname: str, target: str) -> str:
+    """Where `target`, a link written in the repository file `source`, points from the page
+    `docname`: the page of another published file, the raw file of an image or a video, or else
+    the file in the public repository."""
     if _URL_SCHEME.match(target) or target.startswith(("#", "/")):
-        return match.group(0)
-    if opening.startswith("!"):
-        url = f"https://raw.githubusercontent.com/{_REPOSITORY}/v{release}/{target}"
-    else:
-        url = f"https://github.com/{_REPOSITORY}/blob/v{release}/{target}"
-    return f"{opening}{url}{closing}"
+        return target
+    path, hash_, anchor = target.partition("#")
+    resolved = posixpath.normpath(posixpath.join(posixpath.dirname(source), path))
+    if resolved in PAGES:
+        here = posixpath.dirname(docname) or "."
+        return posixpath.relpath(PAGES[resolved] + ".md", here) + hash_ + anchor
+    if resolved.lower().endswith(_MEDIA):
+        return f"https://raw.githubusercontent.com/{_REPOSITORY}/v{release}/{resolved}"
+    return f"https://github.com/{_REPOSITORY}/blob/v{release}/{resolved}{hash_}{anchor}"
 
 
-def _landing_page() -> str:
-    lines, fenced = [], False
-    for line in (_ROOT / "README.md").read_text(encoding="utf-8").splitlines(keepends=True):
-        if line.lstrip().startswith(("```", "~~~")):
-            fenced = not fenced
-        lines.append(line if fenced else _INLINE_TARGET.sub(_public_target, line))
-    return "".join(lines) + _TOCTREE
+def page_text(source: str, docname: str) -> str:
+    """The text of the page `docname`: the repository file `source` with its links pointed at the
+    site or the public repository, and on the landing page the toctrees."""
+
+    def pointed(match: re.Match[str]) -> str:
+        opening, target, closing = match.groups()
+        return opening + site_target(source, docname, target) + closing
+
+    raw = (_ROOT / source).read_text(encoding="utf-8")
+    parts, start = [], 0
+    for fence in _FENCE.finditer(raw):
+        parts.append(_INLINE_TARGET.sub(pointed, raw[start : fence.start()]))
+        parts.append(fence.group(0))
+        start = fence.end()
+    parts.append(_INLINE_TARGET.sub(pointed, raw[start:]))
+    text = "".join(parts)
+    return text + _TOCTREE if docname == "index" else text
 
 
-def _readme_as_landing_page(app, docname, source):
-    if docname == "index":
-        source[0] = _landing_page()
+_SOURCES = {page: source for source, page in PAGES.items()}
 
 
-def _skip_loggers(app, what, name, obj, skip, options):
-    # A module-level logger becomes a member once undocumented members are listed.
-    # It is not API.
-    if isinstance(obj, logging.Logger):
-        return True
-    return None
-
-
-def _skip_deprecated(app, what, name, obj, skip, options):
-    # A deprecated name carries `__deprecated__` (PEP 702), and a deprecated property carries it
-    # on its getter. The reference shows only the names that replace them; the changelog's
-    # Deprecated section lists the old names.
-    marked = obj.fget if isinstance(obj, property) else obj
-    if getattr(marked, "__deprecated__", None):
-        return True
-    return None
+def _repository_file_as_page(app, docname, source):
+    if docname in _SOURCES:
+        source[0] = page_text(_SOURCES[docname], docname)
 
 
 def setup(app):
-    app.connect("source-read", _readme_as_landing_page)
-    app.connect("autodoc-skip-member", _skip_loggers)
-    app.connect("autodoc-skip-member", _skip_deprecated)
+    app.connect("source-read", _repository_file_as_page)

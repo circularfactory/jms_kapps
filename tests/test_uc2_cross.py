@@ -1,6 +1,6 @@
 """Several boxes at once on the 5-module cross, each module choosing its next module from the graph.
 
-The cross names the first iteration's roles: Modules 1 and 2 are entry modules and Modules 4 and 5
+The cross names the roles of its modules: Modules 1 and 2 are entry modules and Modules 4 and 5
 exit modules, each connected to Module 3 in the middle, both ways, and Module 3 has none. A box
 starts on Module 1 or 2 and ends on Module 4 or 5, so it goes over Module 3, two hops, and boxes
 that travel at the same time contend for Module 3. The
@@ -52,12 +52,13 @@ pytestmark = [
 M1, M2, M3, M4, M5 = (module_iri(n) for n in range(1, 6))
 CROSS_TOPOLOGY = shipped_topology("cross")
 
-# Four boxes over two hops each, through one module in the middle, on the shared KIT store.
+# Four boxes over two hops each, through one module in the middle, on the shared remote store.
 TRANSPORTS_SECONDS = 120.0
 # A spawn left to the WMS is refused while both entry modules, Modules 1 and 2, hold a box.
 NO_MODULE_FREE = "no entry module is free"
-# The rate of acceptance criterion 1, and how long the boxes it spawns may take to
-# cover the four ordered pairs of an entry and an exit module of the cross, on the shared KIT store.
+# The spawn rate of the test of the four ordered pairs, and how long the boxes it spawns may take
+# to cover the four ordered pairs of an entry and an exit module of the cross, on the shared
+# remote store.
 BOXES_PER_MINUTE = 30
 PAIRS_SECONDS = 420.0
 
@@ -230,7 +231,7 @@ def set_spawn_rate(party: Participants, boxes_per_minute: float) -> None:
 def test_at_30_boxes_a_minute_left_to_the_wms_boxes_travel_between_every_ordered_pair(
     dataset,
 ):
-    """Acceptance criterion 1: on the cross, which names Modules 1 and 2 as entry modules and
+    """On the cross, which names Modules 1 and 2 as entry modules and
     Modules 4 and 5 as exit modules, the WMS starts a box on a free entry module and sends it to an
     exit module, so boxes travel between every one of the four ordered pairs, never from or to
     Module 3, and all arrive. The WMS picks toward the pairs no box has travelled yet rather than

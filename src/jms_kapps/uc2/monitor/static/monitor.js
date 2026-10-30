@@ -144,8 +144,7 @@ function boxId(id) {
   return (id || "").replace(/^Box-?/, "");
 }
 
-// What a box's square and the disc on its destination say: the first four characters of its UUID
-// (interim).
+// What a box's square and the disc on its destination say: the first four characters of its UUID.
 function boxLabel(id) {
   return boxId(id).slice(0, 4);
 }
@@ -305,9 +304,8 @@ const GRAPH_AND_STREAMS = "graph + streams";
 const NO_REFUSALS_IN_GRAPH_ONLY =
   "The monitor follows no handover event stream, and a refused write leaves no trace in the " +
   "knowledge graph: the triple store refused it, so nothing of it was written. " +
-  "Only the refusing service's handover event stream reports it (see the glossary entry " +
-  '"Handover event stream"), so turn on "Follow the services\' handover event streams" to see ' +
-  "the refusals.";
+  "Only the refusing service's handover event stream reports it, so turn on " +
+  '"Follow the services\' handover event streams" to see the refusals.';
 
 // Why the notice of a possible deadlock is not shown in "graph only".
 const NO_DEADLOCK_IN_GRAPH_ONLY =

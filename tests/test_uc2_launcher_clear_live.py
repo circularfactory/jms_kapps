@@ -122,9 +122,7 @@ def test_clear_empties_every_graph_to_0_statements_and_a_launch_after_it_runs(
     run, log = jms_uc2
     await_all_live(run, log)
     assert history_enabled(db)
-    db.graph_add(
-        BY_HAND_TURTLE, graph_iri=BY_HAND, content_type="application/x-turtle"
-    )
+    db.graph_add(BY_HAND_TURTLE, graph_iri=BY_HAND, content_type="application/x-turtle")
     assert statement_count(db) > 0
 
     cleared = httpx.post(f"{PAGE}/api/clear", timeout=120)

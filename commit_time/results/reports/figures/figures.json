@@ -1,0 +1,938 @@
+{
+  "made": {
+    "combined_figure": [
+      "commit-time-paper.pdf",
+      "commit-time-paper.png"
+    ],
+    "time_per_commit_csv": [
+      "time_per_commit.csv"
+    ],
+    "time_per_commit_by_phase_csv": [
+      "time_per_commit_by_phase.csv"
+    ]
+  },
+  "tables": [
+    "commits.csv",
+    "replayed_writes.csv"
+  ],
+  "runs": [
+    {
+      "run_id": "20261027-180421-e676",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 1,
+      "pick_seed": 4218638168896275004
+    },
+    {
+      "run_id": "20261027-181812-8d50",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 1,
+      "pick_seed": 4218638168896275004
+    },
+    {
+      "run_id": "20261027-182514-8f6a",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 2,
+      "pick_seed": 4942483095314964677
+    },
+    {
+      "run_id": "20261027-183217-5bb5",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 2,
+      "pick_seed": 4942483095314964677
+    },
+    {
+      "run_id": "20261027-184613-02ad",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 3,
+      "pick_seed": 7510743106381998201
+    },
+    {
+      "run_id": "20261027-190003-8549",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 3,
+      "pick_seed": 7510743106381998201
+    },
+    {
+      "run_id": "20261027-190704-fb21",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 4,
+      "pick_seed": 6197215612869019776
+    },
+    {
+      "run_id": "20261027-191408-b4d3",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 4,
+      "pick_seed": 6197215612869019776
+    },
+    {
+      "run_id": "20261027-192753-04c3",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 5,
+      "pick_seed": 6436234020188582021
+    },
+    {
+      "run_id": "20261027-194146-13d8",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 5,
+      "pick_seed": 6436234020188582021
+    },
+    {
+      "run_id": "20261027-194850-7745",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 6,
+      "pick_seed": 2373453900157810492
+    },
+    {
+      "run_id": "20261027-195553-6f2a",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 6,
+      "pick_seed": 2373453900157810492
+    },
+    {
+      "run_id": "20261027-200944-c9c1",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 7,
+      "pick_seed": 8701463163815498713
+    },
+    {
+      "run_id": "20261027-202330-a81b",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 7,
+      "pick_seed": 8701463163815498713
+    },
+    {
+      "run_id": "20261027-203033-3a7d",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 8,
+      "pick_seed": 644121686080605300
+    },
+    {
+      "run_id": "20261027-203733-67af",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 8,
+      "pick_seed": 644121686080605300
+    },
+    {
+      "run_id": "20261027-205125-49aa",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 9,
+      "pick_seed": 3813883466194102258
+    },
+    {
+      "run_id": "20261027-210515-c19a",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 9,
+      "pick_seed": 3813883466194102258
+    },
+    {
+      "run_id": "20261027-211215-073e",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 10,
+      "pick_seed": 5906356467413185226
+    },
+    {
+      "run_id": "20261027-211916-985b",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 10,
+      "pick_seed": 5906356467413185226
+    },
+    {
+      "run_id": "20261027-213309-f846",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 11,
+      "pick_seed": 161088101533790014
+    },
+    {
+      "run_id": "20261027-214700-49b3",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 11,
+      "pick_seed": 161088101533790014
+    },
+    {
+      "run_id": "20261027-215401-81df",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 12,
+      "pick_seed": 3745552662316857118
+    },
+    {
+      "run_id": "20261027-220102-7e83",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 12,
+      "pick_seed": 3745552662316857118
+    },
+    {
+      "run_id": "20261027-221502-c869",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 13,
+      "pick_seed": 6285989575521535813
+    },
+    {
+      "run_id": "20261027-222855-81b4",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 13,
+      "pick_seed": 6285989575521535813
+    },
+    {
+      "run_id": "20261027-223557-825c",
+      "arm": "kapps-shacl-off",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 14,
+      "pick_seed": 8350001003638978932
+    },
+    {
+      "run_id": "20261027-224258-66db",
+      "arm": "kapps-shacl-on",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 14,
+      "pick_seed": 8350001003638978932
+    },
+    {
+      "run_id": "20261028-012516-e775",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 1,
+      "pick_seed": 4218638168896275004
+    },
+    {
+      "run_id": "20261028-013818-91ed",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 1,
+      "pick_seed": 4218638168896275004
+    },
+    {
+      "run_id": "20261028-014507-1cd8",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 2,
+      "pick_seed": 4942483095314964677
+    },
+    {
+      "run_id": "20261028-015156-3b60",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 2,
+      "pick_seed": 4942483095314964677
+    },
+    {
+      "run_id": "20261028-020451-37e6",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 3,
+      "pick_seed": 7510743106381998201
+    },
+    {
+      "run_id": "20261028-021746-5c44",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 3,
+      "pick_seed": 7510743106381998201
+    },
+    {
+      "run_id": "20261028-022434-d489",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 4,
+      "pick_seed": 6197215612869019776
+    },
+    {
+      "run_id": "20261028-023122-bd5d",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 4,
+      "pick_seed": 6197215612869019776
+    },
+    {
+      "run_id": "20261028-024420-4806",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 5,
+      "pick_seed": 6436234020188582021
+    },
+    {
+      "run_id": "20261028-025717-2473",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 5,
+      "pick_seed": 6436234020188582021
+    },
+    {
+      "run_id": "20261028-030405-cac7",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 6,
+      "pick_seed": 2373453900157810492
+    },
+    {
+      "run_id": "20261028-031053-8aee",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 6,
+      "pick_seed": 2373453900157810492
+    },
+    {
+      "run_id": "20261028-032349-86c9",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 7,
+      "pick_seed": 8701463163815498713
+    },
+    {
+      "run_id": "20261028-033645-8128",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 7,
+      "pick_seed": 8701463163815498713
+    },
+    {
+      "run_id": "20261028-034333-7e39",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 8,
+      "pick_seed": 644121686080605300
+    },
+    {
+      "run_id": "20261028-035021-5ee0",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 8,
+      "pick_seed": 644121686080605300
+    },
+    {
+      "run_id": "20261028-040317-a464",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 9,
+      "pick_seed": 3813883466194102258
+    },
+    {
+      "run_id": "20261028-041613-178d",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 9,
+      "pick_seed": 3813883466194102258
+    },
+    {
+      "run_id": "20261028-042302-90bc",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 10,
+      "pick_seed": 5906356467413185226
+    },
+    {
+      "run_id": "20261028-042949-a6e3",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 10,
+      "pick_seed": 5906356467413185226
+    },
+    {
+      "run_id": "20261028-044248-51a7",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 11,
+      "pick_seed": 161088101533790014
+    },
+    {
+      "run_id": "20261028-045546-43f9",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 11,
+      "pick_seed": 161088101533790014
+    },
+    {
+      "run_id": "20261028-050233-5a0a",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 12,
+      "pick_seed": 3745552662316857118
+    },
+    {
+      "run_id": "20261028-050922-58f2",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 12,
+      "pick_seed": 3745552662316857118
+    },
+    {
+      "run_id": "20261028-052220-2b55",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 13,
+      "pick_seed": 6285989575521535813
+    },
+    {
+      "run_id": "20261028-053516-34f4",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 13,
+      "pick_seed": 6285989575521535813
+    },
+    {
+      "run_id": "20261028-054204-afec",
+      "arm": "kapps-shacl-off",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 14,
+      "pick_seed": 8350001003638978932
+    },
+    {
+      "run_id": "20261028-054852-9401",
+      "arm": "kapps-shacl-on",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 14,
+      "pick_seed": 8350001003638978932
+    },
+    {
+      "run_id": "20261027-181149-705c",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 1,
+      "pick_seed": 4218638168896275004
+    },
+    {
+      "run_id": "20261027-183951-d2d4",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 2,
+      "pick_seed": 4942483095314964677
+    },
+    {
+      "run_id": "20261027-185345-84f2",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 3,
+      "pick_seed": 7510743106381998201
+    },
+    {
+      "run_id": "20261027-192138-4481",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 4,
+      "pick_seed": 6197215612869019776
+    },
+    {
+      "run_id": "20261027-193523-3088",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 5,
+      "pick_seed": 6436234020188582021
+    },
+    {
+      "run_id": "20261027-200327-3dd2",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 6,
+      "pick_seed": 2373453900157810492
+    },
+    {
+      "run_id": "20261027-201711-3005",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 7,
+      "pick_seed": 8701463163815498713
+    },
+    {
+      "run_id": "20261027-204506-cd29",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 8,
+      "pick_seed": 644121686080605300
+    },
+    {
+      "run_id": "20261027-205854-915b",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 9,
+      "pick_seed": 3813883466194102258
+    },
+    {
+      "run_id": "20261027-212648-b755",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 10,
+      "pick_seed": 5906356467413185226
+    },
+    {
+      "run_id": "20261027-214039-b3fc",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 11,
+      "pick_seed": 161088101533790014
+    },
+    {
+      "run_id": "20261027-220837-4abf",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 12,
+      "pick_seed": 3745552662316857118
+    },
+    {
+      "run_id": "20261027-222233-05b1",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 13,
+      "pick_seed": 6285989575521535813
+    },
+    {
+      "run_id": "20261027-225031-5986",
+      "arm": "writes-only",
+      "store": "kit",
+      "heartbeats": "on",
+      "repetition": 14,
+      "pick_seed": 8350001003638978932
+    },
+    {
+      "run_id": "20261028-013226-048d",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 1,
+      "pick_seed": 4218638168896275004
+    },
+    {
+      "run_id": "20261028-015903-59d9",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 2,
+      "pick_seed": 4942483095314964677
+    },
+    {
+      "run_id": "20261028-021159-b7ab",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 3,
+      "pick_seed": 7510743106381998201
+    },
+    {
+      "run_id": "20261028-023830-5a50",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 4,
+      "pick_seed": 6197215612869019776
+    },
+    {
+      "run_id": "20261028-025128-000d",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 5,
+      "pick_seed": 6436234020188582021
+    },
+    {
+      "run_id": "20261028-031801-010e",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 6,
+      "pick_seed": 2373453900157810492
+    },
+    {
+      "run_id": "20261028-033056-c66f",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 7,
+      "pick_seed": 8701463163815498713
+    },
+    {
+      "run_id": "20261028-035728-1486",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 8,
+      "pick_seed": 644121686080605300
+    },
+    {
+      "run_id": "20261028-041024-3b8c",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 9,
+      "pick_seed": 3813883466194102258
+    },
+    {
+      "run_id": "20261028-043657-1af5",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 10,
+      "pick_seed": 5906356467413185226
+    },
+    {
+      "run_id": "20261028-044956-b488",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 11,
+      "pick_seed": 161088101533790014
+    },
+    {
+      "run_id": "20261028-051630-b2fc",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 12,
+      "pick_seed": 3745552662316857118
+    },
+    {
+      "run_id": "20261028-052928-cba3",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 13,
+      "pick_seed": 6285989575521535813
+    },
+    {
+      "run_id": "20261028-055600-4b2c",
+      "arm": "writes-only",
+      "store": "local",
+      "heartbeats": "on",
+      "repetition": 14,
+      "pick_seed": 8350001003638978932
+    }
+  ],
+  "commit_counts": [
+    {
+      "store": "kit",
+      "heartbeats": "on",
+      "arm": "kapps-shacl-off",
+      "commits": 28883,
+      "in_window": 19021,
+      "admitted_in_window": 19021,
+      "not_admitted_in_window_by_kind": {},
+      "paired": 0,
+      "without_a_replayed_update": null,
+      "kind_mix": {
+        "other update": 0.44172230692392617,
+        "heartbeat": 0.22706482309026865,
+        "status: running": 0.11040428999526838,
+        "status: done": 0.11040428999526838,
+        "status: queued": 0.11040428999526838
+      },
+      "not_admitted_in_window_by_run": {
+        "20261027-181812-8d50": 0,
+        "20261027-182514-8f6a": 0,
+        "20261027-190003-8549": 0,
+        "20261027-190704-fb21": 0,
+        "20261027-194146-13d8": 0,
+        "20261027-194850-7745": 0,
+        "20261027-202330-a81b": 0,
+        "20261027-203033-3a7d": 0,
+        "20261027-210515-c19a": 0,
+        "20261027-211215-073e": 0,
+        "20261027-214700-49b3": 0,
+        "20261027-215401-81df": 0,
+        "20261027-222855-81b4": 0,
+        "20261027-223557-825c": 0
+      }
+    },
+    {
+      "store": "kit",
+      "heartbeats": "on",
+      "arm": "kapps-shacl-on",
+      "commits": 28879,
+      "in_window": 19022,
+      "admitted_in_window": 19022,
+      "not_admitted_in_window_by_kind": {},
+      "paired": 19006,
+      "without_a_replayed_update": 16,
+      "kind_mix": {
+        "other update": 0.4415413731468826,
+        "heartbeat": 0.22726316896225424,
+        "status: done": 0.11039848596362108,
+        "status: running": 0.11039848596362108,
+        "status: queued": 0.11039848596362108
+      },
+      "not_admitted_in_window_by_run": {
+        "20261027-180421-e676": 0,
+        "20261027-183217-5bb5": 0,
+        "20261027-184613-02ad": 0,
+        "20261027-191408-b4d3": 0,
+        "20261027-192753-04c3": 0,
+        "20261027-195553-6f2a": 0,
+        "20261027-200944-c9c1": 0,
+        "20261027-203733-67af": 0,
+        "20261027-205125-49aa": 0,
+        "20261027-211916-985b": 0,
+        "20261027-213309-f846": 0,
+        "20261027-220102-7e83": 0,
+        "20261027-221502-c869": 0,
+        "20261027-224258-66db": 0
+      }
+    },
+    {
+      "store": "local",
+      "heartbeats": "on",
+      "arm": "kapps-shacl-off",
+      "commits": 28853,
+      "in_window": 19029,
+      "admitted_in_window": 19029,
+      "not_admitted_in_window_by_kind": {},
+      "paired": 0,
+      "without_a_replayed_update": null,
+      "kind_mix": {
+        "other update": 0.44143149929055653,
+        "heartbeat": 0.2274948762415261,
+        "status: queued": 0.11035787482263913,
+        "status: running": 0.11035787482263913,
+        "status: done": 0.11035787482263913
+      },
+      "not_admitted_in_window_by_run": {
+        "20261028-013818-91ed": 0,
+        "20261028-014507-1cd8": 0,
+        "20261028-021746-5c44": 0,
+        "20261028-022434-d489": 0,
+        "20261028-025717-2473": 0,
+        "20261028-030405-cac7": 0,
+        "20261028-033645-8128": 0,
+        "20261028-034333-7e39": 0,
+        "20261028-041613-178d": 0,
+        "20261028-042302-90bc": 0,
+        "20261028-045546-43f9": 0,
+        "20261028-050233-5a0a": 0,
+        "20261028-053516-34f4": 0,
+        "20261028-054204-afec": 0
+      }
+    },
+    {
+      "store": "local",
+      "heartbeats": "on",
+      "arm": "kapps-shacl-on",
+      "commits": 28839,
+      "in_window": 19035,
+      "admitted_in_window": 19035,
+      "not_admitted_in_window_by_kind": {},
+      "paired": 19033,
+      "without_a_replayed_update": 2,
+      "kind_mix": {
+        "other update": 0.44129235618597323,
+        "heartbeat": 0.22763330706593118,
+        "status: queued": 0.11042815865510901,
+        "status: running": 0.11032308904649331,
+        "status: done": 0.11032308904649331
+      },
+      "not_admitted_in_window_by_run": {
+        "20261028-012516-e775": 0,
+        "20261028-015156-3b60": 0,
+        "20261028-020451-37e6": 0,
+        "20261028-023122-bd5d": 0,
+        "20261028-024420-4806": 0,
+        "20261028-031053-8aee": 0,
+        "20261028-032349-86c9": 0,
+        "20261028-035021-5ee0": 0,
+        "20261028-040317-a464": 0,
+        "20261028-042949-a6e3": 0,
+        "20261028-044248-51a7": 0,
+        "20261028-050922-58f2": 0,
+        "20261028-052220-2b55": 0,
+        "20261028-054852-9401": 0
+      }
+    }
+  ],
+  "left_out": [],
+  "skipped": [],
+  "captions": {
+    "commit-time-paper": "Time per commit with KAPPS at heartbeats on, on the local store and on the a remote GraphDB server: KAPPS with SHACL on and with SHACL off, and replay, the plain SPARQL update of each SHACL-on commit replayed alone in the same store, paired by the commit's span id. The admitted commits of the measured window. (a) The box spans the quartiles, the line is the median, the diamond the mean; the whiskers reach the 1st and the 99th percentile, so 1 % of a row's commits lie beyond each whisker; a circle is a commit of 1 s or more. The dashed line marks 3 s. (b) The mean of each part of a commit, stacked, so that the bar ends at the mean time per commit; beside each bar its mean. Class reads = class query + class derivation; fetch and other requests = fetch reads + fetch client + the receipt's query and removal + other requests; client remainder = the diff + the rest of the client's time. local SHACL on n = 19035; local SHACL off n = 19029; local replay n = 19033; remote SHACL on n = 19022; remote SHACL off n = 19021; remote replay n = 19006."
+  },
+  "numbers": {
+    "commit-time-paper": {
+      "heartbeats": "on",
+      "rows": [
+        {
+          "store": "local",
+          "group": "local",
+          "row": "SHACL on",
+          "arm": "kapps-shacl-on",
+          "n": 19035,
+          "mean_class_query_seconds": 0.024289956343577623,
+          "mean_class_derivation_seconds": 0.006291128920409771,
+          "heartbeat_share": 0.22763330706593118,
+          "commits_1_s_or_more": 0,
+          "share_above_1_s": 0.0
+        },
+        {
+          "store": "local",
+          "group": "local",
+          "row": "SHACL off",
+          "arm": "kapps-shacl-off",
+          "n": 19029,
+          "mean_class_query_seconds": 0.02488289710441957,
+          "mean_class_derivation_seconds": 0.006468656576803826,
+          "heartbeat_share": 0.2274948762415261,
+          "commits_1_s_or_more": 0,
+          "share_above_1_s": 0.0
+        },
+        {
+          "store": "local",
+          "group": "local",
+          "row": "replay",
+          "arm": "writes-only",
+          "n": 19033,
+          "mean_class_query_seconds": null,
+          "mean_class_derivation_seconds": null,
+          "heartbeat_share": 0.22765722692166238,
+          "commits_1_s_or_more": 0,
+          "share_above_1_s": 0.0
+        },
+        {
+          "store": "kit",
+          "group": "remote",
+          "row": "SHACL on",
+          "arm": "kapps-shacl-on",
+          "n": 19022,
+          "mean_class_query_seconds": 0.09656495804857533,
+          "mean_class_derivation_seconds": 0.008479346598675217,
+          "heartbeat_share": 0.22726316896225424,
+          "commits_1_s_or_more": 0,
+          "share_above_1_s": 0.0
+        },
+        {
+          "store": "kit",
+          "group": "remote",
+          "row": "SHACL off",
+          "arm": "kapps-shacl-off",
+          "n": 19021,
+          "mean_class_query_seconds": 0.09704405625361442,
+          "mean_class_derivation_seconds": 0.008466975553335787,
+          "heartbeat_share": 0.22706482309026865,
+          "commits_1_s_or_more": 0,
+          "share_above_1_s": 0.0
+        },
+        {
+          "store": "kit",
+          "group": "remote",
+          "row": "replay",
+          "arm": "writes-only",
+          "n": 19006,
+          "mean_class_query_seconds": null,
+          "mean_class_derivation_seconds": null,
+          "heartbeat_share": 0.22734925812901188,
+          "commits_1_s_or_more": 0,
+          "share_above_1_s": 0.0
+        }
+      ],
+      "n_smallest": 19006,
+      "n_largest": 19035,
+      "shacl_on_minus_off": [
+        {
+          "store": "local",
+          "group": "local",
+          "value_seconds": 0.004053712846325011,
+          "interval_low_seconds": 0.0036340877978902975,
+          "interval_high_seconds": 0.00446981637020453,
+          "rounded_ms": 4,
+          "repetitions_on": 14,
+          "repetitions_off": 14
+        },
+        {
+          "store": "kit",
+          "group": "remote",
+          "value_seconds": 0.015565658636597257,
+          "interval_low_seconds": 0.014384051188203012,
+          "interval_high_seconds": 0.016783823071930673,
+          "rounded_ms": 16,
+          "repetitions_on": 14,
+          "repetitions_off": 14
+        }
+      ]
+    }
+  }
+}
